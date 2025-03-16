@@ -30,19 +30,38 @@ const SubscriptionCheckout = ({
     setIsLoading(true);
     
     try {
-      const user = await supabase.auth.getUser();
+      const { data: userData, error: userError } = await supabase.auth.getUser();
       
-      if (!user.data.user) {
+      if (userError || !userData.user) {
         toast({
           title: "Authentication required",
           description: "Please log in to subscribe to a plan.",
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
+      }
+      
+      const userId = userData.user.id;
+      
+      if (!userId) {
+        toast({
+          title: "Authentication error",
+          description: "Unable to identify your account. Please try logging in again.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
         return;
       }
       
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { plan, urlCount, includeApiAccess, billingCycle },
+        body: { 
+          plan, 
+          urlCount, 
+          includeApiAccess, 
+          billingCycle,
+          userId 
+        },
       });
       
       if (error) {

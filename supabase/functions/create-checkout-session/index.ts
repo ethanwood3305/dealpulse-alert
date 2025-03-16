@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.9.0?target=deno";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -35,6 +36,20 @@ serve(async (req) => {
   try {
     const { plan, userId, urlCount, includeApiAccess, billingCycle } = await req.json();
     
+    // Validate userId
+    if (!userId || typeof userId !== 'string') {
+      console.error("Invalid userId provided:", userId);
+      return new Response(
+        JSON.stringify({ error: "Invalid user ID provided" }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        }
+      );
+    }
+    
+    console.log("Processing checkout for user:", userId);
+    
     const client_url = Deno.env.get('CLIENT_URL') || 'http://localhost:5173';
     
     // Get the Stripe prices based on billing cycle
@@ -62,6 +77,7 @@ serve(async (req) => {
       .single();
     
     if (subscriptionError && subscriptionError.code !== 'PGRST116') {
+      console.error(`Error fetching subscription:`, subscriptionError);
       throw new Error(`Error fetching subscription: ${subscriptionError.message}`);
     }
     
@@ -108,6 +124,7 @@ serve(async (req) => {
       const { data: userData, error: userError } = await supabase.auth.admin.getUserById(userId);
       
       if (userError || !userData.user) {
+        console.error(`Error fetching user:`, userError || 'User not found');
         throw new Error(`Error fetching user: ${userError?.message || 'User not found'}`);
       }
       
@@ -127,6 +144,12 @@ serve(async (req) => {
       
       params.customer = customer.id;
     }
+    
+    console.log("Creating Stripe checkout session with parameters:", {
+      customerId: params.customer,
+      userId: userId,
+      lineItems: line_items.length
+    });
     
     // Create checkout session
     const session = await stripe.checkout.sessions.create(params);
