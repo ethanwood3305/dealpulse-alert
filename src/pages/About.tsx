@@ -3,56 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
-const TeamMember = ({ name, role, image, delay }: { 
-  name: string; 
-  role: string; 
-  image: string;
-  delay: string;
-}) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div 
-      ref={ref}
-      className={`glass rounded-xl overflow-hidden transition-all duration-700 ${delay} ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-      }`}
-    >
-      <div className="aspect-square bg-muted">
-        <img 
-          src={image} 
-          alt={name} 
-          className="w-full h-full object-cover"
-          loading="lazy"
-        />
-      </div>
-      <div className="p-6">
-        <h3 className="text-lg font-medium">{name}</h3>
-        <p className="text-muted-foreground">{role}</p>
-      </div>
-    </div>
-  );
-};
-
 const About = () => {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -97,7 +47,7 @@ const About = () => {
             >
               <h1 className="text-4xl md:text-5xl font-bold mb-6">About DealPulse</h1>
               <p className="text-lg text-muted-foreground mb-8">
-                We're on a mission to help auto dealerships stay competitive in a rapidly changing market.
+                A solo developer's mission to empower auto dealerships with competitive pricing insights.
               </p>
             </div>
           </div>
@@ -107,15 +57,15 @@ const About = () => {
         <div className="py-16 bg-secondary/50">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto">
-              <h2 className="text-3xl font-bold mb-6">Our Story</h2>
+              <h2 className="text-3xl font-bold mb-6">My Story</h2>
               <p className="text-muted-foreground mb-4">
-                DealPulse was founded in 2020 by a team of automotive industry veterans and software engineers who saw a gap in the market. Car dealerships were struggling to keep track of competitors' prices manually, often missing opportunities to adjust their pricing strategy in real-time.
+                DealPulse began as a passion project in 2020. After years working in the automotive industry, I noticed a common pain point: dealerships spending hours manually checking competitors' prices, often missing opportunities to adjust their pricing strategy in real-time.
               </p>
               <p className="text-muted-foreground mb-4">
-                We built DealPulse to solve this problem, providing an automated solution that monitors competitor prices around the clock and alerts dealerships when changes occur. This enables our clients to respond quickly and stay competitive in their local markets.
+                As a solo developer with both industry experience and technical skills, I set out to create a solution that would automate this process. Working nights and weekends, I built the first version of DealPulse to help a few local dealerships in my area.
               </p>
               <p className="text-muted-foreground">
-                Today, DealPulse is trusted by hundreds of dealerships across the country, from small independent lots to large multi-location groups. Our platform processes millions of price points daily, providing valuable insights that help our clients maximize their sales and profits.
+                Today, I continue to develop and maintain DealPulse single-handedly, from writing code to handling customer support. This one-person operation allows me to stay nimble, respond quickly to customer feedback, and maintain the personal touch that larger companies often lose.
               </p>
             </div>
           </div>
@@ -125,9 +75,9 @@ const About = () => {
         <div className="py-16">
           <div className="container mx-auto px-4 md:px-6">
             <div className="max-w-3xl mx-auto text-center mb-12">
-              <h2 className="text-3xl font-bold mb-6">Our Values</h2>
+              <h2 className="text-3xl font-bold mb-6">My Values</h2>
               <p className="text-muted-foreground">
-                These core principles guide everything we do at DealPulse.
+                These core principles guide everything I do at DealPulse.
               </p>
             </div>
             
@@ -135,62 +85,41 @@ const About = () => {
               <div className="glass rounded-xl p-6">
                 <h3 className="text-xl font-medium mb-3">Innovation</h3>
                 <p className="text-muted-foreground">
-                  We continuously improve our platform, embracing new technologies to provide the best possible solutions for our clients.
+                  I continuously improve the platform, embracing new technologies to provide the best possible solutions for my clients.
                 </p>
               </div>
               
               <div className="glass rounded-xl p-6">
                 <h3 className="text-xl font-medium mb-3">Reliability</h3>
                 <p className="text-muted-foreground">
-                  Our clients depend on our data to make critical business decisions. We ensure our platform is accurate, fast, and always available.
+                  My clients depend on DealPulse data to make critical business decisions. I ensure the platform is accurate, fast, and always available.
                 </p>
               </div>
               
               <div className="glass rounded-xl p-6">
-                <h3 className="text-xl font-medium mb-3">Client Success</h3>
+                <h3 className="text-xl font-medium mb-3">Personal Touch</h3>
                 <p className="text-muted-foreground">
-                  We measure our success by the success of our clients. Their growth and profitability are our top priorities.
+                  As a solo developer, I can provide personalized support and build features that directly address my clients' needs, without bureaucracy slowing things down.
                 </p>
               </div>
             </div>
           </div>
         </div>
         
-        {/* Team section */}
+        {/* Future section */}
         <div className="py-16 bg-secondary/50">
           <div className="container mx-auto px-4 md:px-6">
-            <div className="max-w-3xl mx-auto text-center mb-12">
-              <h2 className="text-3xl font-bold mb-6">Our Team</h2>
-              <p className="text-muted-foreground">
-                Meet the people behind DealPulse who are dedicated to helping auto dealerships thrive.
+            <div className="max-w-3xl mx-auto">
+              <h2 className="text-3xl font-bold mb-6">Looking Forward</h2>
+              <p className="text-muted-foreground mb-4">
+                While DealPulse is currently a one-person operation, I have big plans for the future. I'm constantly working on new features and improvements based on user feedback, and I'm committed to growing this platform to serve dealerships of all sizes.
               </p>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
-              <TeamMember
-                name="Alex Johnson"
-                role="CEO & Founder"
-                image="/placeholder.svg"
-                delay="delay-100"
-              />
-              <TeamMember
-                name="Sarah Chen"
-                role="CTO"
-                image="/placeholder.svg"
-                delay="delay-200"
-              />
-              <TeamMember
-                name="Michael Rodriguez"
-                role="Head of Product"
-                image="/placeholder.svg"
-                delay="delay-300"
-              />
-              <TeamMember
-                name="Jessica Taylor"
-                role="Customer Success"
-                image="/placeholder.svg"
-                delay="delay-400"
-              />
+              <p className="text-muted-foreground mb-4">
+                Being a solo developer means I can move quickly and make decisions that prioritize my users rather than shareholders. It also means I wear many hats - developer, designer, marketer, and customer support.
+              </p>
+              <p className="text-muted-foreground">
+                I'm grateful for each and every client who trusts DealPulse to help their business thrive, and I'm excited to continue this journey together.
+              </p>
             </div>
           </div>
         </div>
