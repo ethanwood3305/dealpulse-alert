@@ -2,19 +2,31 @@
 import { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp, KeyRound, Code as CodeIcon } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 interface ApiDocsCardProps {
   apiKey: string | null;
   userId: string;
   hasApiAccess: boolean;
   onGenerateKey: () => Promise<void>;
+}
+
+interface CodeExample {
+  language: string;
+  code: string;
+  icon: React.ReactNode;
 }
 
 export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: ApiDocsCardProps) => {
@@ -57,6 +69,107 @@ export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: Api
   const baseUrl = `${window.location.protocol}//${window.location.host}`;
   const baseFetchUrl = `${baseUrl}/api/dealpulse`;
 
+  const codeExamples: CodeExample[] = [
+    {
+      language: "JavaScript",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-yellow-400 font-bold">JS</span>,
+      code: `fetch('${baseFetchUrl}/tracked-urls', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer ${apiKey || 'your-api-key'}',
+    'Content-Type': 'application/json'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));`
+    },
+    {
+      language: "Python",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-blue-500 font-bold">PY</span>,
+      code: `import requests
+
+url = "${baseFetchUrl}/tracked-urls"
+headers = {
+    "Authorization": "Bearer ${apiKey || 'your-api-key'}",
+    "Content-Type": "application/json"
+}
+
+response = requests.get(url, headers=headers)
+data = response.json()
+print(data)`
+    },
+    {
+      language: "C#",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-purple-500 font-bold">C#</span>,
+      code: `using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
+
+class Program
+{
+    static async Task Main()
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            client.DefaultRequestHeaders.Authorization = 
+                new AuthenticationHeaderValue("Bearer", "${apiKey || 'your-api-key'}");
+            
+            HttpResponseMessage response = await client.GetAsync("${baseFetchUrl}/tracked-urls");
+            response.EnsureSuccessStatusCode();
+            
+            string responseBody = await response.Content.ReadAsStringAsync();
+            Console.WriteLine(responseBody);
+        }
+    }
+}`
+    },
+    {
+      language: "Go",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-cyan-500 font-bold">GO</span>,
+      code: `package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+)
+
+func main() {
+	url := "${baseFetchUrl}/tracked-urls"
+	req, _ := http.NewRequest("GET", url, nil)
+	
+	req.Header.Add("Authorization", "Bearer ${apiKey || 'your-api-key'}")
+	req.Header.Add("Content-Type", "application/json")
+	
+	res, _ := http.DefaultClient.Do(req)
+	defer res.Body.Close()
+	
+	body, _ := ioutil.ReadAll(res.Body)
+	fmt.Println(string(body))
+}`
+    },
+    {
+      language: "Ruby",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-red-500 font-bold">RB</span>,
+      code: `require 'uri'
+require 'net/http'
+require 'json'
+
+uri = URI('${baseFetchUrl}/tracked-urls')
+http = Net::HTTP.new(uri.host, uri.port)
+http.use_ssl = true if uri.scheme == 'https'
+
+request = Net::HTTP::Get.new(uri)
+request['Authorization'] = 'Bearer ${apiKey || 'your-api-key'}'
+request['Content-Type'] = 'application/json'
+
+response = http.request(request)
+puts JSON.parse(response.body)`
+    }
+  ];
+
   return (
     <Card className="mb-10">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -93,7 +206,7 @@ export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: Api
                     <div className="flex items-center">
                       <span className="text-muted-foreground italic">No API key generated</span>
                       <Button 
-                        variant="outline" 
+                        variant="outline"
                         size="sm" 
                         className="ml-2"
                         onClick={handleGenerateKey}
@@ -159,19 +272,39 @@ export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: Api
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-semibold mb-2">Example Request</h3>
-                    <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
-{`fetch('${baseFetchUrl}/tracked-urls', {
-  method: 'GET',
-  headers: {
-    'Authorization': 'Bearer ${apiKey || 'your-api-key'}',
-    'Content-Type': 'application/json'
-  }
-})
-.then(response => response.json())
-.then(data => console.log(data))
-.catch(error => console.error('Error:', error));`}
-                    </pre>
+                    <h3 className="text-lg font-semibold mb-2 flex items-center">
+                      <CodeIcon className="h-5 w-5 mr-2" />
+                      Example Requests
+                    </h3>
+                    
+                    <Tabs defaultValue="JavaScript" className="w-full">
+                      <TabsList className="mb-2 flex flex-wrap">
+                        {codeExamples.map((example) => (
+                          <TabsTrigger key={example.language} value={example.language} className="flex items-center gap-1.5">
+                            {example.icon}
+                            {example.language}
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      
+                      {codeExamples.map((example) => (
+                        <TabsContent key={example.language} value={example.language}>
+                          <div className="relative">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="absolute top-2 right-2 h-7 px-2"
+                              onClick={() => handleCopy(example.code)}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <pre className="bg-muted p-3 pt-10 rounded text-sm overflow-x-auto">
+                              {example.code}
+                            </pre>
+                          </div>
+                        </TabsContent>
+                      ))}
+                    </Tabs>
                   </div>
                 </div>
               </>

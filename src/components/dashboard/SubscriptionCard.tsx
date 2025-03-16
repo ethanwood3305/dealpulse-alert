@@ -94,7 +94,9 @@ export const SubscriptionCard = ({
               </AlertDialog>
             ) : (
               <Link to="/pricing">
-                <Button variant="outline" className="w-full">Upgrade</Button>
+                <Button variant="outline" className="w-full text-destructive border-destructive hover:bg-destructive/10">
+                  Cancel
+                </Button>
               </Link>
             )}
           </div>
