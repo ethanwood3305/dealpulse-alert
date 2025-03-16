@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Bell, LineChart, ShieldCheck } from 'lucide-react';
+import { ChevronRight, Bell, LineChart, ShieldCheck, Zap } from 'lucide-react';
 
 const Hero = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -10,6 +10,25 @@ const Hero = () => {
   useEffect(() => {
     setIsVisible(true);
   }, []);
+
+  // How it works steps
+  const steps = [
+    {
+      icon: <Bell className="h-6 w-6 text-primary" />,
+      title: "Set up tracking",
+      description: "Easily add competitor URLs you want to monitor"
+    },
+    {
+      icon: <Zap className="h-6 w-6 text-primary" />,
+      title: "Get instant alerts",
+      description: "Receive notifications when prices change"
+    },
+    {
+      icon: <LineChart className="h-6 w-6 text-primary" />,
+      title: "Stay competitive",
+      description: "Adjust your pricing strategy accordingly"
+    }
+  ];
 
   return (
     <div className="relative overflow-hidden pt-24 md:pt-32 pb-16 md:pb-24">
@@ -31,56 +50,76 @@ const Hero = () => {
             <span className="text-primary">New</span> — Real-time price monitoring for auto dealers
           </div>
           
-          {/* Main heading */}
+          {/* Main heading - Updated with stronger value proposition */}
           <h1 
             className={`text-4xl md:text-5xl lg:text-6xl font-bold leading-tight md:leading-tight lg:leading-tight mb-6 transition-all duration-700 delay-100 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            <span className="relative">
-              Never Get Underpriced
+            Stay Ahead with <span className="relative">
+              Instant Price Alerts
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 10C50.5 4 99 2.5 147.5 2.5C196 2.5 244.5 4 293 10" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round"/>
               </svg>
-            </span> Again!
+            </span>
           </h1>
           
-          {/* Subtitle */}
+          {/* Subtitle - Made clearer */}
           <p 
             className={`text-muted-foreground text-lg md:text-xl max-w-3xl mx-auto mb-8 transition-all duration-700 delay-200 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            Get instant alerts when competitors change their prices. Stay ahead of the market with automated monitoring that keeps you competitive 24/7.
+            Never miss a competitor's price change again! Get instant notifications when competitors adjust their prices and stay competitive 24/7.
           </p>
           
-          {/* CTA buttons */}
+          {/* CTA buttons - Improved with action-driven text */}
           <div 
             className={`flex flex-col sm:flex-row gap-4 justify-center mb-16 transition-all duration-700 delay-300 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
             <Link to="/signup">
-              <Button size="lg" className="rounded-full px-8 h-12 text-base">
-                Get started
+              <Button size="lg" className="rounded-full px-8 h-12 text-base w-full sm:w-auto">
+                Start Free Tracking Now
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
             <Link to="/pricing">
-              <Button variant="outline" size="lg" className="rounded-full px-8 h-12 text-base">
-                View pricing
+              <Button variant="outline" size="lg" className="rounded-full px-8 h-12 text-base w-full sm:w-auto">
+                See Pricing Plans
               </Button>
             </Link>
           </div>
           
+          {/* How it works section */}
+          <div className={`mb-16 transition-all duration-700 delay-400 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+          }`}>
+            <h2 className="text-2xl font-bold mb-8">How It Works</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+              {steps.map((step, index) => (
+                <div key={index} className="flex flex-col items-center group">
+                  <div className="rounded-full bg-blue-100 p-4 mb-4 transition-all duration-300 group-hover:bg-primary group-hover:text-white">
+                    {step.icon}
+                  </div>
+                  <h3 className="text-lg font-medium mb-2">{step.title}</h3>
+                  <p className="text-sm text-muted-foreground text-center">
+                    {step.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+          
           {/* Feature highlights */}
           <div 
-            className={`grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto transition-all duration-700 delay-400 ${
+            className={`grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto transition-all duration-700 delay-500 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            <div className="flex flex-col items-center">
-              <div className="rounded-full bg-blue-100 p-3 mb-4">
+            <div className="flex flex-col items-center group">
+              <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
                 <Bell className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-lg font-medium mb-2">Instant Alerts</h3>
@@ -88,8 +127,8 @@ const Hero = () => {
                 Get notified immediately when competitors change their prices.
               </p>
             </div>
-            <div className="flex flex-col items-center">
-              <div className="rounded-full bg-blue-100 p-3 mb-4">
+            <div className="flex flex-col items-center group">
+              <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
                 <LineChart className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-lg font-medium mb-2">Trend Analysis</h3>
@@ -97,8 +136,8 @@ const Hero = () => {
                 Track price history and predict future pricing strategies.
               </p>
             </div>
-            <div className="flex flex-col items-center">
-              <div className="rounded-full bg-blue-100 p-3 mb-4">
+            <div className="flex flex-col items-center group">
+              <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
                 <ShieldCheck className="h-6 w-6 text-primary" />
               </div>
               <h3 className="text-lg font-medium mb-2">Stay Competitive</h3>

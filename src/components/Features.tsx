@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { Settings, Bell, LineChart, Zap, Clock, Shield } from 'lucide-react';
+import { Settings, Bell, LineChart, Zap, Clock, Shield, Smartphone, Mail, ChartBar, Target } from 'lucide-react';
 
 const FeatureCard = ({ icon: Icon, title, description, delay }: { 
   icon: React.ElementType;
@@ -32,11 +32,11 @@ const FeatureCard = ({ icon: Icon, title, description, delay }: {
   return (
     <div 
       ref={ref}
-      className={`glass rounded-xl p-6 transition-all duration-700 ${delay} ${
+      className={`glass rounded-xl p-6 transition-all duration-500 ${delay} ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-      }`}
+      } hover:shadow-lg hover:translate-y-[-5px] hover:border-primary/20`}
     >
-      <div className="rounded-full bg-primary bg-opacity-10 p-3 inline-block mb-4">
+      <div className="rounded-full bg-primary bg-opacity-10 p-3 inline-block mb-4 transition-all duration-300 hover:bg-primary hover:text-white">
         <Icon className="h-6 w-6 text-primary" />
       </div>
       <h3 className="text-lg font-medium mb-2">{title}</h3>
@@ -67,6 +67,64 @@ const Features = () => {
     return () => observer.disconnect();
   }, []);
 
+  // Enhanced features with more engaging icons and descriptions
+  const features = [
+    {
+      icon: Bell,
+      title: "Real-Time Price Alerts",
+      description: "Get instant notifications when competitors change their prices, so you can respond quickly and stay ahead.",
+      delay: "delay-100"
+    },
+    {
+      icon: LineChart,
+      title: "Competitor Analysis",
+      description: "Track pricing trends and analyze competitor strategies with intuitive charts and visual data representations.",
+      delay: "delay-200"
+    },
+    {
+      icon: Settings,
+      title: "Customizable Monitoring",
+      description: "Set up personalized monitoring parameters that match your business needs and pricing strategy.",
+      delay: "delay-300"
+    },
+    {
+      icon: Zap,
+      title: "Fast Implementation",
+      description: "Get up and running in minutes with our simple setup process and intuitive interface - no technical skills required.",
+      delay: "delay-400"
+    },
+    {
+      icon: Clock,
+      title: "Historical Data",
+      description: "Access historical pricing data with visual timelines to identify patterns and make informed strategic decisions.",
+      delay: "delay-500"
+    },
+    {
+      icon: Shield,
+      title: "Price Protection",
+      description: "Ensure your prices remain competitive without sacrificing profit margins, using our smart comparison tools.",
+      delay: "delay-600"
+    },
+    {
+      icon: Mail,
+      title: "Multi-Channel Alerts",
+      description: "Receive notifications through email, SMS, or directly in your dashboard - stay informed wherever you are.",
+      delay: "delay-700"
+    },
+    {
+      icon: ChartBar,
+      title: "Market Insights",
+      description: "Gain valuable insights about market trends and positioning with our smart analytics dashboard.",
+      delay: "delay-800"
+    },
+    {
+      icon: Target,
+      title: "Precision Tracking",
+      description: "Monitor specific product features or add notes to track exactly what matters most to your business strategy.",
+      delay: "delay-900"
+    }
+  ];
+
   return (
     <div className="py-20 relative" id="features">
       {/* Background decorations */}
@@ -89,42 +147,15 @@ const Features = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <FeatureCard
-            icon={Bell}
-            title="Real-Time Price Alerts"
-            description="Get instant notifications when competitors change their prices, so you can respond quickly."
-            delay="delay-100"
-          />
-          <FeatureCard
-            icon={LineChart}
-            title="Competitor Analysis"
-            description="Track pricing trends and analyze competitor strategies to stay ahead of the market."
-            delay="delay-200"
-          />
-          <FeatureCard
-            icon={Settings}
-            title="Customizable Monitoring"
-            description="Set up monitoring parameters that match your business needs and pricing strategy."
-            delay="delay-300"
-          />
-          <FeatureCard
-            icon={Zap}
-            title="Fast Implementation"
-            description="Get up and running in minutes with our simple setup process and intuitive interface."
-            delay="delay-400"
-          />
-          <FeatureCard
-            icon={Clock}
-            title="Historical Data"
-            description="Access historical pricing data to identify patterns and make informed decisions."
-            delay="delay-500"
-          />
-          <FeatureCard
-            icon={Shield}
-            title="Price Protection"
-            description="Ensure your prices remain competitive without sacrificing profit margins."
-            delay="delay-600"
-          />
+          {features.map((feature) => (
+            <FeatureCard
+              key={feature.title}
+              icon={feature.icon}
+              title={feature.title}
+              description={feature.description}
+              delay={feature.delay}
+            />
+          ))}
         </div>
       </div>
     </div>
