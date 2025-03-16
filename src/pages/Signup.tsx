@@ -110,7 +110,7 @@ const Signup = () => {
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold mb-2">Create your account</h1>
                 <p className="text-muted-foreground">
-                  Start your 14-day free trial today
+                  Start your 48-hour free trial today
                 </p>
               </div>
               
@@ -222,9 +222,9 @@ const Signup = () => {
                   <div className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-primary mr-3 mt-0.5" />
                     <div>
-                      <h3 className="font-medium">14-Day Free Trial</h3>
+                      <h3 className="font-medium">48-Hour Free Trial</h3>
                       <p className="text-muted-foreground text-sm">
-                        Test all features with no commitment or credit card required.
+                        Test with up to 10 URLs for 48 hours with no commitment or credit card required.
                       </p>
                     </div>
                   </div>

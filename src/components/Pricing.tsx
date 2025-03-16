@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -98,8 +99,8 @@ const Pricing = () => {
       answer: "Our pricing is based on the number of URLs you want to monitor. The more URLs you track, the lower the per-URL cost becomes. You can use our slider to select exactly how many URLs you need, and see the price adjust in real-time."
     },
     {
-      question: "How does the 14-day free trial work?",
-      answer: "When you sign up for any paid plan, you'll get full access to all features of that plan for 14 days without being charged. If you decide to continue using DealPulse Alert, we'll start billing you according to your chosen plan at the end of the trial period. You can cancel anytime during the trial with no obligation."
+      question: "How does the 48-hour free trial work?",
+      answer: "When you sign up, you'll get full access to monitor up to 10 URLs for 48 hours without being charged. If you decide to continue using DealPulse Alert, we'll start billing you according to your chosen plan at the end of the trial period. You can cancel anytime during the trial with no obligation."
     },
     {
       question: "Can I change my plan later?",
@@ -139,7 +140,7 @@ const Pricing = () => {
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Choose exactly how many URLs you want to monitor. All plans include a 14-day free trial.
+            Choose exactly how many URLs you want to monitor. All plans include a 48-hour free trial with 10 URLs.
           </p>
           
           <div className="flex items-center justify-center space-x-4 mb-8">
@@ -191,18 +192,6 @@ const Pricing = () => {
             <EnterpriseContact />
           </div>
         )}
-
-        <div className="max-w-3xl mx-auto mb-16 bg-muted/50 rounded-xl p-8 text-center">
-          <h3 className="text-2xl font-bold mb-4">Join Our Beta Program</h3>
-          <p className="text-muted-foreground mb-6">
-            Help shape the future of DealPulse Alert by joining our beta program. Get early access to new features and provide valuable feedback.
-          </p>
-          <Link to="/signup">
-            <Button size="lg" className="rounded-full">
-              Apply for Beta Access
-            </Button>
-          </Link>
-        </div>
 
         <div className="max-w-3xl mx-auto">
           <h3 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h3>
