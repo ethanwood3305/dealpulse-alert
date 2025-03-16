@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@14.9.0?target=deno";
 
@@ -72,7 +71,6 @@ serve(async (req) => {
 
     if (!webhookSecret) {
       console.error("Missing STRIPE_WEBHOOK_SECRET environment variable");
-      console.error("Expected webhook secret value: whsec_VDClILQ8NmPDAry9TBWM4uLywVcWkELm");
       return new Response(JSON.stringify({ error: "Server configuration error: Missing webhook secret" }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

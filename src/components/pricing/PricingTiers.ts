@@ -2,7 +2,7 @@
 interface PricingTier {
   maxUrls: number;
   basePrice: number;
-  pricePerUrl: number;
+  pricePerUrl: number | null;
 }
 
 export const pricingTiers: PricingTier[] = [
