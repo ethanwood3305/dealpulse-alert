@@ -25,6 +25,8 @@ serve(async (req) => {
   // Set up robust error handling to catch and log any errors
   try {
     console.log("Received webhook request at path:", req.url);
+    console.log("Method:", req.method);
+    console.log("Headers:", JSON.stringify(Object.fromEntries([...req.headers.entries()])));
     
     // Handle CORS preflight requests
     if (req.method === "OPTIONS") {
@@ -70,6 +72,7 @@ serve(async (req) => {
 
     if (!webhookSecret) {
       console.error("Missing STRIPE_WEBHOOK_SECRET environment variable");
+      console.error("Expected webhook secret value: whsec_VDClILQ8NmPDAry9TBWM4uLywVcWkELm");
       return new Response(JSON.stringify({ error: "Server configuration error: Missing webhook secret" }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -93,6 +96,9 @@ serve(async (req) => {
     let event;
     try {
       console.log("Verifying Stripe signature...");
+      console.log("Signature:", signature.substring(0, 20) + "...");
+      console.log("Webhook Secret:", webhookSecret.substring(0, 5) + "...");
+      
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
       console.log(`Webhook verified. Event type: ${event.type}`);
       console.log(`Event ID: ${event.id}`);
