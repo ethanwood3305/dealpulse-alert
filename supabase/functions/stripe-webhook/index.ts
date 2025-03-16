@@ -45,6 +45,7 @@ serve(async (req) => {
     // Get the raw body
     const body = await req.text();
     console.log("Received webhook body length:", body.length);
+    console.log("Webhook body preview:", body.substring(0, 500) + "...");
     
     // Verify the webhook signature
     let event;
@@ -60,13 +61,16 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Processing webhook event: ${event.type}`, JSON.stringify(event.data.object).substring(0, 200) + "...");
+    console.log(`Processing webhook event: ${event.type}`);
+    console.log(`Event data: ${JSON.stringify(event.data.object).substring(0, 500)}...`);
 
     // Handle the event
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        const userId = session.metadata?.user_id;
+        console.log("Full checkout session data:", JSON.stringify(session));
+        
+        const userId = session.metadata?.user_id || session.client_reference_id;
         const plan = session.metadata?.plan;
         const urlCount = parseInt(session.metadata?.url_count) || 1;
         const hasApiAccess = session.metadata?.api_access === "yes";
@@ -74,11 +78,12 @@ serve(async (req) => {
         console.log(`Checkout completed for user ${userId}: Plan=${plan}, URLs=${urlCount}, API=${hasApiAccess}, Subscription=${session.subscription}`);
         
         if (!userId) {
-          console.error("No user ID found in session metadata");
+          console.error("No user ID found in session metadata or client_reference_id");
           break;
         }
         
-        // Update the user's subscription in the database
+        // Immediate update with session metadata
+        console.log(`Updating subscription for user ${userId} with URLs limit: ${urlCount}`);
         const { data, error } = await supabase
           .from("subscriptions")
           .update({
@@ -93,27 +98,28 @@ serve(async (req) => {
         if (error) {
           console.error(`Error updating subscription for user ${userId}:`, error);
         } else {
-          console.log(`Successfully updated subscription for user ${userId}`);
+          console.log(`Successfully updated subscription for user ${userId} with URLs limit: ${urlCount}`);
         }
         
-        // Force reload metadata from subscription
+        // Fetch and force reload metadata from subscription too
         if (session.subscription) {
           try {
             console.log(`Retrieving subscription details for ${session.subscription}`);
             const subscription = await stripe.subscriptions.retrieve(session.subscription);
+            console.log("Retrieved subscription:", JSON.stringify(subscription).substring(0, 500) + "...");
             
             // Update the URLs limit and API access based on the metadata from the subscription
-            const urlCount = parseInt(subscription.metadata?.url_count) || 1;
-            const hasApiAccess = subscription.metadata?.api_access === "yes";
+            const subUrlCount = parseInt(subscription.metadata?.url_count) || urlCount;
+            const subHasApiAccess = subscription.metadata?.api_access === "yes" || hasApiAccess;
             
-            console.log(`Retrieved subscription with metadata: URL count=${urlCount}, API access=${hasApiAccess}`);
+            console.log(`Double-checking subscription with metadata: URL count=${subUrlCount}, API access=${subHasApiAccess}`);
             
             // Update the user's subscription in the database with the actual metadata from Stripe
             const { error: updateError } = await supabase
               .from("subscriptions")
               .update({
-                urls_limit: urlCount,
-                has_api_access: hasApiAccess,
+                urls_limit: subUrlCount,
+                has_api_access: subHasApiAccess,
                 updated_at: new Date().toISOString(),
               })
               .eq("user_id", userId);
@@ -121,7 +127,7 @@ serve(async (req) => {
             if (updateError) {
               console.error(`Error updating subscription metadata for user ${userId}:`, updateError);
             } else {
-              console.log(`Successfully updated subscription metadata for user ${userId} with URL count: ${urlCount}`);
+              console.log(`Successfully updated subscription metadata for user ${userId} with URL count: ${subUrlCount}`);
             }
           } catch (err) {
             console.error(`Error retrieving subscription details: ${err.message}`);

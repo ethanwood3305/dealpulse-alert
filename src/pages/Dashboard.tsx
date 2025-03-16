@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -23,6 +22,7 @@ const urlSchema = z.object({
 const Dashboard = () => {
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [checkoutProcessed, setCheckoutProcessed] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -55,21 +55,33 @@ const Dashboard = () => {
       }
       setUser(data.user);
 
-      // Check for checkout status in URL and refresh subscription data
       const searchParams = new URLSearchParams(location.search);
       const checkoutStatus = searchParams.get('checkout');
-      if (checkoutStatus === 'success') {
-        // Refresh the subscription data to get the updated plan
-        setTimeout(() => {
-          refreshSubscription();
-        }, 1000); // Small delay to allow webhook processing
+      
+      if (checkoutStatus === 'success' && !checkoutProcessed) {
+        console.log("Processing successful checkout");
+        setCheckoutProcessed(true);
         
         toast({
-          title: "Subscription successful!",
-          description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
+          title: "Processing your subscription...",
+          description: "Please wait while we update your account details.",
         });
         
-        // Remove the query parameter but stay on dashboard page
+        setTimeout(async () => {
+          console.log("Refreshing subscription data after checkout");
+          await refreshSubscription();
+          
+          setTimeout(async () => {
+            console.log("Second subscription refresh attempt");
+            await refreshSubscription();
+            
+            toast({
+              title: "Subscription successful!",
+              description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
+            });
+          }, 3000);
+        }, 2000);
+        
         navigate('/dashboard', { replace: true });
       }
     };
@@ -87,7 +99,7 @@ const Dashboard = () => {
         authListener.subscription.unsubscribe();
       }
     };
-  }, [navigate, location.search, refreshSubscription]);
+  }, [navigate, location.search, refreshSubscription, checkoutProcessed]);
 
   const onSubmitUrl = async (values: z.infer<typeof urlSchema>) => {
     if (!user) return;
@@ -214,7 +226,6 @@ const Dashboard = () => {
             />
           </div>
           
-          {/* API Documentation Section */}
           <div className="mb-10">
             <ApiDocsCard 
               apiKey={userSubscription?.api_key}

@@ -19,6 +19,8 @@ export const useSubscription = (userId: string | undefined) => {
   const fetchSubscriptionData = async (userId: string) => {
     try {
       console.log("Fetching subscription data for user:", userId);
+      setIsLoading(true);
+      
       const { data: subscriptionData, error: subscriptionError } = await supabase.rpc(
         'get_user_subscription', 
         { user_uuid: userId }
@@ -40,6 +42,8 @@ export const useSubscription = (userId: string | undefined) => {
           has_api_access: subscriptionData[0].has_api_access || false,
           api_key: subscriptionData[0].api_key || null
         });
+      } else {
+        console.log("No subscription data returned");
       }
 
       const { data: canAddMoreData, error: canAddMoreError } = await supabase.rpc(
@@ -47,7 +51,10 @@ export const useSubscription = (userId: string | undefined) => {
         { user_uuid: userId }
       );
       
-      if (!canAddMoreError) {
+      if (canAddMoreError) {
+        console.error("Error checking if user can add more URLs:", canAddMoreError);
+      } else {
+        console.log("Can add more URLs:", canAddMoreData);
         setCanAddMoreUrls(canAddMoreData);
       }
       
@@ -143,6 +150,11 @@ export const useSubscription = (userId: string | undefined) => {
     canAddMoreUrls,
     cancelSubscription,
     generateApiKey,
-    refreshSubscription: () => userId && fetchSubscriptionData(userId)
+    refreshSubscription: async () => {
+      if (userId) {
+        console.log("Manually refreshing subscription data");
+        return await fetchSubscriptionData(userId);
+      }
+    }
   };
 };
