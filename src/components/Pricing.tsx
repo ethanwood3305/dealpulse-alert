@@ -22,17 +22,22 @@ const Pricing = () => {
   const ref = useRef<HTMLDivElement>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [activeTab, setActiveTab] = useState<'pricing' | 'enterprise'>('pricing');
+  const [isProcessingCheckout, setIsProcessingCheckout] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   // Process checkout status immediately when component mounts
   useEffect(() => {
     const processCheckoutStatus = async () => {
+      // Prevent duplicate processing
+      if (isProcessingCheckout) return;
+      
       // Check for checkout status in the URL
       const searchParams = new URLSearchParams(location.search);
       const checkoutStatus = searchParams.get('checkout');
       
       if (checkoutStatus === 'success') {
+        setIsProcessingCheckout(true);
         console.log("Detected successful checkout redirect");
         
         // Show success toast
@@ -46,9 +51,14 @@ const Pricing = () => {
         const user = data?.user;
         
         if (user) {
-          // Clean URL and redirect to dashboard
-          console.log("User is logged in, redirecting to dashboard");
-          navigate('/dashboard?checkout=success', { replace: true });
+          // Add timestamp and expected values to help with verification
+          const timestamp = Date.now();
+          const plan = searchParams.get('plan') || '';
+          const urls = searchParams.get('urls') || '';
+          
+          // Clean URL and redirect to dashboard with checkout info
+          console.log("User is logged in, redirecting to dashboard with checkout info");
+          navigate(`/dashboard?checkout=success&t=${timestamp}&plan=${plan}&urls=${urls}`, { replace: true });
         } else {
           // Just remove the query params if not logged in
           console.log("User not logged in, staying on pricing page");
@@ -72,7 +82,7 @@ const Pricing = () => {
     };
     
     processCheckoutStatus();
-  }, [location.search, navigate]);
+  }, [location.search, navigate, isProcessingCheckout]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(

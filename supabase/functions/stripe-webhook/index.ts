@@ -56,7 +56,6 @@ serve(async (req) => {
     // Verify webhook signature
     let event;
     try {
-      // Construct event without using Node.js stream
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
       console.log(`Webhook event type: ${event.type}`);
     } catch (err) {
@@ -69,6 +68,7 @@ serve(async (req) => {
 
     // Handle the event
     let result = false;
+    console.log(`Processing event: ${event.type}`);
     
     switch (event.type) {
       case 'checkout.session.completed':
@@ -92,7 +92,7 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error(`Error processing webhook: ${error.message}`);
-    return new Response(JSON.stringify({ error: "Internal server error" }), {
+    return new Response(JSON.stringify({ error: "Internal server error", details: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
@@ -104,6 +104,7 @@ async function handleCheckoutSessionCompleted(session) {
   console.log("Processing checkout.session.completed event");
   console.log(`Session ID: ${session.id}`);
   console.log(`User ID: ${session.client_reference_id}`);
+  console.log(`Metadata: ${JSON.stringify(session.metadata)}`);
   
   if (!session.client_reference_id) {
     console.error("No client_reference_id in session");
@@ -131,15 +132,48 @@ async function handleCheckoutSessionCompleted(session) {
       return false;
     }
     
+    console.log(`Existing subscription: ${JSON.stringify(existingSubscription)}`);
+    
+    // Get subscription ID from the session
+    let stripeSubscriptionId = null;
+    try {
+      // Check if there's a subscription in the session
+      if (session.subscription) {
+        stripeSubscriptionId = session.subscription;
+        console.log(`Found subscription ID in session: ${stripeSubscriptionId}`);
+      } else if (session.mode === 'subscription') {
+        // Try to retrieve the latest subscription for the customer
+        const subscriptions = await stripe.subscriptions.list({
+          customer: session.customer,
+          limit: 1
+        });
+        
+        if (subscriptions.data.length > 0) {
+          stripeSubscriptionId = subscriptions.data[0].id;
+          console.log(`Retrieved subscription ID from customer: ${stripeSubscriptionId}`);
+        }
+      }
+    } catch (subError) {
+      console.error(`Error retrieving subscription ID: ${subError.message}`);
+    }
+    
     // Update the subscription in the database
-    const { data: updateData, error: updateError } = await supabase
+    const updateData = {
+      plan: planId,
+      urls_limit: urlCount,
+      has_api_access: hasApiAccess,
+      updated_at: new Date().toISOString()
+    };
+    
+    if (stripeSubscriptionId) {
+      updateData.stripe_subscription_id = stripeSubscriptionId;
+    }
+    
+    console.log(`Updating subscription with data: ${JSON.stringify(updateData)}`);
+    
+    const { error: updateError } = await supabase
       .from('subscriptions')
-      .update({
-        plan: planId,
-        urls_limit: urlCount,
-        has_api_access: hasApiAccess,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('user_id', userId);
     
     if (updateError) {
@@ -161,7 +195,7 @@ async function handleCheckoutSessionCompleted(session) {
       return false;
     }
     
-    console.log(`Verified subscription data:`, verifyData);
+    console.log(`Verified subscription data: ${JSON.stringify(verifyData)}`);
     return true;
   } catch (error) {
     console.error(`Error in handleCheckoutSessionCompleted: ${error.message}`);
@@ -173,13 +207,28 @@ async function handleCheckoutSessionCompleted(session) {
 async function handleSubscriptionUpdated(subscription) {
   console.log("Processing customer.subscription.updated event");
   console.log(`Subscription ID: ${subscription.id}`);
+  console.log(`Subscription metadata: ${JSON.stringify(subscription.metadata)}`);
   
   try {
     // Get the user ID from metadata
     const userId = subscription.metadata?.user_id;
     if (!userId) {
       console.error("No user_id in subscription metadata");
-      return false;
+      
+      // Try to find the subscription in the database
+      const { data: subData, error: subError } = await supabase
+        .from('subscriptions')
+        .select('user_id')
+        .eq('stripe_subscription_id', subscription.id)
+        .single();
+        
+      if (subError || !subData) {
+        console.error(`Couldn't find user for subscription ${subscription.id}`);
+        return false;
+      }
+      
+      console.log(`Found user ${subData.user_id} for subscription ${subscription.id}`);
+      userId = subData.user_id;
     }
     
     // Get the subscription item details
@@ -196,6 +245,7 @@ async function handleSubscriptionUpdated(subscription) {
     
     try {
       const price = await stripe.prices.retrieve(subscriptionItem.price.id);
+      console.log(`Retrieved price: ${JSON.stringify(price.metadata)}`);
       urlCount = parseInt(price.metadata?.url_count || "1", 10);
       hasApiAccess = price.metadata?.api_access === 'yes';
       planId = price.metadata?.plan || 'free';
@@ -207,7 +257,7 @@ async function handleSubscriptionUpdated(subscription) {
     console.log(`Updating subscription for user ${userId}: URLs=${urlCount}, API access=${hasApiAccess}, Plan=${planId}`);
     
     // Update the subscription in the database
-    const { data, error: updateError } = await supabase
+    const { error: updateError } = await supabase
       .from('subscriptions')
       .update({
         plan: planId,

@@ -35,7 +35,7 @@ serve(async (req) => {
   }
 
   try {
-    const { plan, userId, urlCount, includeApiAccess, billingCycle } = await req.json();
+    const { plan, userId, urlCount, includeApiAccess, billingCycle, currentSubscriptionId } = await req.json();
     
     // Validate userId
     if (!userId || typeof userId !== 'string') {
@@ -50,7 +50,7 @@ serve(async (req) => {
     }
     
     console.log("Processing checkout for user:", userId);
-    console.log("Plan details:", { plan, urlCount, includeApiAccess, billingCycle });
+    console.log("Plan details:", { plan, urlCount, includeApiAccess, billingCycle, currentSubscriptionId });
     
     // Calculate the actual price for this subscription
     const calculatedPrice = calculatePrice(urlCount, includeApiAccess, billingCycle);
@@ -89,6 +89,17 @@ serve(async (req) => {
     );
     console.log("Created price:", price.id);
     
+    // Prepare metadata
+    const metadata = {
+      user_id: userId,
+      plan: plan,
+      url_count: urlCount.toString(),
+      api_access: includeApiAccess ? 'yes' : 'no',
+      billing_cycle: billingCycle,
+      calculated_price: calculatedPrice.toString(),
+      checkout_time: new Date().toISOString(),
+    };
+    
     const params = {
       customer: subscriptionData?.stripe_customer_id,
       client_reference_id: userId,
@@ -100,26 +111,12 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${normalizedClientUrl}/dashboard?checkout=success`,
+      success_url: `${normalizedClientUrl}/dashboard?checkout=success&t=${Date.now()}&plan=${plan}&urls=${urlCount}`,
       cancel_url: `${normalizedClientUrl}/pricing?checkout=cancelled`,
       subscription_data: {
-        metadata: {
-          user_id: userId,
-          calculated_price: calculatedPrice.toString(),
-          plan: plan,
-          url_count: urlCount.toString(),
-          api_access: includeApiAccess ? 'yes' : 'no',
-          billing_cycle: billingCycle,
-        },
+        metadata: metadata,
       },
-      metadata: {
-        user_id: userId,
-        plan: plan,
-        url_count: urlCount.toString(),
-        api_access: includeApiAccess ? 'yes' : 'no',
-        billing_cycle: billingCycle,
-        calculated_price: calculatedPrice.toString(),
-      },
+      metadata: metadata,
     };
     
     console.log("Checkout session params:", JSON.stringify(params).substring(0, 200) + "...");

@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -16,10 +15,11 @@ export const useSubscription = (userId: string | undefined) => {
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [refreshAttempts, setRefreshAttempts] = useState(0);
   
   const fetchSubscriptionData = useCallback(async (userId: string) => {
     try {
-      console.log("Fetching subscription data for user:", userId);
+      console.log(`[useSubscription] Fetching subscription data for user: ${userId}`);
       setIsLoading(true);
       
       const { data: subscriptionData, error: subscriptionError } = await supabase.rpc(
@@ -28,7 +28,7 @@ export const useSubscription = (userId: string | undefined) => {
       );
       
       if (subscriptionError) {
-        console.error("Error fetching subscription:", subscriptionError);
+        console.error("[useSubscription] Error fetching subscription:", subscriptionError);
         toast({
           title: "Error",
           description: "Failed to load subscription details. Please try again later.",
@@ -36,16 +36,42 @@ export const useSubscription = (userId: string | undefined) => {
         });
         return false;
       } else if (subscriptionData && subscriptionData.length > 0) {
-        console.log("Subscription data received:", subscriptionData[0]);
-        setUserSubscription({
+        console.log("[useSubscription] Subscription data received:", subscriptionData[0]);
+        
+        // Compare with current subscription to see if there's a change
+        const newSub = {
           plan: subscriptionData[0].plan,
           urls_limit: subscriptionData[0].urls_limit,
           stripe_subscription_id: subscriptionData[0].stripe_subscription_id,
           has_api_access: subscriptionData[0].has_api_access || false,
           api_key: subscriptionData[0].api_key || null
-        });
+        };
+        
+        // Check if subscription has changed
+        const hasChanged = JSON.stringify(newSub) !== JSON.stringify(userSubscription);
+        
+        if (hasChanged) {
+          console.log("[useSubscription] Subscription has changed, updating state");
+          
+          // If this was a refresh after checkout and we got updated data, show a success message
+          const checkoutTime = sessionStorage.getItem('checkoutInitiated');
+          const expectedPlan = sessionStorage.getItem('expectedPlan');
+          
+          if (checkoutTime && expectedPlan && expectedPlan === newSub.plan) {
+            toast({
+              title: "Subscription Updated!",
+              description: `Your subscription has been successfully updated to the ${newSub.plan} plan.`,
+            });
+            // Clear checkout data from session storage
+            sessionStorage.removeItem('checkoutInitiated');
+            sessionStorage.removeItem('expectedPlan');
+            sessionStorage.removeItem('expectedUrlCount');
+          }
+        }
+        
+        setUserSubscription(newSub);
       } else {
-        console.log("No subscription data returned");
+        console.log("[useSubscription] No subscription data returned");
       }
 
       const { data: canAddMoreData, error: canAddMoreError } = await supabase.rpc(
@@ -54,10 +80,10 @@ export const useSubscription = (userId: string | undefined) => {
       );
       
       if (canAddMoreError) {
-        console.error("Error checking if user can add more URLs:", canAddMoreError);
+        console.error("[useSubscription] Error checking if user can add more URLs:", canAddMoreError);
         return false;
       } else {
-        console.log("Can add more URLs:", canAddMoreData);
+        console.log("[useSubscription] Can add more URLs:", canAddMoreData);
         setCanAddMoreUrls(canAddMoreData);
       }
       
@@ -65,11 +91,11 @@ export const useSubscription = (userId: string | undefined) => {
       setLastRefreshed(new Date());
       return true;
     } catch (error) {
-      console.error("Error fetching subscription data:", error);
+      console.error("[useSubscription] Error fetching subscription data:", error);
       setIsLoading(false);
       return false;
     }
-  }, []);
+  }, [userSubscription]);
 
   const generateApiKey = async () => {
     if (!userId) {
@@ -101,7 +127,7 @@ export const useSubscription = (userId: string | undefined) => {
         throw new Error('No API key returned');
       }
     } catch (error: any) {
-      console.error("Error generating API key:", error);
+      console.error("[useSubscription] Error generating API key:", error);
       toast({
         title: "Error",
         description: "Failed to generate API key. Please try again later.",
@@ -134,7 +160,7 @@ export const useSubscription = (userId: string | undefined) => {
 
       return true;
     } catch (error: any) {
-      console.error("Error canceling subscription:", error);
+      console.error("[useSubscription] Error canceling subscription:", error);
       toast({
         title: "Error",
         description: "Failed to cancel subscription. Please try again later.",
@@ -148,34 +174,37 @@ export const useSubscription = (userId: string | undefined) => {
   const refreshSubscription = useCallback(async (maxRetries = 5) => {
     if (!userId) return false;
     
-    console.log(`Manually refreshing subscription data with ${maxRetries} retries`);
+    // Increment refresh attempts counter
+    setRefreshAttempts(prev => prev + 1);
+    
+    console.log(`[useSubscription] Manually refreshing subscription data with ${maxRetries} retries (attempt #${refreshAttempts + 1})`);
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      console.log(`Refresh attempt ${attempt} of ${maxRetries}`);
+      console.log(`[useSubscription] Refresh attempt ${attempt} of ${maxRetries}`);
       
       const success = await fetchSubscriptionData(userId);
       
       if (success) {
-        console.log("Subscription refreshed successfully");
+        console.log("[useSubscription] Subscription refreshed successfully");
         return true;
       }
       
       // If not the last attempt, wait before retrying with exponential backoff
       if (attempt < maxRetries) {
         const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000); // Cap at 10 seconds
-        console.log(`Attempt ${attempt} failed, waiting ${delay}ms before retry...`);
+        console.log(`[useSubscription] Attempt ${attempt} failed, waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
     
-    console.log("All refresh attempts failed");
+    console.log("[useSubscription] All refresh attempts failed");
     toast({
       title: "Subscription update failed",
       description: "We couldn't update your subscription information. Please refresh the page or try again later.",
       variant: "destructive"
     });
     return false;
-  }, [userId, fetchSubscriptionData]);
+  }, [userId, fetchSubscriptionData, refreshAttempts]);
 
   // Initial data load
   useEffect(() => {
@@ -189,28 +218,42 @@ export const useSubscription = (userId: string | undefined) => {
     const checkSearchParams = async () => {
       const searchParams = new URLSearchParams(window.location.search);
       const checkoutStatus = searchParams.get('checkout');
+      const timestamp = searchParams.get('t');
+      const expectedPlan = searchParams.get('plan');
+      const expectedUrls = searchParams.get('urls');
       
       if (checkoutStatus === 'success' && userId) {
-        console.log("Detected successful checkout, refreshing subscription data");
+        console.log("[useSubscription] Detected successful checkout, refreshing subscription data");
+        console.log(`[useSubscription] Expected plan: ${expectedPlan}, URLs: ${expectedUrls}`);
         
-        // Immediate refresh
-        await refreshSubscription();
+        // Store the expected values in sessionStorage for validation
+        if (expectedPlan) sessionStorage.setItem('expectedPlan', expectedPlan);
+        if (expectedUrls) sessionStorage.setItem('expectedUrlCount', expectedUrls);
+        sessionStorage.setItem('checkoutInitiated', Date.now().toString());
         
-        // Remove the checkout parameter from URL to prevent repeated refreshes
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
-        
-        // Additional delayed refreshes with increasing intervals
+        // Start with a small delay to allow webhook processing
         setTimeout(async () => {
-          console.log("First delayed subscription refresh after checkout");
+          console.log("[useSubscription] Starting first refresh attempt after checkout");
           await refreshSubscription(3);
           
-          // Second delayed refresh
-          setTimeout(async () => {
-            console.log("Second delayed subscription refresh after checkout");
-            await refreshSubscription(2);
-          }, 10000);
-        }, 5000);
+          // Schedule additional refresh attempts with increasing delays
+          const scheduleRefresh = (delayMs: number, attempts: number, index: number) => {
+            setTimeout(async () => {
+              console.log(`[useSubscription] Running delayed refresh #${index} after checkout (${delayMs}ms delay)`);
+              await refreshSubscription(attempts);
+            }, delayMs);
+          };
+          
+          // Schedule multiple refresh attempts with increasing delays
+          scheduleRefresh(5000, 3, 1);  // 5 second delay
+          scheduleRefresh(10000, 3, 2); // 10 second delay
+          scheduleRefresh(20000, 2, 3); // 20 second delay
+          scheduleRefresh(40000, 2, 4); // 40 second delay
+        }, 2000);
+        
+        // Remove checkout parameters from URL, but keep expected parameters for validation
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
       }
     };
     
@@ -224,6 +267,7 @@ export const useSubscription = (userId: string | undefined) => {
     cancelSubscription,
     generateApiKey,
     refreshSubscription,
-    lastRefreshed
+    lastRefreshed,
+    refreshAttempts
   };
 };

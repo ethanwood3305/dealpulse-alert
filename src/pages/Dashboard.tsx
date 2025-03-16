@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -24,6 +23,7 @@ const Dashboard = () => {
   const [isAddingUrl, setIsAddingUrl] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [checkoutProcessed, setCheckoutProcessed] = useState(false);
+  const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -33,7 +33,8 @@ const Dashboard = () => {
     isLoading: isLoadingSubscription,
     refreshSubscription,
     cancelSubscription,
-    generateApiKey
+    generateApiKey,
+    refreshAttempts
   } = useSubscription(user?.id);
   
   const { 
@@ -48,62 +49,84 @@ const Dashboard = () => {
   const isLoading = isLoadingSubscription || isLoadingUrls;
 
   const processCheckout = useCallback(async () => {
-    console.log("Processing successful checkout");
-    setCheckoutProcessed(true);
+    if (checkoutProcessed) return;
     
-    toast({
-      title: "Processing your subscription...",
-      description: "Please wait while we update your account details.",
-    });
+    const searchParams = new URLSearchParams(location.search);
+    const checkoutStatus = searchParams.get('checkout');
+    const timestamp = searchParams.get('t');
+    const expectedPlan = searchParams.get('plan');
+    const expectedUrls = searchParams.get('urls');
     
-    // First immediate subscription refresh
-    const firstRefresh = await refreshSubscription(3);
-    
-    if (firstRefresh) {
-      toast({
-        title: "Subscription active!",
-        description: "Your subscription has been updated successfully."
-      });
-    } else {
-      // If first refresh failed, try again with delay
-      console.log("First refresh attempt failed, scheduling delayed refreshes");
+    if (checkoutStatus === 'success' && !checkoutProcessed) {
+      setCheckoutProcessed(true);
+      setCheckoutTime(timestamp);
       
-      // Second attempt after a delay
-      setTimeout(async () => {
-        console.log("Second subscription refresh attempt");
-        const secondRefresh = await refreshSubscription(3);
-        
-        if (secondRefresh) {
+      console.log("[Dashboard] Processing successful checkout");
+      console.log(`[Dashboard] Expected plan: ${expectedPlan}, URLs: ${expectedUrls}`);
+      
+      // Store expected values in sessionStorage
+      if (expectedPlan) sessionStorage.setItem('expectedPlan', expectedPlan);
+      if (expectedUrls) sessionStorage.setItem('expectedUrlCount', expectedUrls);
+      
+      toast({
+        title: "Processing your subscription...",
+        description: "Please wait while we update your account details.",
+      });
+      
+      // First immediate subscription refresh
+      const firstRefresh = await refreshSubscription(3);
+      
+      if (firstRefresh) {
+        // If our first refresh is successful, check if the plan matches what was expected
+        if (expectedPlan && userSubscription?.plan === expectedPlan) {
+          toast({
+            title: "Subscription active!",
+            description: `Your ${expectedPlan} plan is now active.`
+          });
+        } else {
           toast({
             title: "Subscription active!",
             description: "Your subscription has been updated successfully."
           });
-        } else {
-          // Third attempt with longer delay
-          setTimeout(async () => {
-            console.log("Third subscription refresh attempt");
-            const thirdRefresh = await refreshSubscription(3);
-            
-            if (thirdRefresh) {
-              toast({
-                title: "Subscription active!",
-                description: "Your subscription has been updated successfully."
-              });
-            } else {
-              toast({
-                title: "Subscription status unclear",
-                description: "Please refresh the page to see your current subscription status.",
-                variant: "destructive"
-              });
-            }
-          }, 10000);
         }
-      }, 5000);
+      } else {
+        // If first refresh failed, keep trying with increasing delays
+        console.log("[Dashboard] First refresh attempt failed, scheduling delayed refreshes");
+        
+        // Schedule multiple refresh attempts with increasing delays
+        const scheduleRefresh = (delayMs: number, attempts: number, index: number) => {
+          setTimeout(async () => {
+            if (checkoutProcessed) {
+              console.log(`[Dashboard] Running delayed refresh #${index} (${delayMs}ms delay)`);
+              const refreshSuccessful = await refreshSubscription(attempts);
+              
+              if (refreshSuccessful && index <= 2) { // Only show toast for the first 2 delayed refreshes
+                toast({
+                  title: "Subscription active!",
+                  description: "Your subscription has been updated successfully."
+                });
+              } else if (!refreshSuccessful && index === 4) { // Last attempt failed
+                toast({
+                  title: "Subscription status unclear",
+                  description: "Please refresh the page to see your current subscription status.",
+                  variant: "destructive"
+                });
+              }
+            }
+          }, delayMs);
+        };
+        
+        // Schedule multiple increasing delays
+        scheduleRefresh(5000, 3, 1);   // Try after 5 seconds
+        scheduleRefresh(15000, 3, 2);  // Try after 15 seconds
+        scheduleRefresh(30000, 2, 3);  // Try after 30 seconds
+        scheduleRefresh(60000, 2, 4);  // Try after 60 seconds
+      }
+      
+      // Clean URL
+      navigate('/dashboard', { replace: true });
     }
-    
-    // Remove checkout parameter from URL
-    navigate('/dashboard', { replace: true });
-  }, [refreshSubscription, navigate]);
+  }, [refreshSubscription, navigate, location.search, checkoutProcessed, userSubscription]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -118,7 +141,7 @@ const Dashboard = () => {
       const checkoutStatus = searchParams.get('checkout');
       
       if (checkoutStatus === 'success' && !checkoutProcessed) {
-        console.log("Checkout success detected, will process");
+        console.log("[Dashboard] Checkout success detected in URL");
         processCheckout();
       }
     };
@@ -223,6 +246,24 @@ const Dashboard = () => {
     });
   };
 
+  const manuallyRefreshSubscription = () => {
+    if (!user) return;
+    
+    toast({
+      title: "Refreshing subscription...",
+      description: "Please wait while we check for updates to your plan.",
+    });
+    
+    refreshSubscription(3).then(success => {
+      if (success) {
+        toast({
+          title: "Subscription refreshed",
+          description: "Your subscription information is now up to date."
+        });
+      }
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -245,8 +286,20 @@ const Dashboard = () => {
           <DashboardHeader 
             userName={user?.user_metadata?.full_name} 
             userEmail={user?.email}
-            isPro={userSubscription?.plan === 'pro'}
+            isPro={userSubscription?.plan !== 'free'}
           />
+          
+          {checkoutTime && refreshAttempts > 0 && !userSubscription?.stripe_subscription_id && (
+            <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-md text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-400">
+              <h3 className="font-medium mb-2">Subscription Update In Progress</h3>
+              <p className="text-sm mb-2">
+                We're still processing your subscription. This usually takes less than a minute.
+              </p>
+              <Button onClick={manuallyRefreshSubscription} variant="outline" size="sm">
+                Check Subscription Status
+              </Button>
+            </div>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             <SubscriptionCard 
@@ -255,6 +308,7 @@ const Dashboard = () => {
               trackedUrlsCount={trackedUrls.length}
               onCancelSubscription={handleCancelSubscription}
               hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
+              onRefreshSubscription={manuallyRefreshSubscription}
             />
             
             <QuickActionsCard 
