@@ -52,6 +52,8 @@ serve(async (req) => {
       );
     }
 
+    console.log(`Processing webhook event: ${event.type}`);
+
     // Handle the event
     switch (event.type) {
       case "checkout.session.completed": {
@@ -61,8 +63,10 @@ serve(async (req) => {
         const urlCount = parseInt(session.metadata.url_count) || 1;
         const hasApiAccess = session.metadata.api_access === "yes";
         
+        console.log(`Checkout completed for user ${userId}: Plan=${plan}, URLs=${urlCount}, API=${hasApiAccess}`);
+        
         // Update the user's subscription in the database
-        await supabase
+        const { data, error } = await supabase
           .from("subscriptions")
           .update({
             plan: plan,
@@ -72,6 +76,12 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId);
+        
+        if (error) {
+          console.error(`Error updating subscription for user ${userId}:`, error);
+        } else {
+          console.log(`Successfully updated subscription for user ${userId}`);
+        }
         
         console.log(`User ${userId} subscribed to ${plan} plan with ${urlCount} URLs, API access: ${hasApiAccess}`);
         break;
@@ -109,7 +119,7 @@ serve(async (req) => {
         const hasApiAccess = !!apiAccessItem || quantity > 125;
         
         // Update the user's subscription in the database
-        await supabase
+        const { data, error } = await supabase
           .from("subscriptions")
           .update({
             urls_limit: quantity,
@@ -117,6 +127,12 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userData.user_id);
+        
+        if (error) {
+          console.error(`Error updating subscription for user ${userData.user_id}:`, error);
+        } else {
+          console.log(`Successfully updated subscription for user ${userData.user_id}`);
+        }
         
         console.log(`User ${userData.user_id}'s subscription updated to ${quantity} URLs, API access: ${hasApiAccess}`);
         break;
@@ -141,7 +157,7 @@ serve(async (req) => {
         }
         
         // Downgrade to free plan
-        await supabase
+        const { data, error } = await supabase
           .from("subscriptions")
           .update({
             plan: "free",
@@ -151,6 +167,12 @@ serve(async (req) => {
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userData.user_id);
+        
+        if (error) {
+          console.error(`Error downgrading subscription for user ${userData.user_id}:`, error);
+        } else {
+          console.log(`Successfully downgraded subscription for user ${userData.user_id}`);
+        }
         
         console.log(`User ${userData.user_id}'s subscription cancelled, downgraded to free plan`);
         break;

@@ -50,7 +50,10 @@ serve(async (req) => {
     
     console.log("Processing checkout for user:", userId);
     
-    const client_url = Deno.env.get('CLIENT_URL') || 'http://localhost:5173';
+    // Get the client URL and ensure it doesn't end with a slash
+    let client_url = Deno.env.get('CLIENT_URL') || 'http://localhost:5173';
+    // Remove trailing slash if it exists
+    client_url = client_url.replace(/\/$/, '');
     
     // Get the Stripe prices based on billing cycle
     const stripePriceIdPerUrl = Deno.env.get(

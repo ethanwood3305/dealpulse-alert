@@ -53,13 +53,21 @@ const Dashboard = () => {
       }
       setUser(data.user);
 
+      // Check for checkout status in URL and refresh subscription data
       const searchParams = new URLSearchParams(location.search);
       const checkoutStatus = searchParams.get('checkout');
       if (checkoutStatus === 'success') {
+        // Refresh the subscription data to get the updated plan
+        setTimeout(() => {
+          refreshSubscription();
+        }, 1000); // Small delay to allow webhook processing
+        
         toast({
           title: "Subscription successful!",
           description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
         });
+        
+        // Remove the query parameter but stay on dashboard page
         navigate('/dashboard', { replace: true });
       }
     };
@@ -77,7 +85,7 @@ const Dashboard = () => {
         authListener.subscription.unsubscribe();
       }
     };
-  }, [navigate, location.search]);
+  }, [navigate, location.search, refreshSubscription]);
 
   const onSubmitUrl = async (values: z.infer<typeof urlSchema>) => {
     if (!user) return;
