@@ -91,15 +91,15 @@ serve(async (req) => {
       });
     }
     
-    // Verify webhook signature using pure Deno approach
+    // Verify webhook signature using async approach for Deno compatibility
     let event;
     try {
-      console.log("Verifying Stripe signature with Deno-compatible approach...");
+      console.log("Verifying Stripe signature with async approach...");
       console.log("Signature:", signature.substring(0, 20) + "...");
       console.log("Webhook Secret:", webhookSecret.substring(0, 5) + "...");
       
-      // Use constructEvent with direct call - avoiding any potential Node-specific operations
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      // Use constructEventAsync instead of constructEvent
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       console.log(`Webhook verified. Event type: ${event.type}`);
       console.log(`Event ID: ${event.id}`);
     } catch (err) {
