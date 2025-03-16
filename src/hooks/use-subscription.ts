@@ -142,25 +142,31 @@ export const useSubscription = (userId: string | undefined) => {
     }
   };
 
-  // Force refresh subscription with retry
-  const refreshSubscription = useCallback(async () => {
-    if (userId) {
-      console.log("Manually refreshing subscription data");
+  // Force refresh subscription with retry mechanism
+  const refreshSubscription = useCallback(async (maxRetries = 3) => {
+    if (!userId) return false;
+    
+    console.log(`Manually refreshing subscription data with ${maxRetries} retries`);
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      console.log(`Refresh attempt ${attempt} of ${maxRetries}`);
       
-      // First attempt
       const success = await fetchSubscriptionData(userId);
       
-      if (!success) {
-        // Add a short delay and retry if first attempt fails
-        console.log("First refresh attempt failed, retrying after delay...");
-        return new Promise<void>((resolve) => {
-          setTimeout(async () => {
-            await fetchSubscriptionData(userId);
-            resolve();
-          }, 2000);
-        });
+      if (success) {
+        console.log("Subscription refreshed successfully");
+        return true;
+      }
+      
+      // If not the last attempt, wait before retrying
+      if (attempt < maxRetries) {
+        console.log(`Attempt ${attempt} failed, waiting before retry...`);
+        await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Exponential backoff
       }
     }
+    
+    console.log("All refresh attempts failed");
+    return false;
   }, [userId, fetchSubscriptionData]);
 
   useEffect(() => {
@@ -168,6 +174,28 @@ export const useSubscription = (userId: string | undefined) => {
       fetchSubscriptionData(userId);
     }
   }, [userId, fetchSubscriptionData]);
+
+  // Handle subscription refresh after checkout redirect
+  useEffect(() => {
+    const checkSearchParams = async () => {
+      const searchParams = new URLSearchParams(window.location.search);
+      const checkoutStatus = searchParams.get('checkout');
+      
+      if (checkoutStatus === 'success' && userId) {
+        console.log("Detected successful checkout, refreshing subscription data");
+        // Immediate refresh
+        await refreshSubscription();
+        
+        // Another refresh after a delay (in case webhook processing takes time)
+        setTimeout(async () => {
+          console.log("Delayed subscription refresh after checkout");
+          await refreshSubscription();
+        }, 5000);
+      }
+    };
+    
+    checkSearchParams();
+  }, [userId, refreshSubscription]);
 
   return {
     isLoading,

@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import CustomPricingCard from "./CustomPricingCard";
 import EnterpriseContact from "./EnterpriseContact";
 
@@ -22,6 +23,46 @@ const Pricing = () => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [activeTab, setActiveTab] = useState<'pricing' | 'enterprise'>('pricing');
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Process checkout status
+  useEffect(() => {
+    const processCheckoutStatus = async () => {
+      // Check for checkout status in the URL
+      const searchParams = new URLSearchParams(location.search);
+      const checkoutStatus = searchParams.get('checkout');
+      
+      if (checkoutStatus === 'success') {
+        // Show success toast
+        toast({
+          title: "Subscription successful!",
+          description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active.",
+        });
+        
+        // Try to get the current user
+        const { data } = await supabase.auth.getUser();
+        const user = data?.user;
+        
+        if (user) {
+          // Remove the query params and redirect to dashboard
+          navigate('/dashboard', { replace: true });
+        } else {
+          // Just remove the query params if not logged in
+          navigate('/pricing', { replace: true });
+        }
+      } else if (checkoutStatus === 'cancelled') {
+        toast({
+          title: "Subscription cancelled",
+          description: "You have cancelled the checkout process. No changes were made to your subscription.",
+        });
+        
+        // Remove the query params
+        navigate('/pricing', { replace: true });
+      }
+    };
+    
+    processCheckoutStatus();
+  }, [location.search, navigate]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -40,24 +81,6 @@ const Pricing = () => {
 
     return () => observer.disconnect();
   }, []);
-
-  useEffect(() => {
-    // Check for checkout status in the URL
-    const searchParams = new URLSearchParams(location.search);
-    const checkoutStatus = searchParams.get('checkout');
-    
-    if (checkoutStatus === 'success') {
-      toast({
-        title: "Subscription successful!",
-        description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active.",
-      });
-    } else if (checkoutStatus === 'cancelled') {
-      toast({
-        title: "Subscription cancelled",
-        description: "You have cancelled the checkout process. No changes were made to your subscription.",
-      });
-    }
-  }, [location.search]);
 
   // FAQs
   const faqs = [
