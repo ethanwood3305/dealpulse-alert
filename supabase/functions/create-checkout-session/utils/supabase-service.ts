@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 export const getUserSubscription = async (userId: string) => {
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('stripe_customer_id, has_api_access, api_key')
+    .select('stripe_customer_id, has_api_access, api_key, urls_limit')
     .eq('user_id', userId)
     .single();
   
@@ -29,5 +29,17 @@ export const updateSubscriptionWithCustomerId = async (userId: string, customerI
   return await supabase
     .from('subscriptions')
     .update({ stripe_customer_id: customerId })
+    .eq('user_id', userId);
+};
+
+// Update subscription with URL limit and API access
+export const updateSubscriptionDetails = async (userId: string, urlsLimit: number, hasApiAccess: boolean) => {
+  return await supabase
+    .from('subscriptions')
+    .update({ 
+      urls_limit: urlsLimit,
+      has_api_access: hasApiAccess,
+      updated_at: new Date().toISOString()
+    })
     .eq('user_id', userId);
 };

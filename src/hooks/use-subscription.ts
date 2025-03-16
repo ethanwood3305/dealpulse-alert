@@ -18,18 +18,21 @@ export const useSubscription = (userId: string | undefined) => {
   
   const fetchSubscriptionData = async (userId: string) => {
     try {
+      console.log("Fetching subscription data for user:", userId);
       const { data: subscriptionData, error: subscriptionError } = await supabase.rpc(
         'get_user_subscription', 
         { user_uuid: userId }
       );
       
       if (subscriptionError) {
+        console.error("Error fetching subscription:", subscriptionError);
         toast({
           title: "Error",
           description: "Failed to load subscription details. Please try again later.",
           variant: "destructive"
         });
       } else if (subscriptionData && subscriptionData.length > 0) {
+        console.log("Subscription data received:", subscriptionData[0]);
         setUserSubscription({
           plan: subscriptionData[0].plan,
           urls_limit: subscriptionData[0].urls_limit,

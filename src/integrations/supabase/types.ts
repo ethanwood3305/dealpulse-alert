@@ -11,7 +11,9 @@ export type Database = {
     Tables: {
       subscriptions: {
         Row: {
+          api_key: string | null
           created_at: string
+          has_api_access: boolean | null
           id: string
           plan: string
           stripe_customer_id: string | null
@@ -22,7 +24,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          api_key?: string | null
           created_at?: string
+          has_api_access?: boolean | null
           id?: string
           plan?: string
           stripe_customer_id?: string | null
@@ -33,7 +37,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          api_key?: string | null
           created_at?: string
+          has_api_access?: boolean | null
           id?: string
           plan?: string
           stripe_customer_id?: string | null
@@ -98,6 +104,8 @@ export type Database = {
           urls_limit: number
           stripe_customer_id: string
           stripe_subscription_id: string
+          has_api_access: boolean
+          api_key: string
         }[]
       }
     }

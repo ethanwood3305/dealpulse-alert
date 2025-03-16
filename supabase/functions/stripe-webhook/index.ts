@@ -94,6 +94,8 @@ serve(async (req) => {
             const urlCount = parseInt(subscription.metadata.url_count) || 1;
             const hasApiAccess = subscription.metadata.api_access === "yes";
             
+            console.log(`Retrieved subscription with metadata: URL count=${urlCount}, API access=${hasApiAccess}`);
+            
             // Update the user's subscription in the database with the actual metadata from Stripe
             const { error: updateError } = await supabase
               .from("subscriptions")
