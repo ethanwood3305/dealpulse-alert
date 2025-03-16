@@ -54,6 +54,8 @@ const SubscriptionCheckout = ({
         return;
       }
       
+      console.log("Starting checkout for:", { plan, urlCount, includeApiAccess, billingCycle, userId });
+      
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: { 
           plan, 
