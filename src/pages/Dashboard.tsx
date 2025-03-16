@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -49,7 +48,6 @@ const Dashboard = () => {
     removeTag
   } = useTrackedUrls(user?.id);
 
-  // Only show loading on initial load, not during refreshes
   const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingUrls);
 
   const processCheckout = useCallback(async () => {
@@ -68,20 +66,17 @@ const Dashboard = () => {
       console.log("[Dashboard] Processing successful checkout");
       console.log(`[Dashboard] Expected plan: ${expectedPlan}, URLs: ${expectedUrls}`);
       
-      // Store expected values in sessionStorage
-      if (expectedPlan) sessionStorage.setItem('expectedPlan', expectedPlan);
-      if (expectedUrls) sessionStorage.setItem('expectedUrlCount', expectedUrls);
+      sessionStorage.setItem('expectedPlan', expectedPlan);
+      sessionStorage.setItem('expectedUrlCount', expectedUrls);
       
       toast({
         title: "Processing your subscription...",
         description: "Please wait while we update your account details.",
       });
       
-      // First immediate subscription refresh
       const firstRefresh = await refreshSubscription(3);
       
       if (firstRefresh) {
-        // If our first refresh is successful, check if the plan matches what was expected
         if (expectedPlan && userSubscription?.plan === expectedPlan) {
           toast({
             title: "Subscription active!",
@@ -94,22 +89,20 @@ const Dashboard = () => {
           });
         }
       } else {
-        // If first refresh failed, keep trying with increasing delays
         console.log("[Dashboard] First refresh attempt failed, scheduling delayed refreshes");
         
-        // Schedule multiple refresh attempts with increasing delays
         const scheduleRefresh = (delayMs: number, attempts: number, index: number) => {
           setTimeout(async () => {
             if (checkoutProcessed) {
               console.log(`[Dashboard] Running delayed refresh #${index} (${delayMs}ms delay)`);
               const refreshSuccessful = await refreshSubscription(attempts);
               
-              if (refreshSuccessful && index <= 2) { // Only show toast for the first 2 delayed refreshes
+              if (refreshSuccessful && index <= 2) {
                 toast({
                   title: "Subscription active!",
                   description: "Your subscription has been updated successfully."
                 });
-              } else if (!refreshSuccessful && index === 4) { // Last attempt failed
+              } else if (!refreshSuccessful && index === 4) {
                 toast({
                   title: "Subscription status unclear",
                   description: "Please refresh the page to see your current subscription status.",
@@ -120,14 +113,12 @@ const Dashboard = () => {
           }, delayMs);
         };
         
-        // Schedule multiple increasing delays
-        scheduleRefresh(5000, 3, 1);   // Try after 5 seconds
-        scheduleRefresh(15000, 3, 2);  // Try after 15 seconds
-        scheduleRefresh(30000, 2, 3);  // Try after 30 seconds
-        scheduleRefresh(60000, 2, 4);  // Try after 60 seconds
+        scheduleRefresh(5000, 3, 1);
+        scheduleRefresh(15000, 3, 2);
+        scheduleRefresh(30000, 2, 3);
+        scheduleRefresh(60000, 2, 4);
       }
       
-      // Clean URL
       navigate('/dashboard', { replace: true });
     }
   }, [refreshSubscription, navigate, location.search, checkoutProcessed, userSubscription]);
@@ -165,7 +156,6 @@ const Dashboard = () => {
     };
   }, [navigate, location.search, checkoutProcessed, processCheckout]);
 
-  // Mark initial load as complete once subscription and URL data are loaded
   useEffect(() => {
     if (!isLoadingSubscription && !isLoadingUrls && !initialLoadComplete) {
       setInitialLoadComplete(true);
@@ -231,7 +221,7 @@ const Dashboard = () => {
     await removeTag(urlId, tag);
   };
 
-  const handleCancelSubscription = async () => {
+  const handleCancelSubscription = async (): Promise<void> => {
     if (!user) return;
     const success = await cancelSubscription();
     if (success) {
@@ -317,7 +307,7 @@ const Dashboard = () => {
               plan={userSubscription?.plan}
               urls_limit={userSubscription?.urls_limit}
               trackedUrlsCount={trackedUrls.length}
-              onCancelSubscription={cancelSubscription}
+              onCancelSubscription={handleCancelSubscription}
               hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
               onRefreshSubscription={() => refreshSubscription()}
             />

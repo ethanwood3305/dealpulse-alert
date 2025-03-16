@@ -97,7 +97,7 @@ export const useSubscription = (userId: string | undefined) => {
     }
   }, [userSubscription]);
 
-  const generateApiKey = async () => {
+  const generateApiKey = async (): Promise<boolean> => {
     if (!userId) {
       toast({
         title: "Error",
@@ -137,7 +137,7 @@ export const useSubscription = (userId: string | undefined) => {
     }
   };
 
-  const cancelSubscription = async () => {
+  const cancelSubscription = async (): Promise<boolean> => {
     if (!userId || !userSubscription?.stripe_subscription_id) {
       toast({
         title: "Error",
@@ -148,6 +148,11 @@ export const useSubscription = (userId: string | undefined) => {
     }
 
     try {
+      toast({
+        title: "Processing",
+        description: "Canceling your subscription, please wait..."
+      });
+      
       const { error } = await supabase.functions.invoke('cancel-subscription', {
         body: { 
           subscription_id: userSubscription.stripe_subscription_id 
@@ -157,20 +162,29 @@ export const useSubscription = (userId: string | undefined) => {
       if (error) {
         throw error;
       }
+      
+      // Once successful, update the local subscription state
+      setUserSubscription(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          // Keep the ID but note it's being canceled
+          // The stripe-webhook handler will update DB when processing is done
+        };
+      });
 
       return true;
     } catch (error: any) {
       console.error("[useSubscription] Error canceling subscription:", error);
       toast({
         title: "Error",
-        description: "Failed to cancel subscription. Please try again later.",
+        description: error.message || "Failed to cancel subscription. Please try again later.",
         variant: "destructive"
       });
       return false;
     }
   };
 
-  // Force refresh subscription with exponential backoff retry mechanism
   const refreshSubscription = useCallback(async (maxRetries = 5) => {
     if (!userId) return false;
     
@@ -206,14 +220,12 @@ export const useSubscription = (userId: string | undefined) => {
     return false;
   }, [userId, fetchSubscriptionData, refreshAttempts]);
 
-  // Initial data load
   useEffect(() => {
     if (userId) {
       fetchSubscriptionData(userId);
     }
   }, [userId, fetchSubscriptionData]);
 
-  // Handle subscription refresh after checkout redirect
   useEffect(() => {
     const checkSearchParams = async () => {
       const searchParams = new URLSearchParams(window.location.search);

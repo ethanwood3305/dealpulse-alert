@@ -49,7 +49,7 @@ export const SubscriptionCard = ({
   onRefreshSubscription
 }: SubscriptionCardProps) => {
   return (
-    <Card>
+    <Card className="shadow-md hover:shadow-lg transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Subscription</CardTitle>
