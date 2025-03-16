@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ import { Loader2, MoreVertical, Trash2, RefreshCw, PlusCircle, Tag, ArrowUpRight
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import SubscriptionCheckout from "@/components/SubscriptionCheckout";
 
 interface UserSubscription {
   plan: string;
@@ -283,12 +282,11 @@ const Dashboard = () => {
             </div>
             
             {userSubscription?.plan !== 'pro' && (
-              <SubscriptionCheckout 
-                plan={userSubscription?.plan === 'basic' ? 'pro' : 'basic'} 
-                urlCount={userSubscription?.plan === 'basic' ? 10 : 5}
-                buttonText="Upgrade Plan"
-                className="mt-4 md:mt-0"
-              />
+              <Link to="/pricing">
+                <Button className="mt-4 md:mt-0">
+                  Upgrade Plan
+                </Button>
+              </Link>
             )}
           </div>
           
@@ -332,11 +330,13 @@ const Dashboard = () => {
                     <span className="font-medium">Add URL to Monitor</span>
                     <span className="text-xs text-muted-foreground mt-1">Track competitor prices</span>
                   </Button>
-                  <Button variant="outline" className="h-20 flex flex-col items-center justify-center" onClick={() => window.location.href = "/pricing"}>
-                    <Tag className="h-5 w-5 mb-2" />
-                    <span className="font-medium">View Plans</span>
-                    <span className="text-xs text-muted-foreground mt-1">Compare subscription options</span>
-                  </Button>
+                  <Link to="/pricing">
+                    <Button variant="outline" className="h-20 w-full flex flex-col items-center justify-center">
+                      <Tag className="h-5 w-5 mb-2" />
+                      <span className="font-medium">View Plans</span>
+                      <span className="text-xs text-muted-foreground mt-1">Compare subscription options</span>
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
@@ -451,4 +451,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-
