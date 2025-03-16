@@ -24,7 +24,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Set up robust error handling to catch and log any errors
   try {
-    console.log("Received webhook request");
+    console.log("Received webhook request at path:", req.url);
     
     // Handle CORS preflight requests
     if (req.method === "OPTIONS") {
@@ -80,7 +80,7 @@ serve(async (req) => {
     let body;
     try {
       body = await req.text();
-      console.log("Received webhook payload");
+      console.log("Received webhook payload of length:", body.length);
     } catch (err) {
       console.error(`Error reading request body: ${err.message}`);
       return new Response(JSON.stringify({ error: "Could not read request body" }), {
