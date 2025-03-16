@@ -25,7 +25,6 @@ serve(async (req) => {
   try {
     console.log("Received webhook request at path:", req.url);
     console.log("Method:", req.method);
-    console.log("Headers:", JSON.stringify(Object.fromEntries([...req.headers.entries()])));
     
     // Handle CORS preflight requests
     if (req.method === "OPTIONS") {
@@ -90,7 +89,7 @@ serve(async (req) => {
       });
     }
     
-    // Verify webhook signature - UPDATED TO USE ASYNC VERSION
+    // Verify webhook signature - USING ASYNC VERSION
     let event;
     try {
       console.log("Verifying Stripe signature asynchronously...");
