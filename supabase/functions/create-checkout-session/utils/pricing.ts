@@ -15,37 +15,37 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
   
   // Tiered pricing structure
   if (urls <= 5) {
-    basePrice = 3 + (urls - 2) * 0.75; // $3 for 2 URLs, then +$0.75 per URL
+    basePrice = (urls - 1) * 3; // $3 per URL after the free one
   } else if (urls <= 25) {
-    const basePriceAt5 = 3 + (5 - 2) * 0.75; // = $5.25
+    const basePriceAt5 = 4 * 3; // = $12 for 5 URLs
     basePrice = basePriceAt5 + (urls - 5) * 0.5; // After 5 URLs, +$0.50 per URL
   } else if (urls <= 50) {
-    const basePriceAt5 = 3 + (5 - 2) * 0.75; // = $5.25
-    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $15.25
+    const basePriceAt5 = 4 * 3; // = $12 for 5 URLs
+    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $22
     basePrice = basePriceAt25 + (urls - 25) * 0.33; // After 25 URLs, +$0.33 per URL
   } else if (urls <= 100) {
-    const basePriceAt5 = 3 + (5 - 2) * 0.75; // = $5.25
-    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $15.25
-    const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $23.5
+    const basePriceAt5 = 4 * 3; // = $12 for 5 URLs
+    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $22
+    const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $30.25
     basePrice = basePriceAt50 + (urls - 50) * 0.25; // After 50 URLs, +$0.25 per URL
   } else if (urls <= 175) {
-    const basePriceAt5 = 3 + (5 - 2) * 0.75; // = $5.25
-    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $15.25
-    const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $23.5
-    const basePriceAt100 = basePriceAt50 + (100 - 50) * 0.25; // = $36
+    const basePriceAt5 = 4 * 3; // = $12 for 5 URLs
+    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $22
+    const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $30.25
+    const basePriceAt100 = basePriceAt50 + (100 - 50) * 0.25; // = $42.75
     basePrice = basePriceAt100 + (urls - 100) * 0.22; // After 100 URLs, +$0.22 per URL
   } else {
-    const basePriceAt5 = 3 + (5 - 2) * 0.75; // = $5.25
-    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $15.25
-    const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $23.5
-    const basePriceAt100 = basePriceAt50 + (100 - 50) * 0.25; // = $36
-    const basePriceAt175 = basePriceAt100 + (175 - 100) * 0.22; // = $52.5
+    const basePriceAt5 = 4 * 3; // = $12 for 5 URLs
+    const basePriceAt25 = basePriceAt5 + (25 - 5) * 0.5; // = $22
+    const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $30.25
+    const basePriceAt100 = basePriceAt50 + (100 - 50) * 0.25; // = $42.75
+    const basePriceAt175 = basePriceAt100 + (175 - 100) * 0.22; // = $59.25
     
-    // For URLs between 175 and 250, scale proportionally from $52.5 to $110
+    // For URLs between 175 and 250, scale proportionally from $59.25 to $110
     if (urls <= 250) {
       const range = 250 - 175;
       const position = urls - 175;
-      const startPrice = 52.5;
+      const startPrice = 59.25;
       const endPrice = 110;
       const priceIncrease = endPrice - startPrice;
       

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -26,13 +25,10 @@ const Pricing = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Process checkout status immediately when component mounts
   useEffect(() => {
     const processCheckoutStatus = async () => {
-      // Prevent duplicate processing
       if (isProcessingCheckout) return;
       
-      // Check for checkout status in the URL
       const searchParams = new URLSearchParams(location.search);
       const checkoutStatus = searchParams.get('checkout');
       
@@ -40,27 +36,22 @@ const Pricing = () => {
         setIsProcessingCheckout(true);
         console.log("Detected successful checkout redirect");
         
-        // Show success toast
         toast({
           title: "Payment processed successfully!",
           description: "Your subscription is being set up, please wait a moment...",
         });
         
-        // Try to get the current user
         const { data } = await supabase.auth.getUser();
         const user = data?.user;
         
         if (user) {
-          // Add timestamp and expected values to help with verification
           const timestamp = Date.now();
           const plan = searchParams.get('plan') || '';
           const urls = searchParams.get('urls') || '';
           
-          // Clean URL and redirect to dashboard with checkout info
           console.log("User is logged in, redirecting to dashboard with checkout info");
           navigate(`/dashboard?checkout=success&t=${timestamp}&plan=${plan}&urls=${urls}`, { replace: true });
         } else {
-          // Just remove the query params if not logged in
           console.log("User not logged in, staying on pricing page");
           navigate('/pricing', { replace: true });
           
@@ -76,7 +67,6 @@ const Pricing = () => {
           description: "You have cancelled the checkout process. No changes were made to your subscription.",
         });
         
-        // Remove the query params
         navigate('/pricing', { replace: true });
       }
     };
@@ -102,7 +92,6 @@ const Pricing = () => {
     return () => observer.disconnect();
   }, []);
 
-  // FAQs
   const faqs = [
     {
       question: "How does the pricing work?",
@@ -136,7 +125,6 @@ const Pricing = () => {
 
   return (
     <div className="py-20 relative" id="pricing">
-      {/* Background decoration */}
       <div className="absolute inset-0 overflow-hidden -z-10">
         <div className="absolute bottom-1/3 right-0 w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-10"></div>
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-10"></div>
@@ -154,7 +142,6 @@ const Pricing = () => {
             Choose exactly how many URLs you want to monitor. All plans include a 14-day free trial.
           </p>
           
-          {/* Billing toggle */}
           <div className="flex items-center justify-center space-x-4 mb-8">
             <span className={`text-sm ${billingCycle === 'monthly' ? 'font-medium' : 'text-muted-foreground'}`}>
               Monthly billing
@@ -171,7 +158,6 @@ const Pricing = () => {
             </div>
           </div>
 
-          {/* View toggle */}
           <div className="flex justify-center mb-8">
             <div className="inline-flex p-1 bg-muted rounded-lg">
               <Toggle
@@ -206,7 +192,6 @@ const Pricing = () => {
           </div>
         )}
 
-        {/* Beta Users Section */}
         <div className="max-w-3xl mx-auto mb-16 bg-muted/50 rounded-xl p-8 text-center">
           <h3 className="text-2xl font-bold mb-4">Join Our Beta Program</h3>
           <p className="text-muted-foreground mb-6">
@@ -219,7 +204,6 @@ const Pricing = () => {
           </Link>
         </div>
 
-        {/* FAQ Section */}
         <div className="max-w-3xl mx-auto">
           <h3 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h3>
           <Accordion type="single" collapsible className="w-full">

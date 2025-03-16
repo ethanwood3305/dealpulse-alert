@@ -309,7 +309,7 @@ const Dashboard = () => {
               trackedUrlsCount={trackedUrls.length}
               onCancelSubscription={handleCancelSubscription}
               hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
-              onRefreshSubscription={() => refreshSubscription()}
+              onRefreshSubscription={manuallyRefreshSubscription}
             />
             
             <QuickActionsCard 
@@ -338,6 +338,7 @@ const Dashboard = () => {
             onDelete={handleDeleteUrl}
             onAddTag={handleAddTag}
             onRemoveTag={handleRemoveTag}
+            urlsLimit={userSubscription?.urls_limit}
           />
         </div>
       </main>

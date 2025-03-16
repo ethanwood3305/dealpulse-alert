@@ -11,7 +11,7 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
     // Handle standard tiers
     const tier = pricingTiers.find((tier, index) => {
       const nextTier = pricingTiers[index + 1];
-      return urls <= tier.maxUrls || (nextTier && urls <= nextTier.maxUrls);
+      return urls <= tier.maxUrls || (nextTier && urls < nextTier.maxUrls);
     });
     
     if (!tier) {
@@ -19,11 +19,11 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
       return 0;
     }
     
-    // For the last URL before next tier, use the tier's base price
+    // For the last URL in a tier, use the tier's base price
     if (urls === tier.maxUrls) {
       basePrice = tier.basePrice;
     } else {
-      // For in-between URLs, calculate based on the tier's formula
+      // Find the previous tier (if any)
       const prevTier = pricingTiers.find(t => t.maxUrls < tier.maxUrls && urls > t.maxUrls);
       
       if (prevTier) {
@@ -32,7 +32,8 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
         basePrice = prevTier.basePrice + (additionalUrls * tier.pricePerUrl);
       } else {
         // If no previous tier (should be the first tier), calculate directly
-        basePrice = tier.basePrice + ((urls - 1) * tier.pricePerUrl);
+        const additionalUrls = urls - 1; // Subtract the free URL
+        basePrice = (additionalUrls * tier.pricePerUrl);
       }
     }
   } else if (urls <= 250) {
@@ -68,7 +69,7 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
     basePrice = basePrice * 12 * 0.9; // 10% discount for annual billing
   }
   
-  // Round to 2 decimal places to ensure consistency between UI and Stripe
+  // Round to 2 decimal places to match Stripe's calculation
   return Math.round(basePrice * 100) / 100;
 };
 

@@ -48,6 +48,9 @@ export const SubscriptionCard = ({
   hasActiveSubscription,
   onRefreshSubscription
 }: SubscriptionCardProps) => {
+  const progressPercentage = urls_limit ? (trackedUrlsCount / urls_limit) * 100 : 100;
+  const isOverLimit = trackedUrlsCount > (urls_limit || 1);
+
   return (
     <Card className="shadow-md hover:shadow-lg transition-shadow">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -81,9 +84,19 @@ export const SubscriptionCard = ({
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">URLs Usage</span>
-              <span className="font-medium">{trackedUrlsCount} / {urls_limit || 1}</span>
+              <span className={`font-medium ${isOverLimit ? 'text-red-500' : ''}`}>
+                {trackedUrlsCount} / {urls_limit || 1}
+              </span>
             </div>
-            <Progress value={(trackedUrlsCount / (urls_limit || 1)) * 100} />
+            <Progress 
+              value={Math.min(progressPercentage, 100)} 
+              className={isOverLimit ? 'bg-red-100 dark:bg-red-950' : ''} 
+            />
+            {isOverLimit && (
+              <p className="text-xs text-red-500">
+                You've exceeded your plan limit. Only the first {urls_limit} URLs are being tracked.
+              </p>
+            )}
           </div>
           
           <div className="grid grid-cols-2 gap-2 pt-2">
