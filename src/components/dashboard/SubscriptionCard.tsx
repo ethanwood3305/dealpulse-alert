@@ -1,13 +1,27 @@
+
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface SubscriptionCardProps {
   plan: string | undefined;
   urls_limit: number | undefined;
   trackedUrlsCount: number;
+  onCancelSubscription: () => Promise<void>;
+  hasActiveSubscription: boolean;
 }
 
 const getPlanColor = (plan: string | undefined) => {
@@ -21,7 +35,13 @@ const getPlanColor = (plan: string | undefined) => {
   }
 };
 
-export const SubscriptionCard = ({ plan, urls_limit, trackedUrlsCount }: SubscriptionCardProps) => {
+export const SubscriptionCard = ({ 
+  plan, 
+  urls_limit, 
+  trackedUrlsCount,
+  onCancelSubscription,
+  hasActiveSubscription
+}: SubscriptionCardProps) => {
   return (
     <Card>
       <CardHeader>
@@ -49,9 +69,34 @@ export const SubscriptionCard = ({ plan, urls_limit, trackedUrlsCount }: Subscri
             <Link to="/pricing">
               <Button variant="outline" className="w-full">View Plans</Button>
             </Link>
-            <Link to="/dashboard">
-              <Button variant="outline" className="w-full">Manage</Button>
-            </Link>
+            
+            {hasActiveSubscription ? (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="w-full text-destructive border-destructive hover:bg-destructive/10">
+                    Cancel Plan
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to cancel your subscription? Your plan will remain active until the end of the current billing period.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                    <AlertDialogAction onClick={onCancelSubscription}>
+                      Yes, Cancel
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            ) : (
+              <Link to="/pricing">
+                <Button variant="outline" className="w-full">Upgrade</Button>
+              </Link>
+            )}
           </div>
         </div>
       </CardContent>

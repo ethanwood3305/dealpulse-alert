@@ -9,6 +9,7 @@ export interface TrackedUrl {
   last_price: number | null;
   last_checked: string | null;
   created_at: string;
+  tags: string[];
 }
 
 export const useTrackedUrls = (userId: string | undefined) => {
@@ -28,7 +29,13 @@ export const useTrackedUrls = (userId: string | undefined) => {
         throw error;
       }
       
-      setTrackedUrls(data || []);
+      // Initialize empty tags array if it doesn't exist
+      const urlsWithTags = data?.map(url => ({
+        ...url,
+        tags: url.tags || []
+      })) || [];
+      
+      setTrackedUrls(urlsWithTags);
     } catch (error) {
       console.error("Error fetching tracked URLs:", error);
       toast({
@@ -41,13 +48,16 @@ export const useTrackedUrls = (userId: string | undefined) => {
     }
   };
 
-  const addUrl = async (userId: string, url: string) => {
+  const addUrl = async (url: string) => {
     try {
+      if (!userId) return false;
+      
       const { data, error } = await supabase
         .from('tracked_urls')
         .insert({
           user_id: userId,
-          url: url
+          url: url,
+          tags: []
         })
         .select();
         
@@ -67,8 +77,10 @@ export const useTrackedUrls = (userId: string | undefined) => {
     }
   };
 
-  const deleteUrl = async (userId: string, id: string) => {
+  const deleteUrl = async (id: string) => {
     try {
+      if (!userId) return false;
+      
       const { error } = await supabase
         .from('tracked_urls')
         .delete()
@@ -95,6 +107,75 @@ export const useTrackedUrls = (userId: string | undefined) => {
     }
   };
 
+  const addTag = async (urlId: string, tag: string) => {
+    try {
+      if (!userId) return false;
+      
+      // Find the URL and its current tags
+      const urlToUpdate = trackedUrls.find(url => url.id === urlId);
+      if (!urlToUpdate) return false;
+      
+      // Add the new tag if it doesn't already exist
+      const updatedTags = [...(urlToUpdate.tags || [])];
+      if (!updatedTags.includes(tag)) {
+        updatedTags.push(tag);
+      }
+      
+      // Update the URL with the new tags
+      const { error } = await supabase
+        .from('tracked_urls')
+        .update({ tags: updatedTags })
+        .eq('id', urlId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      await fetchTrackedUrls(userId);
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add tag. Please try again later.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const removeTag = async (urlId: string, tagToRemove: string) => {
+    try {
+      if (!userId) return false;
+      
+      // Find the URL and its current tags
+      const urlToUpdate = trackedUrls.find(url => url.id === urlId);
+      if (!urlToUpdate) return false;
+      
+      // Filter out the tag to remove
+      const updatedTags = (urlToUpdate.tags || []).filter(tag => tag !== tagToRemove);
+      
+      // Update the URL with the new tags
+      const { error } = await supabase
+        .from('tracked_urls')
+        .update({ tags: updatedTags })
+        .eq('id', urlId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      await fetchTrackedUrls(userId);
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove tag. Please try again later.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (userId) {
       fetchTrackedUrls(userId);
@@ -104,8 +185,10 @@ export const useTrackedUrls = (userId: string | undefined) => {
   return {
     trackedUrls,
     isLoading,
-    addUrl: (url: string) => userId ? addUrl(userId, url) : Promise.resolve(false),
-    deleteUrl: (id: string) => userId ? deleteUrl(userId, id) : Promise.resolve(false),
+    addUrl,
+    deleteUrl,
+    addTag,
+    removeTag,
     refreshUrls: () => userId && fetchTrackedUrls(userId)
   };
 };

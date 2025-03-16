@@ -29,14 +29,17 @@ const Dashboard = () => {
     userSubscription, 
     canAddMoreUrls, 
     isLoading: isLoadingSubscription,
-    refreshSubscription 
+    refreshSubscription,
+    cancelSubscription
   } = useSubscription(user?.id);
   
   const { 
     trackedUrls, 
     isLoading: isLoadingUrls,
     addUrl,
-    deleteUrl
+    deleteUrl,
+    addTag,
+    removeTag
   } = useTrackedUrls(user?.id);
 
   const isLoading = isLoadingSubscription || isLoadingUrls;
@@ -125,6 +128,28 @@ const Dashboard = () => {
     }
   };
 
+  const handleAddTag = async (urlId: string, tag: string) => {
+    if (!user) return;
+    await addTag(urlId, tag);
+  };
+
+  const handleRemoveTag = async (urlId: string, tag: string) => {
+    if (!user) return;
+    await removeTag(urlId, tag);
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!user) return;
+    const success = await cancelSubscription();
+    if (success) {
+      toast({
+        title: "Subscription canceled",
+        description: "Your subscription has been canceled. Your plan will remain active until the end of the current billing period."
+      });
+      refreshSubscription();
+    }
+  };
+
   const scrollToAddUrlForm = () => {
     document.getElementById('add-url-form')?.scrollIntoView({
       behavior: 'smooth'
@@ -161,6 +186,8 @@ const Dashboard = () => {
               plan={userSubscription?.plan}
               urls_limit={userSubscription?.urls_limit}
               trackedUrlsCount={trackedUrls.length}
+              onCancelSubscription={handleCancelSubscription}
+              hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
             />
             
             <QuickActionsCard 
@@ -178,6 +205,8 @@ const Dashboard = () => {
           <TrackedUrlsTable 
             trackedUrls={trackedUrls}
             onDelete={handleDeleteUrl}
+            onAddTag={handleAddTag}
+            onRemoveTag={handleRemoveTag}
           />
         </div>
       </main>

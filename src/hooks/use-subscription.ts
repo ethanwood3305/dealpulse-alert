@@ -6,6 +6,7 @@ import { toast } from "@/components/ui/use-toast";
 export interface UserSubscription {
   plan: string;
   urls_limit: number;
+  stripe_subscription_id: string | null;
 }
 
 export const useSubscription = (userId: string | undefined) => {
@@ -29,7 +30,8 @@ export const useSubscription = (userId: string | undefined) => {
       } else if (subscriptionData && subscriptionData.length > 0) {
         setUserSubscription({
           plan: subscriptionData[0].plan,
-          urls_limit: subscriptionData[0].urls_limit
+          urls_limit: subscriptionData[0].urls_limit,
+          stripe_subscription_id: subscriptionData[0].stripe_subscription_id
         });
       }
 
@@ -49,6 +51,39 @@ export const useSubscription = (userId: string | undefined) => {
     }
   };
 
+  const cancelSubscription = async () => {
+    if (!userId || !userSubscription?.stripe_subscription_id) {
+      toast({
+        title: "Error",
+        description: "You don't have an active subscription to cancel.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    try {
+      const { error } = await supabase.functions.invoke('cancel-subscription', {
+        body: { 
+          subscription_id: userSubscription.stripe_subscription_id 
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Error canceling subscription:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel subscription. Please try again later.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
   useEffect(() => {
     if (userId) {
       fetchSubscriptionData(userId);
@@ -59,6 +94,7 @@ export const useSubscription = (userId: string | undefined) => {
     isLoading,
     userSubscription,
     canAddMoreUrls,
+    cancelSubscription,
     refreshSubscription: () => userId && fetchSubscriptionData(userId)
   };
 };
