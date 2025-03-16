@@ -7,12 +7,14 @@ import { Loader2 } from "lucide-react";
 
 interface SubscriptionCheckoutProps {
   plan: string;
+  urlCount?: number;
   buttonVariant?: "default" | "outline";
   className?: string;
 }
 
 const SubscriptionCheckout = ({ 
   plan, 
+  urlCount,
   buttonVariant = "default", 
   className = "" 
 }: SubscriptionCheckoutProps) => {
@@ -34,7 +36,7 @@ const SubscriptionCheckout = ({
       }
       
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { plan },
+        body: { plan, urlCount },
       });
       
       if (error) {

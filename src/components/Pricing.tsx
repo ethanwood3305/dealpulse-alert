@@ -1,19 +1,9 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Check, HelpCircle } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Accordion,
   AccordionContent,
@@ -23,165 +13,14 @@ import {
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
-import SubscriptionCheckout from "./SubscriptionCheckout";
-
-interface PlanProps {
-  name: string;
-  planId: string;
-  monthlyPrice: string;
-  yearlyPrice: string;
-  description: string;
-  features: string[];
-  featureExplanations?: { [key: string]: string };
-  popular?: boolean;
-  delay: string;
-  billingCycle: 'monthly' | 'yearly';
-  urls: string;
-  frequency: string;
-}
-
-const PricingPlan = ({ 
-  name, 
-  planId,
-  monthlyPrice, 
-  yearlyPrice, 
-  description, 
-  features, 
-  featureExplanations,
-  popular, 
-  delay,
-  billingCycle,
-  urls,
-  frequency
-}: PlanProps) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const price = billingCycle === 'monthly' ? monthlyPrice : yearlyPrice;
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
-    };
-
-    checkUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  const handlePlanSelection = () => {
-    if (!user) {
-      navigate('/signup');
-    }
-  };
-
-  return (
-    <div 
-      ref={ref}
-      className={`relative glass rounded-xl overflow-hidden transition-all duration-700 ${delay} ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-      } ${popular ? 'ring-2 ring-primary shadow-lg' : ''}`}
-    >
-      {popular && (
-        <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-bl-lg">
-          Most Popular
-        </div>
-      )}
-      <div className="p-6">
-        <h3 className="text-xl font-bold mb-2">{name}</h3>
-        <p className="text-muted-foreground mb-4">{description}</p>
-        <div className="mb-6">
-          <span className="text-3xl font-bold">{price}</span>
-          {price !== 'Free' && (
-            <span className="text-muted-foreground">/{billingCycle === 'monthly' ? 'month' : 'year'}</span>
-          )}
-          {billingCycle === 'yearly' && price !== 'Free' && (
-            <Badge variant="outline" className="ml-2 bg-green-50 text-green-600 border-green-200">
-              Save 10%
-            </Badge>
-          )}
-        </div>
-        <div className="mb-6 space-y-2">
-          <div className="flex items-center">
-            <span className="font-medium mr-1">URLs:</span> {urls}
-          </div>
-          <div className="flex items-center">
-            <span className="font-medium mr-1">Check Frequency:</span> {frequency}
-          </div>
-        </div>
-        
-        {planId === 'free' ? (
-          <Link to="/signup">
-            <Button 
-              variant={popular ? "default" : "outline"} 
-              className="w-full rounded-full mb-6"
-            >
-              Start Free Trial
-            </Button>
-          </Link>
-        ) : (
-          <SubscriptionCheckout 
-            plan={planId} 
-            buttonVariant={popular ? "default" : "outline"}
-            className="w-full rounded-full mb-6"
-          />
-        )}
-        
-        <div className="space-y-3">
-          {features.map((feature, index) => (
-            <div key={index} className="flex items-start group relative">
-              <Check className="h-5 w-5 text-primary shrink-0 mr-2" />
-              <span className="text-sm">{feature}</span>
-              {featureExplanations && featureExplanations[feature] && (
-                <div className="ml-1 inline-flex">
-                  <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                  <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-popover rounded-md shadow-md text-xs hidden group-hover:block z-10">
-                    {featureExplanations[feature]}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
+import CustomPricingCard from "./CustomPricingCard";
+import EnterpriseContact from "./EnterpriseContact";
 
 const Pricing = () => {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [activeTab, setActiveTab] = useState<'cards' | 'table'>('cards');
+  const [activeTab, setActiveTab] = useState<'pricing' | 'enterprise'>('pricing');
   const location = useLocation();
 
   useEffect(() => {
@@ -220,123 +59,23 @@ const Pricing = () => {
     }
   }, [location.search]);
 
-  const featureExplanations = {
-    "Email alerts": "Receive notifications about price changes directly to your email inbox.",
-    "Basic reporting": "Access simple reports showing price changes over time.",
-    "Price history": "View historical pricing data to identify trends and patterns.",
-    "API access": "Integrate our price data directly into your own systems.",
-    "Competitor tagging": "Organize and categorize your competitors for better analysis."
-  };
-
-  const plans = [
-    {
-      name: "Free",
-      planId: "free",
-      monthlyPrice: "Free",
-      yearlyPrice: "Free",
-      description: "Perfect for individuals just getting started.",
-      urls: "1 URL",
-      frequency: "Daily checks",
-      features: [
-        "Email alerts",
-        "Basic reporting",
-        "7-day price history"
-      ],
-      featureExplanations,
-      delay: "delay-100"
-    },
-    {
-      name: "Basic",
-      planId: "basic",
-      monthlyPrice: "$5",
-      yearlyPrice: "$4.50",
-      description: "Great for small businesses monitoring a few competitors.",
-      urls: "5 URLs",
-      frequency: "Daily checks",
-      features: [
-        "Email alerts",
-        "Basic reporting",
-        "30-day price history",
-        "Competitor tagging"
-      ],
-      featureExplanations,
-      popular: true,
-      delay: "delay-200"
-    },
-    {
-      name: "Pro",
-      planId: "pro",
-      monthlyPrice: "$15",
-      yearlyPrice: "$13.50",
-      description: "Ideal for businesses that need more capabilities.",
-      urls: "10 URLs",
-      frequency: "Hourly checks",
-      features: [
-        "Email and SMS alerts",
-        "Advanced reporting & analytics",
-        "90-day price history",
-        "Competitor tagging",
-        "API access"
-      ],
-      featureExplanations,
-      delay: "delay-300"
-    }
-  ];
-
-  // All possible features for comparison table
-  const allFeatures = [
-    "URLs monitored",
-    "Check frequency",
-    "Alert methods",
-    "Reporting capabilities",
-    "Price history",
-    "Competitor tagging",
-    "API access"
-  ];
-
-  const planDetails = {
-    "Free": {
-      "URLs monitored": "1 URL",
-      "Check frequency": "Daily",
-      "Alert methods": "Email only",
-      "Reporting capabilities": "Basic",
-      "Price history": "7 days",
-      "Competitor tagging": <Check className="mx-auto text-primary" />,
-      "API access": "—"
-    },
-    "Basic": {
-      "URLs monitored": "5 URLs",
-      "Check frequency": "Daily",
-      "Alert methods": "Email only",
-      "Reporting capabilities": "Basic",
-      "Price history": "30 days",
-      "Competitor tagging": <Check className="mx-auto text-primary" />,
-      "API access": "—"
-    },
-    "Pro": {
-      "URLs monitored": "10 URLs",
-      "Check frequency": "Hourly",
-      "Alert methods": "Email and SMS",
-      "Reporting capabilities": "Advanced",
-      "Price history": "90 days",
-      "Competitor tagging": <Check className="mx-auto text-primary" />,
-      "API access": <Check className="mx-auto text-primary" />
-    }
-  };
-
   // FAQs
   const faqs = [
+    {
+      question: "How does the pricing work?",
+      answer: "Our pricing is based on the number of URLs you want to monitor. The more URLs you track, the lower the per-URL cost becomes. You can use our slider to select exactly how many URLs you need, and see the price adjust in real-time."
+    },
     {
       question: "How does the 14-day free trial work?",
       answer: "When you sign up for any paid plan, you'll get full access to all features of that plan for 14 days without being charged. If you decide to continue using DealPulse Alert, we'll start billing you according to your chosen plan at the end of the trial period. You can cancel anytime during the trial with no obligation."
     },
     {
-      question: "Can I change plans later?",
-      answer: "Yes! You can upgrade, downgrade, or cancel your plan at any time. When upgrading, the new features will be immediately available. When downgrading, the changes will take effect at the start of your next billing cycle."
+      question: "Can I change my plan later?",
+      answer: "Yes! You can upgrade, downgrade, or adjust the number of URLs you're tracking at any time. When upgrading or adding more URLs, the new features will be immediately available. When downgrading, the changes will take effect at the start of your next billing cycle."
     },
     {
       question: "What happens when I reach my URL monitoring limit?",
-      answer: "When you reach your URL monitoring limit, you'll need to either remove some URLs from your monitoring list or upgrade to a higher tier plan to add more. We'll notify you when you're approaching your limit so you can make an informed decision."
+      answer: "When you reach your URL monitoring limit, you'll need to either remove some URLs from your monitoring list or upgrade to add more URLs. We'll notify you when you're approaching your limit so you can make an informed decision."
     },
     {
       question: "How accurate is the price monitoring?",
@@ -345,6 +84,10 @@ const Pricing = () => {
     {
       question: "Do you offer discounts for annual billing?",
       answer: "Yes, we offer a 10% discount when you choose annual billing compared to monthly billing. This discount is automatically applied when you select the annual billing option."
+    },
+    {
+      question: "What if I need to track more than 250 URLs?",
+      answer: "For customers needing to track more than 250 URLs, we offer custom enterprise plans. Please contact our sales team through the Enterprise tab, and we'll create a tailored solution for your business needs."
     }
   ];
 
@@ -365,7 +108,7 @@ const Pricing = () => {
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Choose the plan that best fits your business needs. All plans include a 14-day free trial.
+            Choose exactly how many URLs you want to monitor. All plans include a 14-day free trial.
           </p>
           
           {/* Billing toggle */}
@@ -389,97 +132,34 @@ const Pricing = () => {
           <div className="flex justify-center mb-8">
             <div className="inline-flex p-1 bg-muted rounded-lg">
               <Toggle
-                pressed={activeTab === 'cards'}
-                onPressedChange={() => setActiveTab('cards')}
+                pressed={activeTab === 'pricing'}
+                onPressedChange={() => setActiveTab('pricing')}
                 className={cn(
                   "rounded-md px-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                 )}
               >
-                Plans
+                Pricing
               </Toggle>
               <Toggle
-                pressed={activeTab === 'table'}
-                onPressedChange={() => setActiveTab('table')}
+                pressed={activeTab === 'enterprise'}
+                onPressedChange={() => setActiveTab('enterprise')}
                 className={cn(
                   "rounded-md px-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
                 )}
               >
-                Compare
+                Enterprise
               </Toggle>
             </div>
           </div>
         </div>
 
-        {activeTab === 'cards' ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-            {plans.map((plan) => (
-              <PricingPlan
-                key={plan.name}
-                name={plan.name}
-                planId={plan.planId}
-                monthlyPrice={plan.monthlyPrice}
-                yearlyPrice={plan.yearlyPrice}
-                description={plan.description}
-                features={plan.features}
-                featureExplanations={plan.featureExplanations}
-                popular={plan.popular}
-                delay={plan.delay}
-                billingCycle={billingCycle}
-                urls={plan.urls}
-                frequency={plan.frequency}
-              />
-            ))}
+        {activeTab === 'pricing' ? (
+          <div className="max-w-4xl mx-auto mb-16">
+            <CustomPricingCard billingCycle={billingCycle} />
           </div>
         ) : (
-          <div className="max-w-5xl mx-auto mb-16 overflow-x-auto">
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[180px]">Feature</TableHead>
-                      <TableHead className="text-center">Free</TableHead>
-                      <TableHead className="text-center">Basic</TableHead>
-                      <TableHead className="text-center">Pro</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {allFeatures.map((feature) => (
-                      <TableRow key={feature}>
-                        <TableCell className="font-medium">{feature}</TableCell>
-                        <TableCell className="text-center">
-                          {planDetails["Free"][feature]}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {planDetails["Basic"][feature]}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {planDetails["Pro"][feature]}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    <TableRow>
-                      <TableCell className="font-medium">Price</TableCell>
-                      <TableCell className="text-center">
-                        Free
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {billingCycle === 'monthly' ? '$5/month' : '$4.50/month'}
-                        {billingCycle === 'yearly' && (
-                          <div className="text-xs text-green-600 dark:text-green-400">Billed annually</div>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {billingCycle === 'monthly' ? '$15/month' : '$13.50/month'}
-                        {billingCycle === 'yearly' && (
-                          <div className="text-xs text-green-600 dark:text-green-400">Billed annually</div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+          <div className="max-w-3xl mx-auto mb-16">
+            <EnterpriseContact />
           </div>
         )}
 

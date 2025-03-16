@@ -20,18 +20,6 @@ const stripe = new Stripe(stripeSecretKey, {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Helper function to get URLs limit based on plan
-const getUrlsLimit = (plan: string): number => {
-  switch (plan) {
-    case "basic":
-      return 5;
-    case "pro":
-      return 10;
-    default:
-      return 1; // Free plan
-  }
-};
-
 serve(async (req) => {
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
@@ -69,20 +57,20 @@ serve(async (req) => {
         const session = event.data.object;
         const userId = session.metadata.user_id;
         const plan = session.metadata.plan;
-        const urlsLimit = getUrlsLimit(plan);
+        const urlCount = parseInt(session.metadata.url_count) || 1;
         
         // Update the user's subscription in the database
         await supabase
           .from("subscriptions")
           .update({
             plan: plan,
-            urls_limit: urlsLimit,
+            urls_limit: urlCount,
             stripe_subscription_id: session.subscription,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId);
         
-        console.log(`User ${userId} subscribed to ${plan} plan`);
+        console.log(`User ${userId} subscribed to ${plan} plan with ${urlCount} URLs`);
         break;
       }
       
@@ -104,25 +92,19 @@ serve(async (req) => {
           break;
         }
         
-        // Get the current plan from Stripe's product metadata
-        const { data: productData } = await stripe.products.retrieve(
-          subscription.items.data[0].price.product as string
-        );
-        
-        const plan = productData.metadata.plan || "free";
-        const urlsLimit = getUrlsLimit(plan);
+        // Get quantity from subscription to determine URL count
+        const quantity = subscription.items.data[0].quantity || 1;
         
         // Update the user's subscription in the database
         await supabase
           .from("subscriptions")
           .update({
-            plan: plan,
-            urls_limit: urlsLimit,
+            urls_limit: quantity,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userData.user_id);
         
-        console.log(`User ${userData.user_id}'s subscription updated to ${plan} plan`);
+        console.log(`User ${userData.user_id}'s subscription updated to ${quantity} URLs`);
         break;
       }
       

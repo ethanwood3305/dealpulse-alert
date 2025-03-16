@@ -12,8 +12,7 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
-const stripePriceIdBasic = Deno.env.get("STRIPE_PRICE_ID_BASIC") || "";
-const stripePriceIdPro = Deno.env.get("STRIPE_PRICE_ID_PRO") || "";
+const stripePriceId = Deno.env.get("STRIPE_PRICE_ID_PER_URL") || ""; // Price per URL
 const clientUrl = Deno.env.get("CLIENT_URL") || "http://localhost:3000";
 
 const stripe = new Stripe(stripeSecretKey, {
@@ -21,17 +20,6 @@ const stripe = new Stripe(stripeSecretKey, {
 });
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-const getPriceIdFromPlan = (plan: string): string => {
-  switch (plan) {
-    case "basic":
-      return stripePriceIdBasic;
-    case "pro":
-      return stripePriceIdPro;
-    default:
-      throw new Error(`Invalid plan: ${plan}`);
-  }
-};
 
 serve(async (req) => {
   // Handle CORS preflight request
@@ -63,7 +51,7 @@ serve(async (req) => {
     }
 
     // Get the request body
-    const { plan } = await req.json();
+    const { plan, urlCount } = await req.json();
     
     if (!plan) {
       return new Response(
@@ -73,8 +61,9 @@ serve(async (req) => {
     }
 
     try {
-      const priceId = getPriceIdFromPlan(plan);
-
+      // Calculate the number of URL units to charge for
+      const numberOfUrls = urlCount || 1;
+      
       // Get the customer ID from the database or create a new one
       const { data: subscriptionData } = await supabase
         .from("subscriptions")
@@ -106,8 +95,8 @@ serve(async (req) => {
         customer: customerId,
         line_items: [
           {
-            price: priceId,
-            quantity: 1,
+            price: stripePriceId,
+            quantity: numberOfUrls > 1 ? numberOfUrls : 1, // If free plan (1 URL), still charge for 1 but will be $0
           },
         ],
         mode: "subscription",
@@ -116,6 +105,7 @@ serve(async (req) => {
         metadata: {
           user_id: user.id,
           plan: plan,
+          url_count: numberOfUrls.toString(),
         },
       });
 
