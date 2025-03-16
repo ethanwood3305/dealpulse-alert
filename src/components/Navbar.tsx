@@ -1,14 +1,17 @@
 
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
+import { supabase } from "@/integrations/supabase/client";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const { theme, setTheme } = useTheme();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -23,8 +26,35 @@ const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+
+    checkUser();
+
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, []);
+
   const toggleTheme = () => {
     setTheme(theme === 'light' ? 'dark' : 'light');
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
   };
 
   return (
@@ -56,6 +86,11 @@ const Navbar = () => {
             <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">
               Contact
             </Link>
+            {user && (
+              <Link to="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                Dashboard
+              </Link>
+            )}
           </nav>
 
           <div className="hidden md:flex items-center gap-4">
@@ -72,16 +107,25 @@ const Navbar = () => {
                 <Sun className="h-5 w-5" />
               )}
             </Button>
-            <Link to="/login">
-              <Button variant="ghost" className="rounded-full">
-                Log in
+            
+            {user ? (
+              <Button variant="ghost" className="rounded-full" onClick={handleSignOut}>
+                Sign Out
               </Button>
-            </Link>
-            <Link to="/signup">
-              <Button className="rounded-full">
-                Try for free
-              </Button>
-            </Link>
+            ) : (
+              <>
+                <Link to="/login">
+                  <Button variant="ghost" className="rounded-full">
+                    Log in
+                  </Button>
+                </Link>
+                <Link to="/signup">
+                  <Button className="rounded-full">
+                    Try for free
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -153,18 +197,41 @@ const Navbar = () => {
             >
               Contact
             </Link>
+            {user && (
+              <Link
+                to="/dashboard"
+                className="block text-lg font-medium hover:text-primary"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+            )}
             <div className="pt-4 border-t border-border">
               <div className="flex flex-col gap-2">
-                <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-center rounded-full">
-                    Log in
+                {user ? (
+                  <Button 
+                    className="w-full justify-center rounded-full" 
+                    onClick={() => {
+                      handleSignOut();
+                      setIsMobileMenuOpen(false);
+                    }}
+                  >
+                    Sign Out
                   </Button>
-                </Link>
-                <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                  <Button className="w-full justify-center rounded-full">
-                    Try for free
-                  </Button>
-                </Link>
+                ) : (
+                  <>
+                    <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="ghost" className="w-full justify-center rounded-full">
+                        Log in
+                      </Button>
+                    </Link>
+                    <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button className="w-full justify-center rounded-full">
+                        Try for free
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>

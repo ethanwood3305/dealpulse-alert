@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { Settings, Bell, LineChart, Zap, Clock, Shield, Smartphone, Mail, ChartBar, Target } from 'lucide-react';
+import { Bell, LineChart, Settings, Zap, Clock, Shield, ChartBar, BarChart3, Megaphone, Tag, Target, Search } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -50,7 +50,7 @@ const FeatureCard = ({ icon: Icon, title, description, details, delay }: Feature
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <CardContent className="p-6">
-          <div className="rounded-full bg-primary bg-opacity-10 p-3 inline-block mb-4 transition-all duration-300 hover:bg-primary hover:text-white">
+          <div className="rounded-full bg-primary/10 p-3 inline-block mb-4 transition-all duration-300 hover:bg-primary hover:text-white">
             <Icon className="h-6 w-6 text-primary" />
           </div>
           <h3 className="text-lg font-medium mb-2">{title}</h3>
@@ -96,17 +96,17 @@ const Features = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Enhanced features with more engaging icons and descriptions
+  // Enhanced features with proper icons
   const features = [
     {
-      icon: Bell,
+      icon: Tag,
       title: "Real-Time Price Alerts",
       description: "Get instant notifications when competitors change their prices",
       details: "Our advanced monitoring system checks competitor prices as frequently as every hour, sending you immediate notifications via email or SMS whenever a price change is detected. You'll never miss a competitor's price adjustment again.",
       delay: "delay-100"
     },
     {
-      icon: LineChart,
+      icon: BarChart3,
       title: "Competitor Analysis",
       description: "Track pricing trends and analyze competitor strategies",
       details: "Visualize pricing trends over time with intuitive charts and data representations. Identify patterns in competitor pricing strategies, seasonal adjustments, and market positioning to make informed decisions about your own pricing.",

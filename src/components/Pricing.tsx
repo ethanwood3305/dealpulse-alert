@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Check, HelpCircle } from 'lucide-react';
 import { Switch } from "@/components/ui/switch";
@@ -21,10 +21,14 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Toggle } from "@/components/ui/toggle";
+import { toast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import SubscriptionCheckout from "./SubscriptionCheckout";
 
 interface PlanProps {
   name: string;
+  planId: string;
   monthlyPrice: string;
   yearlyPrice: string;
   description: string;
@@ -39,6 +43,7 @@ interface PlanProps {
 
 const PricingPlan = ({ 
   name, 
+  planId,
   monthlyPrice, 
   yearlyPrice, 
   description, 
@@ -51,8 +56,10 @@ const PricingPlan = ({
   frequency
 }: PlanProps) => {
   const [isVisible, setIsVisible] = useState(false);
+  const [user, setUser] = useState<any>(null);
   const ref = useRef<HTMLDivElement>(null);
   const price = billingCycle === 'monthly' ? monthlyPrice : yearlyPrice;
+  const navigate = useNavigate();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -71,6 +78,31 @@ const PricingPlan = ({
 
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
+
+    checkUser();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, []);
+
+  const handlePlanSelection = () => {
+    if (!user) {
+      navigate('/signup');
+    }
+  };
 
   return (
     <div 
@@ -106,14 +138,24 @@ const PricingPlan = ({
             <span className="font-medium mr-1">Check Frequency:</span> {frequency}
           </div>
         </div>
-        <Link to="/signup">
-          <Button 
-            variant={popular ? "default" : "outline"} 
+        
+        {planId === 'free' ? (
+          <Link to="/signup">
+            <Button 
+              variant={popular ? "default" : "outline"} 
+              className="w-full rounded-full mb-6"
+            >
+              Start Free Trial
+            </Button>
+          </Link>
+        ) : (
+          <SubscriptionCheckout 
+            plan={planId} 
+            buttonVariant={popular ? "default" : "outline"}
             className="w-full rounded-full mb-6"
-          >
-            Start Free Trial
-          </Button>
-        </Link>
+          />
+        )}
+        
         <div className="space-y-3">
           {features.map((feature, index) => (
             <div key={index} className="flex items-start group relative">
@@ -140,6 +182,43 @@ const Pricing = () => {
   const ref = useRef<HTMLDivElement>(null);
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [activeTab, setActiveTab] = useState<'cards' | 'table'>('cards');
+  const location = useLocation();
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    // Check for checkout status in the URL
+    const searchParams = new URLSearchParams(location.search);
+    const checkoutStatus = searchParams.get('checkout');
+    
+    if (checkoutStatus === 'success') {
+      toast({
+        title: "Subscription successful!",
+        description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active.",
+      });
+    } else if (checkoutStatus === 'cancelled') {
+      toast({
+        title: "Subscription cancelled",
+        description: "You have cancelled the checkout process. No changes were made to your subscription.",
+      });
+    }
+  }, [location.search]);
 
   const featureExplanations = {
     "Email alerts": "Receive notifications about price changes directly to your email inbox.",
@@ -152,6 +231,7 @@ const Pricing = () => {
   const plans = [
     {
       name: "Free",
+      planId: "free",
       monthlyPrice: "Free",
       yearlyPrice: "Free",
       description: "Perfect for individuals just getting started.",
@@ -167,6 +247,7 @@ const Pricing = () => {
     },
     {
       name: "Basic",
+      planId: "basic",
       monthlyPrice: "$5",
       yearlyPrice: "$4.50",
       description: "Great for small businesses monitoring a few competitors.",
@@ -184,6 +265,7 @@ const Pricing = () => {
     },
     {
       name: "Pro",
+      planId: "pro",
       monthlyPrice: "$15",
       yearlyPrice: "$13.50",
       description: "Ideal for businesses that need more capabilities.",
@@ -266,24 +348,6 @@ const Pricing = () => {
     }
   ];
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <div className="py-20 relative" id="pricing">
       {/* Background decoration */}
@@ -352,6 +416,7 @@ const Pricing = () => {
               <PricingPlan
                 key={plan.name}
                 name={plan.name}
+                planId={plan.planId}
                 monthlyPrice={plan.monthlyPrice}
                 yearlyPrice={plan.yearlyPrice}
                 description={plan.description}
