@@ -1,6 +1,8 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 interface SubscriptionCardProps {
   plan: string | undefined;
@@ -23,24 +25,33 @@ export const SubscriptionCard = ({ plan, urls_limit, trackedUrlsCount }: Subscri
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Current Plan</CardTitle>
-        <CardDescription>Your subscription details</CardDescription>
+        <CardTitle>Subscription</CardTitle>
+        <CardDescription>Your current plan and usage</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex flex-col space-y-4">
+        <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <span className="font-medium">Plan:</span>
-            <Badge className={`capitalize ${getPlanColor(plan || 'free')}`}>
+            <span className="text-muted-foreground">Current Plan</span>
+            <Badge variant={plan === 'pro' ? 'default' : 'outline'} className="capitalize">
               {plan || 'Free'}
             </Badge>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="font-medium">URL Monitoring Limit:</span>
-            <span>{urls_limit || 1}</span>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">URLs Usage</span>
+              <span className="font-medium">{trackedUrlsCount} / {urls_limit}</span>
+            </div>
+            <Progress value={(trackedUrlsCount / (urls_limit || 1)) * 100} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="font-medium">URLs Used:</span>
-            <span>{trackedUrlsCount} / {urls_limit || 1}</span>
+          
+          <div className="grid grid-cols-2 gap-2 pt-2">
+            <Link to="/pricing">
+              <Button variant="outline" className="w-full">View Plans</Button>
+            </Link>
+            <Link to="/dashboard">
+              <Button variant="outline" className="w-full">Manage</Button>
+            </Link>
           </div>
         </div>
       </CardContent>

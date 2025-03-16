@@ -10,7 +10,7 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <Link to="/" className="inline-block mb-4">
-              <span className="text-xl font-semibold">PriceWatch</span>
+              <span className="text-xl font-semibold">DealPulse</span>
             </Link>
             <p className="text-muted-foreground mb-4 text-sm">
               The leading price monitoring solution for auto dealerships. Stay competitive, increase sales, and maximize profits.
@@ -93,7 +93,7 @@ const Footer = () => {
         
         <div className="border-t border-border mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-muted-foreground text-sm mb-4 md:mb-0">
-            &copy; {currentYear} PriceWatch. All rights reserved.
+            &copy; {currentYear} DealPulse. All rights reserved.
           </p>
           
           <div className="flex space-x-6">

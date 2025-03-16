@@ -95,7 +95,7 @@ const About = () => {
                 isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
               }`}
             >
-              <h1 className="text-4xl md:text-5xl font-bold mb-6">About PriceWatch</h1>
+              <h1 className="text-4xl md:text-5xl font-bold mb-6">About DealPulse</h1>
               <p className="text-lg text-muted-foreground mb-8">
                 We're on a mission to help auto dealerships stay competitive in a rapidly changing market.
               </p>
@@ -109,13 +109,13 @@ const About = () => {
             <div className="max-w-3xl mx-auto">
               <h2 className="text-3xl font-bold mb-6">Our Story</h2>
               <p className="text-muted-foreground mb-4">
-                PriceWatch was founded in 2020 by a team of automotive industry veterans and software engineers who saw a gap in the market. Car dealerships were struggling to keep track of competitors' prices manually, often missing opportunities to adjust their pricing strategy in real-time.
+                DealPulse was founded in 2020 by a team of automotive industry veterans and software engineers who saw a gap in the market. Car dealerships were struggling to keep track of competitors' prices manually, often missing opportunities to adjust their pricing strategy in real-time.
               </p>
               <p className="text-muted-foreground mb-4">
-                We built PriceWatch to solve this problem, providing an automated solution that monitors competitor prices around the clock and alerts dealerships when changes occur. This enables our clients to respond quickly and stay competitive in their local markets.
+                We built DealPulse to solve this problem, providing an automated solution that monitors competitor prices around the clock and alerts dealerships when changes occur. This enables our clients to respond quickly and stay competitive in their local markets.
               </p>
               <p className="text-muted-foreground">
-                Today, PriceWatch is trusted by hundreds of dealerships across the country, from small independent lots to large multi-location groups. Our platform processes millions of price points daily, providing valuable insights that help our clients maximize their sales and profits.
+                Today, DealPulse is trusted by hundreds of dealerships across the country, from small independent lots to large multi-location groups. Our platform processes millions of price points daily, providing valuable insights that help our clients maximize their sales and profits.
               </p>
             </div>
           </div>
@@ -127,7 +127,7 @@ const About = () => {
             <div className="max-w-3xl mx-auto text-center mb-12">
               <h2 className="text-3xl font-bold mb-6">Our Values</h2>
               <p className="text-muted-foreground">
-                These core principles guide everything we do at PriceWatch.
+                These core principles guide everything we do at DealPulse.
               </p>
             </div>
             
@@ -162,7 +162,7 @@ const About = () => {
             <div className="max-w-3xl mx-auto text-center mb-12">
               <h2 className="text-3xl font-bold mb-6">Our Team</h2>
               <p className="text-muted-foreground">
-                Meet the people behind PriceWatch who are dedicated to helping auto dealerships thrive.
+                Meet the people behind DealPulse who are dedicated to helping auto dealerships thrive.
               </p>
             </div>
             

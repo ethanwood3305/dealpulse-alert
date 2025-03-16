@@ -100,7 +100,7 @@ const Login = () => {
             <div className="text-center mb-8">
               <h1 className="text-2xl font-bold mb-2">Welcome back</h1>
               <p className="text-muted-foreground">
-                Log in to access your PriceWatch dashboard
+                Log in to access your DealPulse dashboard
               </p>
             </div>
             

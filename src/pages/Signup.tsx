@@ -196,7 +196,7 @@ const Signup = () => {
             
             <div className="hidden md:flex flex-col justify-center">
               <div className="glass rounded-xl p-8">
-                <h2 className="text-xl font-bold mb-6">Why choose PriceWatch?</h2>
+                <h2 className="text-xl font-bold mb-6">Why choose DealPulse?</h2>
                 
                 <div className="space-y-4">
                   <div className="flex items-start">
@@ -242,7 +242,7 @@ const Signup = () => {
                 
                 <div className="mt-8 p-4 bg-secondary/50 rounded-lg">
                   <blockquote className="italic text-muted-foreground">
-                    "PriceWatch has revolutionized how we set prices. We've increased our margins while staying competitive."
+                    "DealPulse has revolutionized how we set prices. We've increased our margins while staying competitive."
                   </blockquote>
                   <div className="mt-3 flex items-center">
                     <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center mr-2">
