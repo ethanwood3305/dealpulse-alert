@@ -14,6 +14,8 @@ const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 
+console.log("Stripe webhook function initialized with URL:", supabaseUrl);
+
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2023-10-16",
 });
@@ -21,8 +23,11 @@ const stripe = new Stripe(stripeSecretKey, {
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 serve(async (req) => {
+  console.log("Received webhook request:", req.method);
+  
   // Handle CORS preflight request
   if (req.method === "OPTIONS") {
+    console.log("Handling OPTIONS request");
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
@@ -39,11 +44,14 @@ serve(async (req) => {
 
     // Get the raw body
     const body = await req.text();
+    console.log("Received webhook body length:", body.length);
     
     // Verify the webhook signature
     let event;
     try {
+      console.log("Verifying webhook signature with secret length:", stripeWebhookSecret?.length || 0);
       event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
+      console.log("Signature verified successfully");
     } catch (err) {
       console.error(`Webhook signature verification failed: ${err.message}`);
       return new Response(
@@ -52,7 +60,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Processing webhook event: ${event.type}`);
+    console.log(`Processing webhook event: ${event.type}`, JSON.stringify(event.data.object).substring(0, 200) + "...");
 
     // Handle the event
     switch (event.type) {
@@ -63,7 +71,7 @@ serve(async (req) => {
         const urlCount = parseInt(session.metadata?.url_count) || 1;
         const hasApiAccess = session.metadata?.api_access === "yes";
         
-        console.log(`Checkout completed for user ${userId}: Plan=${plan}, URLs=${urlCount}, API=${hasApiAccess}`);
+        console.log(`Checkout completed for user ${userId}: Plan=${plan}, URLs=${urlCount}, API=${hasApiAccess}, Subscription=${session.subscription}`);
         
         if (!userId) {
           console.error("No user ID found in session metadata");
@@ -91,6 +99,7 @@ serve(async (req) => {
         // Force reload metadata from subscription
         if (session.subscription) {
           try {
+            console.log(`Retrieving subscription details for ${session.subscription}`);
             const subscription = await stripe.subscriptions.retrieve(session.subscription);
             
             // Update the URLs limit and API access based on the metadata from the subscription
@@ -132,6 +141,8 @@ serve(async (req) => {
           break;
         }
         
+        console.log(`Subscription updated for customer: ${customerId}`);
+        
         // Look up the user by customer ID
         const { data: userData, error: userError } = await supabase
           .from("subscriptions")
@@ -143,6 +154,8 @@ serve(async (req) => {
           console.error(`User not found for customer ${customerId}`, userError);
           break;
         }
+        
+        console.log(`Found user ${userData.user_id} for customer ${customerId}`);
         
         // Get subscription metadata directly
         const urlCount = parseInt(subscription.metadata?.url_count) || 1;
@@ -179,6 +192,8 @@ serve(async (req) => {
           break;
         }
         
+        console.log(`Subscription deleted for customer: ${customerId}`);
+        
         // Look up the user by customer ID
         const { data: userData, error: userError } = await supabase
           .from("subscriptions")
@@ -190,6 +205,8 @@ serve(async (req) => {
           console.error(`User not found for customer ${customerId}`, userError);
           break;
         }
+        
+        console.log(`Found user ${userData.user_id} for customer ${customerId}, downgrading to free plan`);
         
         // Downgrade to free plan
         const { data, error } = await supabase

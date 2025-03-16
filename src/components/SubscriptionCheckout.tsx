@@ -67,12 +67,15 @@ const SubscriptionCheckout = ({
       });
       
       if (error) {
+        console.error("Checkout function error:", error);
         throw error;
       }
       
       if (data?.url) {
+        console.log("Redirecting to checkout URL:", data.url);
         window.location.href = data.url;
       } else {
+        console.error("No checkout URL returned:", data);
         throw new Error("No checkout URL returned");
       }
     } catch (error: any) {

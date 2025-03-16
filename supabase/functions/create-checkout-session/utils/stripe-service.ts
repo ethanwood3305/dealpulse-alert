@@ -64,17 +64,23 @@ export const createCustomer = async (
   email: string,
   userId: string
 ): Promise<Stripe.Customer> => {
-  return await stripe.customers.create({
+  console.log(`Creating Stripe customer for email: ${email} and user: ${userId}`);
+  const customer = await stripe.customers.create({
     email: email,
     metadata: {
       user_id: userId,
     },
   });
+  console.log(`Customer created: ${customer.id}`);
+  return customer;
 };
 
 // Create Stripe checkout session
 export const createCheckoutSession = async (
   params: Stripe.Checkout.SessionCreateParams
 ): Promise<Stripe.Checkout.Session> => {
-  return await stripe.checkout.sessions.create(params);
+  console.log(`Creating checkout session with params: ${JSON.stringify(params).substring(0, 100)}...`);
+  const session = await stripe.checkout.sessions.create(params);
+  console.log(`Checkout session created: ${session.id}`);
+  return session;
 };

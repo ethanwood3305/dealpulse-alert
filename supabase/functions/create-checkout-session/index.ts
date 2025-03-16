@@ -21,6 +21,8 @@ import {
 } from "./utils/http-utils.ts";
 
 serve(async (req) => {
+  console.log("Received checkout request:", req.method);
+  
   if (req.method === "OPTIONS") {
     return createOptionsResponse();
   }
@@ -48,6 +50,7 @@ serve(async (req) => {
     }
     
     console.log("Processing checkout for user:", userId);
+    console.log("Plan details:", { plan, urlCount, includeApiAccess, billingCycle });
     
     // Calculate the actual price for this subscription
     const calculatedPrice = calculatePrice(urlCount, includeApiAccess, billingCycle);
@@ -55,6 +58,7 @@ serve(async (req) => {
     
     // Get client URL
     const client_url = getClientUrl();
+    console.log("Client URL:", client_url);
     
     // Check for existing customer ID
     const { data: subscriptionData, error: subscriptionError } = await getUserSubscription(userId);
@@ -64,8 +68,11 @@ serve(async (req) => {
       throw new Error(`Error fetching subscription: ${subscriptionError.message}`);
     }
     
+    console.log("Existing subscription data:", subscriptionData);
+    
     // Create a new product for this specific subscription
     const product = await createSubscriptionProduct(plan, urlCount, includeApiAccess);
+    console.log("Created product:", product.id);
     
     // Create a custom price for this product
     const price = await createSubscriptionPrice(
@@ -76,6 +83,7 @@ serve(async (req) => {
       urlCount, 
       includeApiAccess
     );
+    console.log("Created price:", price.id);
     
     const params = {
       customer: subscriptionData?.stripe_customer_id,
@@ -110,6 +118,8 @@ serve(async (req) => {
       },
     };
     
+    console.log("Checkout session params:", JSON.stringify(params).substring(0, 200) + "...");
+    
     // Create new Stripe customer if needed
     if (!subscriptionData?.stripe_customer_id) {
       // Get user email from auth.users
@@ -120,11 +130,15 @@ serve(async (req) => {
         throw new Error(`Error fetching user: ${userError?.message || 'User not found'}`);
       }
       
+      console.log("Creating Stripe customer for email:", userData.user.email);
+      
       // Create Stripe customer
       const customer = await createCustomer(userData.user.email, userId);
+      console.log("Created Stripe customer:", customer.id);
       
       // Update subscription with Stripe customer ID
       await updateSubscriptionWithCustomerId(userId, customer.id);
+      console.log("Updated subscription with customer ID");
       
       params.customer = customer.id;
     }
@@ -139,9 +153,12 @@ serve(async (req) => {
     
     // Create checkout session
     const session = await createCheckoutSession(params);
+    console.log("Created checkout session:", session.id);
+    console.log("Checkout URL:", session.url);
     
     return createSuccessResponse({ url: session.url });
   } catch (error) {
+    console.error("Checkout error:", error);
     return createErrorResponse(error);
   }
 });
