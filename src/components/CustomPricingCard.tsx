@@ -44,28 +44,38 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
     };
   }, []);
 
-  // Calculate price based on number of URLs
+  // Calculate price based on number of URLs with updated pricing structure
   const calculatePrice = (urls: number): number => {
     if (urls <= 1) return 0; // Free for 1 URL
     
     let basePrice;
     
-    // Progressive pricing tiers
+    // Progressive pricing tiers - revised to make lower URLs much cheaper
     if (urls <= 5) {
-      basePrice = 5 + (urls - 2) * 1.25; // $5 for 2 URLs, then +$1.25 per URL
-    } else if (urls <= 20) {
-      basePrice = 8.75 + (urls - 5) * 0.9; // After 5 URLs, slower increase per URL
+      basePrice = 3 + (urls - 2) * 0.75; // $3 for 2 URLs, then +$0.75 per URL
+    } else if (urls <= 25) {
+      basePrice = 6 + (urls - 5) * 0.5; // After 5 URLs, slower increase per URL
     } else if (urls <= 50) {
-      basePrice = 22.25 + (urls - 20) * 0.75; // After 20 URLs, even slower increase
+      basePrice = 16 + (urls - 25) * 0.45; // After 25 URLs, even slower increase
     } else if (urls <= 100) {
-      basePrice = 44.75 + (urls - 50) * 0.6; // After 50 URLs, further discount
+      basePrice = 27.25 + (urls - 50) * 0.4; // After 50 URLs, further discount
+    } else if (urls <= 175) {
+      basePrice = 47.25 + (urls - 100) * 0.35; // After 100 URLs, lower price
     } else {
-      basePrice = 74.75 + (urls - 100) * 0.5; // After 100 URLs, lowest per-URL price
+      basePrice = 73.5 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
     }
     
-    // Add API access cost if selected
-    if (includeApiAccess && urls > 1) {
+    // If over 125 URLs, API access is free
+    const needsApiAccessCharge = includeApiAccess && urls > 1 && urls <= 125;
+    
+    // Add API access cost if selected and not eligible for free API access
+    if (needsApiAccessCharge) {
       basePrice += 6; // $6/month for API access
+    }
+    
+    // Ensure the price doesn't exceed $100 for 250 URLs
+    if (urls === 250) {
+      basePrice = Math.min(basePrice, 100);
     }
     
     // Apply annual pricing - show full year price
@@ -79,25 +89,42 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
   // Calculate check frequency based on URL count
   const getCheckFrequency = (urls: number): string => {
     if (urls <= 5) return 'Daily checks';
-    if (urls <= 20) return '12-hour checks';
+    if (urls <= 25) return '12-hour checks';
     if (urls <= 50) return '6-hour checks';
     return 'Hourly checks';
   };
+
+  // Get price history based on URL count
+  const getPriceHistory = (urls: number): string => {
+    if (urls < 25) return '3-day price history';
+    return '14-day price history';
+  };
+
+  // Determine if API access is free based on URL count
+  const isApiAccessFree = urlCount > 125;
 
   // Determine plan ID based on URL count for backend
   const getPlanId = (urls: number): string => {
     if (urls <= 1) return 'free';
     if (urls <= 5) return 'starter';
-    if (urls <= 20) return 'basic';
+    if (urls <= 25) return 'basic';
     if (urls <= 50) return 'professional';
-    if (urls <= 100) return 'business';
+    if (urls <= 125) return 'business';
     return 'enterprise';
   };
 
   const price = calculatePrice(urlCount);
   const checkFrequency = getCheckFrequency(urlCount);
+  const priceHistory = getPriceHistory(urlCount);
   const planId = getPlanId(urlCount);
   const isFreePlan = urlCount <= 1;
+
+  // Set API access to true automatically if eligible for free access
+  useEffect(() => {
+    if (isApiAccessFree) {
+      setIncludeApiAccess(true);
+    }
+  }, [isApiAccessFree]);
 
   return (
     <Card className={`relative overflow-hidden transition-all duration-700 ${
@@ -132,7 +159,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
           </div>
         </div>
         
-        {!isFreePlan && (
+        {!isFreePlan && !isApiAccessFree && (
           <div className="mb-6">
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -147,6 +174,15 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
                 Add API access (+${billingCycle === 'monthly' ? '6' : '64.80'}/
                 {billingCycle === 'monthly' ? 'month' : 'year'})
               </label>
+            </div>
+          </div>
+        )}
+        
+        {isApiAccessFree && !isFreePlan && (
+          <div className="mb-6">
+            <div className="flex items-center space-x-2 text-green-600">
+              <Check className="h-4 w-4" />
+              <span className="text-sm font-medium">API access included free</span>
             </div>
           </div>
         )}
@@ -169,9 +205,10 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
             <div className="flex items-center">
               <span className="font-medium mr-1">Check Frequency:</span> {checkFrequency}
             </div>
-            {includeApiAccess && !isFreePlan && (
+            {(includeApiAccess || isApiAccessFree) && !isFreePlan && (
               <div className="flex items-center">
-                <span className="font-medium mr-1">API Access:</span> Included
+                <span className="font-medium mr-1">API Access:</span> 
+                {isApiAccessFree ? 'Included free' : 'Included'}
               </div>
             )}
           </div>
@@ -188,7 +225,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
             <SubscriptionCheckout 
               plan={planId}
               urlCount={urlCount}
-              includeApiAccess={includeApiAccess}
+              includeApiAccess={includeApiAccess || isApiAccessFree}
               buttonVariant="default"
               className="w-full rounded-full mb-6"
             />
@@ -206,9 +243,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
           </div>
           <div className="flex items-start">
             <Check className="h-5 w-5 text-primary shrink-0 mr-2" />
-            <span className="text-sm">
-              {urlCount <= 5 ? '7-day' : urlCount <= 20 ? '30-day' : urlCount <= 100 ? '90-day' : '1-year'} price history
-            </span>
+            <span className="text-sm">{priceHistory}</span>
           </div>
           {urlCount > 5 && (
             <div className="flex items-start">
@@ -216,7 +251,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
               <span className="text-sm">Competitor tagging</span>
             </div>
           )}
-          {(urlCount > 20 || includeApiAccess) && (
+          {(urlCount > 20 || includeApiAccess || isApiAccessFree) && (
             <div className="flex items-start">
               <Check className="h-5 w-5 text-primary shrink-0 mr-2" />
               <span className="text-sm">API access</span>

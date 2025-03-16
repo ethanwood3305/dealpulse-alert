@@ -105,7 +105,8 @@ serve(async (req) => {
         );
         
         const quantity = urlItem?.quantity || 1;
-        const hasApiAccess = !!apiAccessItem;
+        // API access is automatically included for > 125 URLs
+        const hasApiAccess = !!apiAccessItem || quantity > 125;
         
         // Update the user's subscription in the database
         await supabase

@@ -99,8 +99,11 @@ serve(async (req) => {
         },
       ];
 
-      // Add API access if requested and not on free plan
-      if (includeApiAccess && numberOfUrls > 1 && stripeApiAccessPriceId) {
+      // API access is free for users with more than 125 URLs
+      const needsApiAccessCharge = includeApiAccess && numberOfUrls > 1 && numberOfUrls <= 125;
+      
+      // Add API access if requested, not on free plan, and not eligible for free API access
+      if (needsApiAccessCharge && stripeApiAccessPriceId) {
         lineItems.push({
           price: stripeApiAccessPriceId,
           quantity: 1,
@@ -118,7 +121,7 @@ serve(async (req) => {
           user_id: user.id,
           plan: plan,
           url_count: numberOfUrls.toString(),
-          api_access: includeApiAccess ? "yes" : "no",
+          api_access: (includeApiAccess || numberOfUrls > 125) ? "yes" : "no",
         },
       });
 
