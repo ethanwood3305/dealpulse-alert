@@ -82,7 +82,6 @@ serve(async (req) => {
     try {
       body = await req.text();
       console.log("Received webhook payload of length:", body.length);
-      // Log a small portion of the body for debugging
       console.log("Body preview:", body.substring(0, 100) + "...");
     } catch (err) {
       console.error(`Error reading request body: ${err.message}`);
@@ -92,20 +91,19 @@ serve(async (req) => {
       });
     }
     
-    // Verify webhook signature
+    // Verify webhook signature using pure Deno approach
     let event;
     try {
-      console.log("Verifying Stripe signature synchronously...");
+      console.log("Verifying Stripe signature with Deno-compatible approach...");
       console.log("Signature:", signature.substring(0, 20) + "...");
       console.log("Webhook Secret:", webhookSecret.substring(0, 5) + "...");
       
-      // Use constructEvent (synchronous version)
+      // Use constructEvent with direct call - avoiding any potential Node-specific operations
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
       console.log(`Webhook verified. Event type: ${event.type}`);
       console.log(`Event ID: ${event.id}`);
     } catch (err) {
       console.error(`⚠️ Webhook signature verification failed: ${err.message}`);
-      // Log more details about the error
       console.error(`Error details: ${JSON.stringify(err)}`);
       return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}` }), {
         status: 400,
@@ -120,35 +118,24 @@ serve(async (req) => {
     // Log the event data for debugging
     console.log(`Event data: ${JSON.stringify(event.data.object).substring(0, 200)}...`);
     
-    try {
-      switch (event.type) {
-        case 'checkout.session.completed':
-          console.log("Handling checkout.session.completed event");
-          result = await handleCheckoutSessionCompleted(event.data.object);
-          break;
-        case 'customer.subscription.updated':
-          console.log("Handling customer.subscription.updated event");
-          result = await handleSubscriptionUpdated(event.data.object);
-          break;
-        case 'customer.subscription.deleted':
-          console.log("Handling customer.subscription.deleted event");
-          result = await handleSubscriptionDeleted(event.data.object);
-          break;
-        default:
-          console.log(`Unhandled event type ${event.type}`);
-      }
-      
-      console.log(`Event ${event.type} processed successfully: ${result}`);
-    } catch (err) {
-      console.error(`Error processing event ${event.type}: ${err.message}`);
-      console.error(err.stack);
-      // We don't want to return an error to Stripe as this would cause it to retry
-      // Instead log the error and return a 200 response
-      return new Response(JSON.stringify({ received: true, warning: err.message }), {
-        status: 200, // Return 200 to prevent Stripe from retrying
-        headers: { "Content-Type": "application/json", ...corsHeaders },
-      });
+    switch (event.type) {
+      case 'checkout.session.completed':
+        console.log("Handling checkout.session.completed event");
+        result = await handleCheckoutSessionCompletedSafe(event.data.object);
+        break;
+      case 'customer.subscription.updated':
+        console.log("Handling customer.subscription.updated event");
+        result = await handleSubscriptionUpdatedSafe(event.data.object);
+        break;
+      case 'customer.subscription.deleted':
+        console.log("Handling customer.subscription.deleted event");
+        result = await handleSubscriptionDeletedSafe(event.data.object);
+        break;
+      default:
+        console.log(`Unhandled event type ${event.type}`);
     }
+    
+    console.log(`Event ${event.type} processed successfully: ${result}`);
 
     return new Response(JSON.stringify({ received: true, success: result }), {
       status: 200,
@@ -158,6 +145,7 @@ serve(async (req) => {
     // Catch-all error handler
     console.error(`⚠️ Critical webhook error: ${error.message}`);
     console.error(error.stack);
+    
     // Log detailed error information
     if (error instanceof Error) {
       console.error(`Error name: ${error.name}`);
@@ -177,6 +165,39 @@ serve(async (req) => {
     });
   }
 });
+
+// Wrapped handler to catch errors for checkout.session.completed events
+async function handleCheckoutSessionCompletedSafe(session) {
+  try {
+    return await handleCheckoutSessionCompleted(session);
+  } catch (error) {
+    console.error(`Error in handleCheckoutSessionCompletedSafe: ${error.message}`);
+    console.error(error.stack);
+    return false;
+  }
+}
+
+// Wrapped handler to catch errors for customer.subscription.updated events
+async function handleSubscriptionUpdatedSafe(subscription) {
+  try {
+    return await handleSubscriptionUpdated(subscription);
+  } catch (error) {
+    console.error(`Error in handleSubscriptionUpdatedSafe: ${error.message}`);
+    console.error(error.stack);
+    return false;
+  }
+}
+
+// Wrapped handler to catch errors for customer.subscription.deleted events
+async function handleSubscriptionDeletedSafe(subscription) {
+  try {
+    return await handleSubscriptionDeleted(subscription);
+  } catch (error) {
+    console.error(`Error in handleSubscriptionDeletedSafe: ${error.message}`);
+    console.error(error.stack);
+    return false;
+  }
+}
 
 // Handler for checkout.session.completed events
 async function handleCheckoutSessionCompleted(session) {
