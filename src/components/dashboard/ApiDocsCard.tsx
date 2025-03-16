@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, ChevronDown, ChevronUp, KeyRound, Code as CodeIcon } from 'lucide-react';
+import { Copy, Check, ChevronDown, ChevronUp, KeyRound, Code as CodeIcon, Eye, EyeOff } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
 import {
   Collapsible,
@@ -33,6 +33,7 @@ export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: Api
   const [copied, setCopied] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -66,8 +67,17 @@ export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: Api
     }
   };
 
+  const toggleApiKeyVisibility = () => {
+    setShowApiKey(!showApiKey);
+  };
+
   const baseUrl = `${window.location.protocol}//${window.location.host}`;
   const baseFetchUrl = `${baseUrl}/api/dealpulse`;
+
+  const maskApiKey = (key: string | null) => {
+    if (!key) return '';
+    return key.substring(0, 4) + '•'.repeat(key.length - 8) + key.substring(key.length - 4);
+  };
 
   const codeExamples: CodeExample[] = [
     {
@@ -167,6 +177,119 @@ request['Content-Type'] = 'application/json'
 
 response = http.request(request)
 puts JSON.parse(response.body)`
+    },
+    {
+      language: "Java",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-orange-600 font-bold">JV</span>,
+      code: `import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public class ApiExample {
+    public static void main(String[] args) {
+        try {
+            URL url = new URL("${baseFetchUrl}/tracked-urls");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Authorization", "Bearer ${apiKey || 'your-api-key'}");
+            conn.setRequestProperty("Content-Type", "application/json");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String inputLine;
+            StringBuffer response = new StringBuffer();
+            while ((inputLine = in.readLine()) != null) {
+                response.append(inputLine);
+            }
+            in.close();
+
+            System.out.println(response.toString());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}`
+    },
+    {
+      language: "PHP",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-indigo-500 font-bold">PHP</span>,
+      code: `<?php
+$url = "${baseFetchUrl}/tracked-urls";
+$headers = array(
+    'Authorization: Bearer ${apiKey || 'your-api-key'}',
+    'Content-Type: application/json'
+);
+
+$curl = curl_init();
+curl_setopt($curl, CURLOPT_URL, $url);
+curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($curl, CURLOPT_HTTPHEADER, $headers);
+
+$response = curl_exec($curl);
+curl_close($curl);
+
+$data = json_decode($response, true);
+print_r($data);
+?>`
+    },
+    {
+      language: "Swift",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-orange-500 font-bold">SW</span>,
+      code: `import Foundation
+
+let url = URL(string: "${baseFetchUrl}/tracked-urls")!
+var request = URLRequest(url: url)
+request.httpMethod = "GET"
+request.addValue("Bearer ${apiKey || 'your-api-key'}", forHTTPHeaderField: "Authorization")
+request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+
+let task = URLSession.shared.dataTask(with: request) { data, response, error in
+    if let error = error {
+        print("Error: \(error)")
+        return
+    }
+    
+    if let data = data {
+        do {
+            let json = try JSONSerialization.jsonObject(with: data)
+            print(json)
+        } catch {
+            print("JSON error: \(error)")
+        }
+    }
+}
+
+task.resume()`
+    },
+    {
+      language: "Kotlin",
+      icon: <span className="flex w-5 h-5 items-center justify-center text-purple-400 font-bold">KT</span>,
+      code: `import java.net.HttpURLConnection
+import java.net.URL
+import java.io.BufferedReader
+import java.io.InputStreamReader
+
+fun main() {
+    val url = URL("${baseFetchUrl}/tracked-urls")
+    val connection = url.openConnection() as HttpURLConnection
+    connection.requestMethod = "GET"
+    connection.setRequestProperty("Authorization", "Bearer ${apiKey || 'your-api-key'}")
+    connection.setRequestProperty("Content-Type", "application/json")
+
+    val responseCode = connection.responseCode
+    if (responseCode == HttpURLConnection.HTTP_OK) {
+        val reader = BufferedReader(InputStreamReader(connection.inputStream))
+        val response = StringBuilder()
+        var line: String?
+        while (reader.readLine().also { line = it } != null) {
+            response.append(line)
+        }
+        reader.close()
+        println(response.toString())
+    } else {
+        println("Error: $responseCode")
+    }
+}`
     }
   ];
 
@@ -191,8 +314,16 @@ puts JSON.parse(response.body)`
                   {apiKey ? (
                     <div className="flex items-center">
                       <code className="bg-muted p-2 rounded text-sm flex-grow overflow-x-auto">
-                        {apiKey}
+                        {showApiKey ? apiKey : maskApiKey(apiKey)}
                       </code>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="ml-2 flex-shrink-0"
+                        onClick={toggleApiKeyVisibility}
+                      >
+                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
                       <Button 
                         variant="outline" 
                         size="sm" 
@@ -267,7 +398,7 @@ puts JSON.parse(response.body)`
                       Include your API key in the request headers:
                     </p>
                     <code className="bg-muted p-2 rounded text-sm block">
-                      Authorization: Bearer {apiKey || 'your-api-key'}
+                      Authorization: Bearer {showApiKey ? apiKey : (apiKey ? (apiKey.substring(0, 4) + '•••••' + apiKey.substring(apiKey.length - 4)) : 'your-api-key')}
                     </code>
                   </div>
                   
