@@ -56,25 +56,50 @@ const Dashboard = () => {
       description: "Please wait while we update your account details.",
     });
     
-    // First attempt to refresh subscription data
-    await refreshSubscription();
+    // First immediate subscription refresh
+    const firstRefresh = await refreshSubscription(3);
     
-    // Second attempt after a short delay
-    setTimeout(async () => {
-      console.log("Second subscription refresh attempt");
-      await refreshSubscription();
+    if (firstRefresh) {
+      toast({
+        title: "Subscription active!",
+        description: "Your subscription has been updated successfully."
+      });
+    } else {
+      // If first refresh failed, try again with delay
+      console.log("First refresh attempt failed, scheduling delayed refreshes");
       
-      // Third attempt with longer delay if needed
+      // Second attempt after a delay
       setTimeout(async () => {
-        console.log("Third subscription refresh attempt");
-        await refreshSubscription();
+        console.log("Second subscription refresh attempt");
+        const secondRefresh = await refreshSubscription(3);
         
-        toast({
-          title: "Subscription successful!",
-          description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
-        });
-      }, 3000);
-    }, 2000);
+        if (secondRefresh) {
+          toast({
+            title: "Subscription active!",
+            description: "Your subscription has been updated successfully."
+          });
+        } else {
+          // Third attempt with longer delay
+          setTimeout(async () => {
+            console.log("Third subscription refresh attempt");
+            const thirdRefresh = await refreshSubscription(3);
+            
+            if (thirdRefresh) {
+              toast({
+                title: "Subscription active!",
+                description: "Your subscription has been updated successfully."
+              });
+            } else {
+              toast({
+                title: "Subscription status unclear",
+                description: "Please refresh the page to see your current subscription status.",
+                variant: "destructive"
+              });
+            }
+          }, 10000);
+        }
+      }, 5000);
+    }
     
     // Remove checkout parameter from URL
     navigate('/dashboard', { replace: true });
@@ -93,6 +118,7 @@ const Dashboard = () => {
       const checkoutStatus = searchParams.get('checkout');
       
       if (checkoutStatus === 'success' && !checkoutProcessed) {
+        console.log("Checkout success detected, will process");
         processCheckout();
       }
     };

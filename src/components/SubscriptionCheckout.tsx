@@ -30,6 +30,7 @@ const SubscriptionCheckout = ({
     setIsLoading(true);
     
     try {
+      console.log("Starting checkout process...");
       const { data: userData, error: userError } = await supabase.auth.getUser();
       
       if (userError || !userData.user) {
@@ -72,7 +73,7 @@ const SubscriptionCheckout = ({
       }
       
       if (data?.url) {
-        console.log("Redirecting to checkout URL:", data.url);
+        console.log("Checkout success! Redirecting to checkout URL:", data.url);
         window.location.href = data.url;
       } else {
         console.error("No checkout URL returned:", data);

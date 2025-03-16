@@ -25,7 +25,7 @@ const Pricing = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Process checkout status
+  // Process checkout status immediately when component mounts
   useEffect(() => {
     const processCheckoutStatus = async () => {
       // Check for checkout status in the URL
@@ -33,10 +33,12 @@ const Pricing = () => {
       const checkoutStatus = searchParams.get('checkout');
       
       if (checkoutStatus === 'success') {
+        console.log("Detected successful checkout redirect");
+        
         // Show success toast
         toast({
-          title: "Subscription successful!",
-          description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active.",
+          title: "Payment processed successfully!",
+          description: "Your subscription is being set up, please wait a moment...",
         });
         
         // Try to get the current user
@@ -44,13 +46,21 @@ const Pricing = () => {
         const user = data?.user;
         
         if (user) {
-          // Remove the query params and redirect to dashboard
-          navigate('/dashboard', { replace: true });
+          // Clean URL and redirect to dashboard
+          console.log("User is logged in, redirecting to dashboard");
+          navigate('/dashboard?checkout=success', { replace: true });
         } else {
           // Just remove the query params if not logged in
+          console.log("User not logged in, staying on pricing page");
           navigate('/pricing', { replace: true });
+          
+          toast({
+            title: "Please log in",
+            description: "You need to log in to access your subscription.",
+          });
         }
       } else if (checkoutStatus === 'cancelled') {
+        console.log("Checkout was cancelled");
         toast({
           title: "Subscription cancelled",
           description: "You have cancelled the checkout process. No changes were made to your subscription.",

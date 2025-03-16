@@ -68,21 +68,25 @@ serve(async (req) => {
     }
 
     // Handle the event
+    let result = false;
+    
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutSessionCompleted(event.data.object);
+        result = await handleCheckoutSessionCompleted(event.data.object);
         break;
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object);
+        result = await handleSubscriptionUpdated(event.data.object);
         break;
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object);
+        result = await handleSubscriptionDeleted(event.data.object);
         break;
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
+    
+    console.log(`Event ${event.type} processed successfully: ${result}`);
 
-    return new Response(JSON.stringify({ received: true }), {
+    return new Response(JSON.stringify({ received: true, success: result }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
@@ -103,7 +107,7 @@ async function handleCheckoutSessionCompleted(session) {
   
   if (!session.client_reference_id) {
     console.error("No client_reference_id in session");
-    return;
+    return false;
   }
 
   try {
@@ -111,13 +115,27 @@ async function handleCheckoutSessionCompleted(session) {
     const userId = session.client_reference_id;
     const urlCount = parseInt(session.metadata?.url_count || "1", 10);
     const hasApiAccess = session.metadata?.api_access === 'yes';
+    const planId = session.metadata?.plan || 'free';
     
-    console.log(`Updating subscription for user ${userId}: URLs=${urlCount}, API access=${hasApiAccess}`);
+    console.log(`Updating subscription for user ${userId}: URLs=${urlCount}, API access=${hasApiAccess}, Plan=${planId}`);
+    
+    // Check if subscription exists
+    const { data: existingSubscription, error: checkError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+      
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error(`Error checking subscription: ${checkError.message}`);
+      return false;
+    }
     
     // Update the subscription in the database
-    const { error: updateError } = await supabase
+    const { data: updateData, error: updateError } = await supabase
       .from('subscriptions')
       .update({
+        plan: planId,
         urls_limit: urlCount,
         has_api_access: hasApiAccess,
         updated_at: new Date().toISOString()
@@ -126,13 +144,28 @@ async function handleCheckoutSessionCompleted(session) {
     
     if (updateError) {
       console.error(`Error updating subscription for user ${userId}: ${updateError.message}`);
-      throw updateError;
+      return false;
     }
     
     console.log(`Subscription updated successfully for user ${userId}`);
+    
+    // Verify the update
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+      
+    if (verifyError) {
+      console.error(`Error verifying subscription update: ${verifyError.message}`);
+      return false;
+    }
+    
+    console.log(`Verified subscription data:`, verifyData);
+    return true;
   } catch (error) {
     console.error(`Error in handleCheckoutSessionCompleted: ${error.message}`);
-    throw error;
+    return false;
   }
 }
 
@@ -146,27 +179,38 @@ async function handleSubscriptionUpdated(subscription) {
     const userId = subscription.metadata?.user_id;
     if (!userId) {
       console.error("No user_id in subscription metadata");
-      return;
+      return false;
     }
     
     // Get the subscription item details
     const subscriptionItem = subscription.items.data[0];
     if (!subscriptionItem) {
       console.error("No subscription item found");
-      return;
+      return false;
     }
     
     // Get the price metadata
-    const price = await stripe.prices.retrieve(subscriptionItem.price.id);
-    const urlCount = parseInt(price.metadata?.url_count || "1", 10);
-    const hasApiAccess = price.metadata?.api_access === 'yes';
+    let urlCount = 1;
+    let hasApiAccess = false;
+    let planId = 'free';
     
-    console.log(`Updating subscription for user ${userId}: URLs=${urlCount}, API access=${hasApiAccess}`);
+    try {
+      const price = await stripe.prices.retrieve(subscriptionItem.price.id);
+      urlCount = parseInt(price.metadata?.url_count || "1", 10);
+      hasApiAccess = price.metadata?.api_access === 'yes';
+      planId = price.metadata?.plan || 'free';
+    } catch (priceError) {
+      console.error(`Error retrieving price: ${priceError.message}`);
+      // Continue with default values
+    }
+    
+    console.log(`Updating subscription for user ${userId}: URLs=${urlCount}, API access=${hasApiAccess}, Plan=${planId}`);
     
     // Update the subscription in the database
-    const { error: updateError } = await supabase
+    const { data, error: updateError } = await supabase
       .from('subscriptions')
       .update({
+        plan: planId,
         urls_limit: urlCount,
         has_api_access: hasApiAccess,
         stripe_subscription_id: subscription.id,
@@ -176,13 +220,14 @@ async function handleSubscriptionUpdated(subscription) {
     
     if (updateError) {
       console.error(`Error updating subscription for user ${userId}: ${updateError.message}`);
-      throw updateError;
+      return false;
     }
     
     console.log(`Subscription updated successfully for user ${userId}`);
+    return true;
   } catch (error) {
     console.error(`Error in handleSubscriptionUpdated: ${error.message}`);
-    throw error;
+    return false;
   }
 }
 
@@ -201,12 +246,12 @@ async function handleSubscriptionDeleted(subscription) {
     
     if (findError) {
       console.error(`Error finding subscription: ${findError.message}`);
-      throw findError;
+      return false;
     }
     
     if (!subscriptionData) {
       console.error(`No subscription found for ID ${subscription.id}`);
-      return;
+      return false;
     }
     
     const userId = subscriptionData.user_id;
@@ -226,12 +271,13 @@ async function handleSubscriptionDeleted(subscription) {
     
     if (updateError) {
       console.error(`Error resetting subscription for user ${userId}: ${updateError.message}`);
-      throw updateError;
+      return false;
     }
     
     console.log(`Subscription reset successfully for user ${userId}`);
+    return true;
   } catch (error) {
     console.error(`Error in handleSubscriptionDeleted: ${error.message}`);
-    throw error;
+    return false;
   }
 }

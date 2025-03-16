@@ -15,6 +15,7 @@ export const useSubscription = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   
   const fetchSubscriptionData = useCallback(async (userId: string) => {
     try {
@@ -61,6 +62,7 @@ export const useSubscription = (userId: string | undefined) => {
       }
       
       setIsLoading(false);
+      setLastRefreshed(new Date());
       return true;
     } catch (error) {
       console.error("Error fetching subscription data:", error);
@@ -142,8 +144,8 @@ export const useSubscription = (userId: string | undefined) => {
     }
   };
 
-  // Force refresh subscription with retry mechanism
-  const refreshSubscription = useCallback(async (maxRetries = 3) => {
+  // Force refresh subscription with exponential backoff retry mechanism
+  const refreshSubscription = useCallback(async (maxRetries = 5) => {
     if (!userId) return false;
     
     console.log(`Manually refreshing subscription data with ${maxRetries} retries`);
@@ -158,17 +160,24 @@ export const useSubscription = (userId: string | undefined) => {
         return true;
       }
       
-      // If not the last attempt, wait before retrying
+      // If not the last attempt, wait before retrying with exponential backoff
       if (attempt < maxRetries) {
-        console.log(`Attempt ${attempt} failed, waiting before retry...`);
-        await new Promise(resolve => setTimeout(resolve, 2000 * attempt)); // Exponential backoff
+        const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000); // Cap at 10 seconds
+        console.log(`Attempt ${attempt} failed, waiting ${delay}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
     
     console.log("All refresh attempts failed");
+    toast({
+      title: "Subscription update failed",
+      description: "We couldn't update your subscription information. Please refresh the page or try again later.",
+      variant: "destructive"
+    });
     return false;
   }, [userId, fetchSubscriptionData]);
 
+  // Initial data load
   useEffect(() => {
     if (userId) {
       fetchSubscriptionData(userId);
@@ -183,13 +192,24 @@ export const useSubscription = (userId: string | undefined) => {
       
       if (checkoutStatus === 'success' && userId) {
         console.log("Detected successful checkout, refreshing subscription data");
+        
         // Immediate refresh
         await refreshSubscription();
         
-        // Another refresh after a delay (in case webhook processing takes time)
+        // Remove the checkout parameter from URL to prevent repeated refreshes
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+        
+        // Additional delayed refreshes with increasing intervals
         setTimeout(async () => {
-          console.log("Delayed subscription refresh after checkout");
-          await refreshSubscription();
+          console.log("First delayed subscription refresh after checkout");
+          await refreshSubscription(3);
+          
+          // Second delayed refresh
+          setTimeout(async () => {
+            console.log("Second delayed subscription refresh after checkout");
+            await refreshSubscription(2);
+          }, 10000);
         }, 5000);
       }
     };
@@ -203,6 +223,7 @@ export const useSubscription = (userId: string | undefined) => {
     canAddMoreUrls,
     cancelSubscription,
     generateApiKey,
-    refreshSubscription
+    refreshSubscription,
+    lastRefreshed
   };
 };
