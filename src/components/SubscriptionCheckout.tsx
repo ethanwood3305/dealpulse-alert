@@ -9,6 +9,7 @@ interface SubscriptionCheckoutProps {
   plan: string;
   urlCount?: number;
   includeApiAccess?: boolean;
+  billingCycle?: 'monthly' | 'yearly';
   buttonVariant?: "default" | "outline";
   className?: string;
   buttonText?: string;
@@ -18,6 +19,7 @@ const SubscriptionCheckout = ({
   plan, 
   urlCount,
   includeApiAccess = false,
+  billingCycle = 'monthly',
   buttonVariant = "default", 
   className = "",
   buttonText
@@ -40,7 +42,7 @@ const SubscriptionCheckout = ({
       }
       
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { plan, urlCount, includeApiAccess },
+        body: { plan, urlCount, includeApiAccess, billingCycle },
       });
       
       if (error) {

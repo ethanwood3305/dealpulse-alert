@@ -12,8 +12,6 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
-const stripePriceId = Deno.env.get("STRIPE_PRICE_ID_PER_URL") || ""; // Price per URL
-const stripeApiAccessPriceId = Deno.env.get("STRIPE_PRICE_ID_API_ACCESS") || ""; // Price for API access
 const clientUrl = Deno.env.get("CLIENT_URL") || "http://localhost:3000";
 
 const stripe = new Stripe(stripeSecretKey, {
@@ -21,6 +19,47 @@ const stripe = new Stripe(stripeSecretKey, {
 });
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// Calculate price using the same logic as in the frontend
+const calculatePrice = (urls: number, includeApiAccess: boolean, billingCycle = 'monthly'): number => {
+  if (urls <= 1) return 0; // Free for 1 URL
+  
+  let basePrice;
+  
+  if (urls <= 5) {
+    basePrice = 3 + (urls - 2) * 0.75; // $3 for 2 URLs, then +$0.75 per URL
+  } else if (urls <= 25) {
+    basePrice = 6 + (urls - 5) * 0.5; // After 5 URLs, slower increase per URL
+  } else if (urls <= 50) {
+    const basePriceAt25 = 6 + (25 - 5) * 0.5; // = $16
+    basePrice = basePriceAt25 + (urls - 25) * 0.33; // Adjusted to $0.33 per URL after 25
+  } else if (urls <= 100) {
+    const basePriceAt50 = 16 + (50 - 25) * 0.33; // = $24.25
+    basePrice = basePriceAt50 + (urls - 50) * 0.4; // After 50 URLs, $0.40 per URL
+  } else if (urls <= 175) {
+    const basePriceAt100 = 24.25 + (100 - 50) * 0.4; // = $44.25
+    basePrice = basePriceAt100 + (urls - 100) * 0.35; // After 100 URLs, lower price
+  } else {
+    const basePriceAt175 = 44.25 + (175 - 100) * 0.35; // = $70.5
+    basePrice = basePriceAt175 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
+  }
+  
+  const needsApiAccessCharge = includeApiAccess && urls > 1 && urls <= 125;
+  
+  if (needsApiAccessCharge) {
+    basePrice += 6; // $6/month for API access
+  }
+  
+  if (urls === 250) {
+    basePrice = Math.min(basePrice, 100);
+  }
+  
+  if (billingCycle === 'yearly') {
+    basePrice = basePrice * 12 * 0.9; // 10% discount for annual billing
+  }
+  
+  return basePrice;
+};
 
 serve(async (req) => {
   // Handle CORS preflight request
@@ -52,7 +91,7 @@ serve(async (req) => {
     }
 
     // Get the request body
-    const { plan, urlCount, includeApiAccess } = await req.json();
+    const { plan, urlCount, includeApiAccess, billingCycle = 'monthly' } = await req.json();
     
     if (!plan) {
       return new Response(
@@ -62,9 +101,19 @@ serve(async (req) => {
     }
 
     try {
-      // Calculate the number of URL units to charge for
+      // Calculate the price based on our custom pricing tiers
       const numberOfUrls = urlCount || 1;
+      const price = calculatePrice(numberOfUrls, includeApiAccess, billingCycle);
+      const isFreePlan = numberOfUrls <= 1;
       
+      // If it's a free plan, don't create a checkout session
+      if (isFreePlan) {
+        return new Response(
+          JSON.stringify({ url: `${clientUrl}/dashboard?checkout=success` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       // Get the customer ID from the database or create a new one
       const { data: subscriptionData } = await supabase
         .from("subscriptions")
@@ -91,29 +140,33 @@ serve(async (req) => {
           .eq("user_id", user.id);
       }
 
-      // Prepare line items for checkout
-      const lineItems = [
-        {
-          price: stripePriceId,
-          quantity: numberOfUrls > 1 ? numberOfUrls : 1, // If free plan (1 URL), still charge for 1 but will be $0
+      console.log(`Creating checkout for ${numberOfUrls} URLs with price ${price}`);
+
+      // Create a product for this specific subscription
+      const product = await stripe.products.create({
+        name: `DealPulse Alert - ${numberOfUrls} URLs${includeApiAccess ? ' with API Access' : ''}`,
+        description: `Monitoring for ${numberOfUrls} URLs${includeApiAccess ? ' with API Access' : ''}`,
+      });
+
+      // Create a price for this specific product with the calculated amount
+      const stripePrice = await stripe.prices.create({
+        product: product.id,
+        unit_amount: Math.round(price * 100), // Convert to cents
+        currency: 'usd',
+        recurring: {
+          interval: billingCycle === 'yearly' ? 'year' : 'month',
         },
-      ];
+      });
 
-      // API access is free for users with more than 125 URLs
-      const needsApiAccessCharge = includeApiAccess && numberOfUrls > 1 && numberOfUrls <= 125;
-      
-      // Add API access if requested, not on free plan, and not eligible for free API access
-      if (needsApiAccessCharge && stripeApiAccessPriceId) {
-        lineItems.push({
-          price: stripeApiAccessPriceId,
-          quantity: 1,
-        });
-      }
-
-      // Create the checkout session
+      // Create the checkout session with the custom price
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        line_items: lineItems,
+        line_items: [
+          {
+            price: stripePrice.id,
+            quantity: 1,
+          },
+        ],
         mode: "subscription",
         success_url: `${clientUrl}/dashboard?checkout=success`,
         cancel_url: `${clientUrl}/pricing?checkout=cancelled`,
@@ -122,6 +175,7 @@ serve(async (req) => {
           plan: plan,
           url_count: numberOfUrls.toString(),
           api_access: (includeApiAccess || numberOfUrls > 125) ? "yes" : "no",
+          billing_cycle: billingCycle,
         },
       });
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -220,6 +219,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
               plan={planId}
               urlCount={urlCount}
               includeApiAccess={includeApiAccess || isApiAccessFree}
+              billingCycle={billingCycle}
               buttonVariant="default"
               className="w-full rounded-full mb-6"
               buttonText={urlCount > 1 ? "Subscribe Now" : "Start Free Trial"}
@@ -265,4 +265,3 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
 };
 
 export default CustomPricingCard;
-
