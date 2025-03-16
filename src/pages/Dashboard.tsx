@@ -17,10 +17,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import SubscriptionCheckout from "@/components/SubscriptionCheckout";
+
 interface UserSubscription {
   plan: string;
   urls_limit: number;
 }
+
 interface TrackedUrl {
   id: string;
   url: string;
@@ -28,9 +30,11 @@ interface TrackedUrl {
   last_checked: string | null;
   created_at: string;
 }
+
 const urlSchema = z.object({
   url: z.string().url("Please enter a valid URL").min(5, "URL must be at least 5 characters")
 });
+
 const Dashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingUrl, setIsAddingUrl] = useState(false);
@@ -40,12 +44,14 @@ const Dashboard = () => {
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  
   const form = useForm<z.infer<typeof urlSchema>>({
     resolver: zodResolver(urlSchema),
     defaultValues: {
       url: ""
     }
   });
+
   useEffect(() => {
     const checkAuth = async () => {
       const {
@@ -58,7 +64,6 @@ const Dashboard = () => {
       }
       setUser(data.user);
 
-      // Check for checkout status in the URL
       const searchParams = new URLSearchParams(location.search);
       const checkoutStatus = searchParams.get('checkout');
       if (checkoutStatus === 'success') {
@@ -66,22 +71,17 @@ const Dashboard = () => {
           title: "Subscription successful!",
           description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
         });
-        // Clear the URL parameter
         navigate('/dashboard', {
           replace: true
         });
       }
 
-      // Fetch user's subscription details
       await fetchSubscriptionData(data.user.id);
-
-      // Fetch user's tracked URLs
       await fetchTrackedUrls(data.user.id);
       setIsLoading(false);
     };
     checkAuth();
 
-    // Listen for auth state changes
     const {
       data: authListener
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -95,6 +95,7 @@ const Dashboard = () => {
       }
     };
   }, [navigate, location.search]);
+
   const fetchSubscriptionData = async (userId: string) => {
     try {
       const {
@@ -116,7 +117,6 @@ const Dashboard = () => {
         });
       }
 
-      // Check if user can add more URLs
       const {
         data: canAddMoreData,
         error: canAddMoreError
@@ -130,6 +130,7 @@ const Dashboard = () => {
       console.error("Error fetching subscription data:", error);
     }
   };
+
   const fetchTrackedUrls = async (userId: string) => {
     try {
       const {
@@ -151,6 +152,7 @@ const Dashboard = () => {
       });
     }
   };
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -163,11 +165,11 @@ const Dashboard = () => {
       });
     }
   };
+
   const onSubmitUrl = async (values: z.infer<typeof urlSchema>) => {
     if (!user) return;
     setIsAddingUrl(true);
     try {
-      // Check if user can add more URLs
       const {
         data: canAddMore,
         error: checkError
@@ -186,7 +188,6 @@ const Dashboard = () => {
         return;
       }
 
-      // Add the URL
       const {
         data,
         error
@@ -198,13 +199,8 @@ const Dashboard = () => {
         throw error;
       }
 
-      // Refresh the list
       await fetchTrackedUrls(user.id);
-
-      // Refresh can add more status
       await fetchSubscriptionData(user.id);
-
-      // Reset the form
       form.reset();
       toast({
         title: "URL added",
@@ -220,6 +216,7 @@ const Dashboard = () => {
       setIsAddingUrl(false);
     }
   };
+
   const handleDeleteUrl = async (id: string) => {
     if (!user) return;
     try {
@@ -230,10 +227,7 @@ const Dashboard = () => {
         throw error;
       }
 
-      // Refresh the list
       await fetchTrackedUrls(user.id);
-
-      // Refresh can add more status
       await fetchSubscriptionData(user.id);
       toast({
         title: "URL removed",
@@ -247,10 +241,12 @@ const Dashboard = () => {
       });
     }
   };
+
   const formatDate = (dateString: string | null) => {
     if (!dateString) return "Never";
     return new Date(dateString).toLocaleString();
   };
+
   const getPlanColor = (plan: string) => {
     switch (plan) {
       case 'pro':
@@ -261,6 +257,7 @@ const Dashboard = () => {
         return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
     }
   };
+
   if (isLoading) {
     return <div className="min-h-screen flex flex-col">
         <Navbar />
@@ -271,54 +268,7 @@ const Dashboard = () => {
         <Footer />
       </div>;
   }
-  const renderUpgradeCard = () => {
-    if (userSubscription?.plan === 'pro') {
-      return null;
-    }
-    const nextPlan = userSubscription?.plan === 'basic' ? 'pro' : 'basic';
-    const planFeatures = {
-      basic: {
-        name: 'Basic',
-        urls: '5 URLs',
-        price: '$5/month',
-        features: ['Daily price checks', '30-day price history', 'Email alerts', 'Competitor tagging']
-      },
-      pro: {
-        name: 'Pro',
-        urls: '10 URLs',
-        price: '$15/month',
-        features: ['Hourly price checks', '90-day price history', 'Email & SMS alerts', 'API access']
-      }
-    };
-    const plan = planFeatures[nextPlan as keyof typeof planFeatures];
-    return <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Upgrade to {plan.name}</CardTitle>
-          <CardDescription>Get more features and track more competitors</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col space-y-2">
-            <div className="flex justify-between items-center">
-              <span className="font-medium">Price:</span>
-              <span>{plan.price}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="font-medium">URLs Limit:</span>
-              <span>{plan.urls}</span>
-            </div>
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">Features:</h4>
-              <ul className="list-disc list-inside space-y-1">
-                {plan.features.map((feature, index) => <li key={index} className="text-sm">{feature}</li>)}
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <SubscriptionCheckout plan={nextPlan} className="w-full rounded-full" />
-        </CardFooter>
-      </Card>;
-  };
+
   return <div className="min-h-screen flex flex-col">
       <Navbar />
       
@@ -332,6 +282,14 @@ const Dashboard = () => {
               </p>
             </div>
             
+            {userSubscription?.plan !== 'pro' && (
+              <SubscriptionCheckout 
+                plan={userSubscription?.plan === 'basic' ? 'pro' : 'basic'} 
+                urlCount={userSubscription?.plan === 'basic' ? 10 : 5}
+                buttonText="Upgrade Plan"
+                className="mt-4 md:mt-0"
+              />
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
@@ -383,8 +341,6 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
-          
-          {renderUpgradeCard()}
           
           <Card className="mb-10">
             <CardHeader className="flex flex-row items-center justify-between">
@@ -493,4 +449,6 @@ const Dashboard = () => {
       <Footer />
     </div>;
 };
+
 export default Dashboard;
+
