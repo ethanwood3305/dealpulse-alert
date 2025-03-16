@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button"; // Add this import
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -26,6 +26,7 @@ const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [checkoutProcessed, setCheckoutProcessed] = useState(false);
   const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -48,7 +49,8 @@ const Dashboard = () => {
     removeTag
   } = useTrackedUrls(user?.id);
 
-  const isLoading = isLoadingSubscription || isLoadingUrls;
+  // Only show loading on initial load, not during refreshes
+  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingUrls);
 
   const processCheckout = useCallback(async () => {
     if (checkoutProcessed) return;
@@ -162,6 +164,13 @@ const Dashboard = () => {
       }
     };
   }, [navigate, location.search, checkoutProcessed, processCheckout]);
+
+  // Mark initial load as complete once subscription and URL data are loaded
+  useEffect(() => {
+    if (!isLoadingSubscription && !isLoadingUrls && !initialLoadComplete) {
+      setInitialLoadComplete(true);
+    }
+  }, [isLoadingSubscription, isLoadingUrls, initialLoadComplete]);
 
   const onSubmitUrl = async (values: z.infer<typeof urlSchema>) => {
     if (!user) return;
@@ -297,7 +306,7 @@ const Dashboard = () => {
               <p className="text-sm mb-2">
                 We're still processing your subscription. This usually takes less than a minute.
               </p>
-              <Button onClick={manuallyRefreshSubscription} variant="outline" size="sm">
+              <Button onClick={() => refreshSubscription()} variant="outline" size="sm">
                 Check Subscription Status
               </Button>
             </div>
@@ -308,9 +317,9 @@ const Dashboard = () => {
               plan={userSubscription?.plan}
               urls_limit={userSubscription?.urls_limit}
               trackedUrlsCount={trackedUrls.length}
-              onCancelSubscription={handleCancelSubscription}
+              onCancelSubscription={cancelSubscription}
               hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
-              onRefreshSubscription={manuallyRefreshSubscription}
+              onRefreshSubscription={() => refreshSubscription()}
             />
             
             <QuickActionsCard 

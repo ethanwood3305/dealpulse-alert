@@ -69,5 +69,6 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
     basePrice = basePrice * 12 * 0.9; // 10% discount for annual billing, calculated on the full year
   }
   
-  return parseFloat(basePrice.toFixed(2));
+  // Round to 2 decimal places to ensure consistency between UI and Stripe
+  return Math.round(basePrice * 100) / 100;
 };
