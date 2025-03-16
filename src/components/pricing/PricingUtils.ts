@@ -34,9 +34,9 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
     basePrice = basePriceAt175 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
   }
   
-  // Special case for 250 URLs - cap at $74.25
+  // Special case for 250 URLs - cap at $110 (previously was $74.25)
   if (urls >= 250) {
-    basePrice = Math.min(basePrice, 74.25);
+    basePrice = Math.min(basePrice, 110);
   }
   
   // Add API access charge if needed

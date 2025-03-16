@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 export const getUserSubscription = async (userId: string) => {
   const { data, error } = await supabase
     .from('subscriptions')
-    .select('stripe_customer_id')
+    .select('stripe_customer_id, has_api_access, api_key')
     .eq('user_id', userId)
     .single();
   

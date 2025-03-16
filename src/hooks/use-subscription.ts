@@ -7,6 +7,8 @@ export interface UserSubscription {
   plan: string;
   urls_limit: number;
   stripe_subscription_id: string | null;
+  has_api_access: boolean;
+  api_key: string | null;
 }
 
 export const useSubscription = (userId: string | undefined) => {
@@ -31,7 +33,9 @@ export const useSubscription = (userId: string | undefined) => {
         setUserSubscription({
           plan: subscriptionData[0].plan,
           urls_limit: subscriptionData[0].urls_limit,
-          stripe_subscription_id: subscriptionData[0].stripe_subscription_id
+          stripe_subscription_id: subscriptionData[0].stripe_subscription_id,
+          has_api_access: subscriptionData[0].has_api_access || false,
+          api_key: subscriptionData[0].api_key || null
         });
       }
 
@@ -48,6 +52,46 @@ export const useSubscription = (userId: string | undefined) => {
     } catch (error) {
       console.error("Error fetching subscription data:", error);
       setIsLoading(false);
+    }
+  };
+
+  const generateApiKey = async () => {
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to generate an API key.",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-api-key', {
+        body: { userId }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data?.api_key) {
+        setUserSubscription(prev => prev ? {...prev, api_key: data.api_key} : null);
+        toast({
+          title: "API Key Generated",
+          description: "Your new API key has been generated successfully."
+        });
+        return true;
+      } else {
+        throw new Error('No API key returned');
+      }
+    } catch (error: any) {
+      console.error("Error generating API key:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate API key. Please try again later.",
+        variant: "destructive"
+      });
+      return false;
     }
   };
 
@@ -95,6 +139,7 @@ export const useSubscription = (userId: string | undefined) => {
     userSubscription,
     canAddMoreUrls,
     cancelSubscription,
+    generateApiKey,
     refreshSubscription: () => userId && fetchSubscriptionData(userId)
   };
 };

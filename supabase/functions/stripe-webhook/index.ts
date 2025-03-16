@@ -84,6 +84,36 @@ serve(async (req) => {
         }
         
         console.log(`User ${userId} subscribed to ${plan} plan with ${urlCount} URLs, API access: ${hasApiAccess}`);
+        
+        // Force reload metadata from subscription
+        if (session.subscription) {
+          try {
+            const subscription = await stripe.subscriptions.retrieve(session.subscription);
+            
+            // Update the URLs limit and API access based on the metadata from the subscription
+            const urlCount = parseInt(subscription.metadata.url_count) || 1;
+            const hasApiAccess = subscription.metadata.api_access === "yes";
+            
+            // Update the user's subscription in the database with the actual metadata from Stripe
+            const { error: updateError } = await supabase
+              .from("subscriptions")
+              .update({
+                urls_limit: urlCount,
+                has_api_access: hasApiAccess,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("user_id", userId);
+            
+            if (updateError) {
+              console.error(`Error updating subscription metadata for user ${userId}:`, updateError);
+            } else {
+              console.log(`Successfully updated subscription metadata for user ${userId} with URL count: ${urlCount}`);
+            }
+          } catch (err) {
+            console.error(`Error retrieving subscription details: ${err.message}`);
+          }
+        }
+        
         break;
       }
       
@@ -105,24 +135,17 @@ serve(async (req) => {
           break;
         }
         
-        // Get items from subscription to determine URL count and API access
-        const urlItem = subscription.items.data.find(item => 
-          item.price.id !== stripeApiAccessPriceId
-        );
+        // Get subscription metadata directly
+        const urlCount = parseInt(subscription.metadata.url_count) || 1;
+        const hasApiAccess = subscription.metadata.api_access === "yes";
         
-        const apiAccessItem = subscription.items.data.find(item => 
-          item.price.id === stripeApiAccessPriceId
-        );
-        
-        const quantity = urlItem?.quantity || 1;
-        // API access is automatically included for > 125 URLs
-        const hasApiAccess = !!apiAccessItem || quantity > 125;
+        console.log(`Subscription updated: Customer=${customerId}, URLs=${urlCount}, API=${hasApiAccess}`);
         
         // Update the user's subscription in the database
         const { data, error } = await supabase
           .from("subscriptions")
           .update({
-            urls_limit: quantity,
+            urls_limit: urlCount,
             has_api_access: hasApiAccess,
             updated_at: new Date().toISOString(),
           })
@@ -134,7 +157,7 @@ serve(async (req) => {
           console.log(`Successfully updated subscription for user ${userData.user_id}`);
         }
         
-        console.log(`User ${userData.user_id}'s subscription updated to ${quantity} URLs, API access: ${hasApiAccess}`);
+        console.log(`User ${userData.user_id}'s subscription updated to ${urlCount} URLs, API access: ${hasApiAccess}`);
         break;
       }
       

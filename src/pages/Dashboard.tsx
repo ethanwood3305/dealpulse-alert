@@ -9,6 +9,7 @@ import Footer from '@/components/Footer';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
+import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
 import { AddUrlForm } from '@/components/dashboard/AddUrlForm';
 import { TrackedUrlsTable } from '@/components/dashboard/TrackedUrlsTable';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -30,7 +31,8 @@ const Dashboard = () => {
     canAddMoreUrls, 
     isLoading: isLoadingSubscription,
     refreshSubscription,
-    cancelSubscription
+    cancelSubscription,
+    generateApiKey
   } = useSubscription(user?.id);
   
   const { 
@@ -158,6 +160,14 @@ const Dashboard = () => {
     }
   };
 
+  const handleGenerateApiKey = async () => {
+    if (!user) return;
+    const success = await generateApiKey();
+    if (success) {
+      refreshSubscription();
+    }
+  };
+
   const scrollToAddUrlForm = () => {
     document.getElementById('add-url-form')?.scrollIntoView({
       behavior: 'smooth'
@@ -201,6 +211,16 @@ const Dashboard = () => {
             <QuickActionsCard 
               canAddMoreUrls={canAddMoreUrls}
               onAddUrlClick={scrollToAddUrlForm}
+            />
+          </div>
+          
+          {/* API Documentation Section */}
+          <div className="mb-10">
+            <ApiDocsCard 
+              apiKey={userSubscription?.api_key}
+              userId={user?.id}
+              hasApiAccess={userSubscription?.has_api_access || false}
+              onGenerateKey={handleGenerateApiKey}
             />
           </div>
           
