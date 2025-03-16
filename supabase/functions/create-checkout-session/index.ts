@@ -13,6 +13,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const stripePriceId = Deno.env.get("STRIPE_PRICE_ID_PER_URL") || ""; // Price per URL
+const stripeApiAccessPriceId = Deno.env.get("STRIPE_PRICE_ID_API_ACCESS") || ""; // Price for API access
 const clientUrl = Deno.env.get("CLIENT_URL") || "http://localhost:3000";
 
 const stripe = new Stripe(stripeSecretKey, {
@@ -51,7 +52,7 @@ serve(async (req) => {
     }
 
     // Get the request body
-    const { plan, urlCount } = await req.json();
+    const { plan, urlCount, includeApiAccess } = await req.json();
     
     if (!plan) {
       return new Response(
@@ -90,15 +91,26 @@ serve(async (req) => {
           .eq("user_id", user.id);
       }
 
+      // Prepare line items for checkout
+      const lineItems = [
+        {
+          price: stripePriceId,
+          quantity: numberOfUrls > 1 ? numberOfUrls : 1, // If free plan (1 URL), still charge for 1 but will be $0
+        },
+      ];
+
+      // Add API access if requested and not on free plan
+      if (includeApiAccess && numberOfUrls > 1 && stripeApiAccessPriceId) {
+        lineItems.push({
+          price: stripeApiAccessPriceId,
+          quantity: 1,
+        });
+      }
+
       // Create the checkout session
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
-        line_items: [
-          {
-            price: stripePriceId,
-            quantity: numberOfUrls > 1 ? numberOfUrls : 1, // If free plan (1 URL), still charge for 1 but will be $0
-          },
-        ],
+        line_items: lineItems,
         mode: "subscription",
         success_url: `${clientUrl}/dashboard?checkout=success`,
         cancel_url: `${clientUrl}/pricing?checkout=cancelled`,
@@ -106,6 +118,7 @@ serve(async (req) => {
           user_id: user.id,
           plan: plan,
           url_count: numberOfUrls.toString(),
+          api_access: includeApiAccess ? "yes" : "no",
         },
       });
 

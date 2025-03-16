@@ -13,6 +13,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
+const stripeApiAccessPriceId = Deno.env.get("STRIPE_PRICE_ID_API_ACCESS") || "";
 
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2023-10-16",
@@ -58,6 +59,7 @@ serve(async (req) => {
         const userId = session.metadata.user_id;
         const plan = session.metadata.plan;
         const urlCount = parseInt(session.metadata.url_count) || 1;
+        const hasApiAccess = session.metadata.api_access === "yes";
         
         // Update the user's subscription in the database
         await supabase
@@ -65,12 +67,13 @@ serve(async (req) => {
           .update({
             plan: plan,
             urls_limit: urlCount,
+            has_api_access: hasApiAccess,
             stripe_subscription_id: session.subscription,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userId);
         
-        console.log(`User ${userId} subscribed to ${plan} plan with ${urlCount} URLs`);
+        console.log(`User ${userId} subscribed to ${plan} plan with ${urlCount} URLs, API access: ${hasApiAccess}`);
         break;
       }
       
@@ -92,19 +95,29 @@ serve(async (req) => {
           break;
         }
         
-        // Get quantity from subscription to determine URL count
-        const quantity = subscription.items.data[0].quantity || 1;
+        // Get items from subscription to determine URL count and API access
+        const urlItem = subscription.items.data.find(item => 
+          item.price.id !== stripeApiAccessPriceId
+        );
+        
+        const apiAccessItem = subscription.items.data.find(item => 
+          item.price.id === stripeApiAccessPriceId
+        );
+        
+        const quantity = urlItem?.quantity || 1;
+        const hasApiAccess = !!apiAccessItem;
         
         // Update the user's subscription in the database
         await supabase
           .from("subscriptions")
           .update({
             urls_limit: quantity,
+            has_api_access: hasApiAccess,
             updated_at: new Date().toISOString(),
           })
           .eq("user_id", userData.user_id);
         
-        console.log(`User ${userData.user_id}'s subscription updated to ${quantity} URLs`);
+        console.log(`User ${userData.user_id}'s subscription updated to ${quantity} URLs, API access: ${hasApiAccess}`);
         break;
       }
       
@@ -132,6 +145,7 @@ serve(async (req) => {
           .update({
             plan: "free",
             urls_limit: 1,
+            has_api_access: false,
             stripe_subscription_id: null,
             updated_at: new Date().toISOString(),
           })

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { Check } from 'lucide-react';
 import SubscriptionCheckout from './SubscriptionCheckout';
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface CustomPricingCardProps {
   billingCycle: 'monthly' | 'yearly';
@@ -17,6 +18,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
   const [urlCount, setUrlCount] = useState(10);
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<any>(null);
+  const [includeApiAccess, setIncludeApiAccess] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -61,9 +63,14 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
       basePrice = 74.75 + (urls - 100) * 0.5; // After 100 URLs, lowest per-URL price
     }
     
-    // Apply annual discount if yearly billing
+    // Add API access cost if selected
+    if (includeApiAccess && urls > 1) {
+      basePrice += 6; // $6/month for API access
+    }
+    
+    // Apply annual pricing - show full year price
     if (billingCycle === 'yearly') {
-      basePrice = basePrice * 0.9; // 10% discount for annual billing
+      basePrice = basePrice * 12 * 0.9; // 10% discount for annual billing, calculated on the full year
     }
     
     return parseFloat(basePrice.toFixed(2));
@@ -125,6 +132,25 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
           </div>
         </div>
         
+        {!isFreePlan && (
+          <div className="mb-6">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="api-access"
+                checked={includeApiAccess}
+                onCheckedChange={(checked) => setIncludeApiAccess(checked === true)}
+              />
+              <label 
+                htmlFor="api-access" 
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Add API access (+${billingCycle === 'monthly' ? '6' : '64.80'}/
+                {billingCycle === 'monthly' ? 'month' : 'year'})
+              </label>
+            </div>
+          </div>
+        )}
+        
         <div className="mb-6">
           <div className="text-center mb-6">
             <span className="text-3xl font-bold">${price}</span>
@@ -143,6 +169,11 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
             <div className="flex items-center">
               <span className="font-medium mr-1">Check Frequency:</span> {checkFrequency}
             </div>
+            {includeApiAccess && !isFreePlan && (
+              <div className="flex items-center">
+                <span className="font-medium mr-1">API Access:</span> Included
+              </div>
+            )}
           </div>
           
           {isFreePlan ? (
@@ -157,6 +188,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
             <SubscriptionCheckout 
               plan={planId}
               urlCount={urlCount}
+              includeApiAccess={includeApiAccess}
               buttonVariant="default"
               className="w-full rounded-full mb-6"
             />
@@ -184,7 +216,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
               <span className="text-sm">Competitor tagging</span>
             </div>
           )}
-          {urlCount > 20 && (
+          {(urlCount > 20 || includeApiAccess) && (
             <div className="flex items-start">
               <Check className="h-5 w-5 text-primary shrink-0 mr-2" />
               <span className="text-sm">API access</span>
