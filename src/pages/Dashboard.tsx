@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -46,6 +47,39 @@ const Dashboard = () => {
 
   const isLoading = isLoadingSubscription || isLoadingUrls;
 
+  const processCheckout = useCallback(async () => {
+    console.log("Processing successful checkout");
+    setCheckoutProcessed(true);
+    
+    toast({
+      title: "Processing your subscription...",
+      description: "Please wait while we update your account details.",
+    });
+    
+    // First attempt to refresh subscription data
+    await refreshSubscription();
+    
+    // Second attempt after a short delay
+    setTimeout(async () => {
+      console.log("Second subscription refresh attempt");
+      await refreshSubscription();
+      
+      // Third attempt with longer delay if needed
+      setTimeout(async () => {
+        console.log("Third subscription refresh attempt");
+        await refreshSubscription();
+        
+        toast({
+          title: "Subscription successful!",
+          description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
+        });
+      }, 3000);
+    }, 2000);
+    
+    // Remove checkout parameter from URL
+    navigate('/dashboard', { replace: true });
+  }, [refreshSubscription, navigate]);
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -59,30 +93,7 @@ const Dashboard = () => {
       const checkoutStatus = searchParams.get('checkout');
       
       if (checkoutStatus === 'success' && !checkoutProcessed) {
-        console.log("Processing successful checkout");
-        setCheckoutProcessed(true);
-        
-        toast({
-          title: "Processing your subscription...",
-          description: "Please wait while we update your account details.",
-        });
-        
-        setTimeout(async () => {
-          console.log("Refreshing subscription data after checkout");
-          await refreshSubscription();
-          
-          setTimeout(async () => {
-            console.log("Second subscription refresh attempt");
-            await refreshSubscription();
-            
-            toast({
-              title: "Subscription successful!",
-              description: "Thank you for subscribing to DealPulse Alert. Your subscription is now active."
-            });
-          }, 3000);
-        }, 2000);
-        
-        navigate('/dashboard', { replace: true });
+        processCheckout();
       }
     };
     
@@ -99,7 +110,7 @@ const Dashboard = () => {
         authListener.subscription.unsubscribe();
       }
     };
-  }, [navigate, location.search, refreshSubscription, checkoutProcessed]);
+  }, [navigate, location.search, checkoutProcessed, processCheckout]);
 
   const onSubmitUrl = async (values: z.infer<typeof urlSchema>) => {
     if (!user) return;

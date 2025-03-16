@@ -15,6 +15,7 @@ const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 
 console.log("Stripe webhook function initialized with URL:", supabaseUrl);
+console.log("Webhook secret available:", !!stripeWebhookSecret);
 
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2023-10-16",
@@ -45,12 +46,12 @@ serve(async (req) => {
     // Get the raw body
     const body = await req.text();
     console.log("Received webhook body length:", body.length);
-    console.log("Webhook body preview:", body.substring(0, 500) + "...");
+    console.log("Webhook body preview:", body.substring(0, 200) + "...");
     
     // Verify the webhook signature
     let event;
     try {
-      console.log("Verifying webhook signature with secret length:", stripeWebhookSecret?.length || 0);
+      console.log("Verifying webhook signature...");
       event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
       console.log("Signature verified successfully");
     } catch (err) {
@@ -62,7 +63,7 @@ serve(async (req) => {
     }
 
     console.log(`Processing webhook event: ${event.type}`);
-    console.log(`Event data: ${JSON.stringify(event.data.object).substring(0, 500)}...`);
+    console.log(`Event ID: ${event.id}`);
 
     // Handle the event
     switch (event.type) {
@@ -82,23 +83,29 @@ serve(async (req) => {
           break;
         }
         
-        // Immediate update with session metadata
-        console.log(`Updating subscription for user ${userId} with URLs limit: ${urlCount}`);
-        const { data, error } = await supabase
-          .from("subscriptions")
-          .update({
-            plan: plan,
-            urls_limit: urlCount,
-            has_api_access: hasApiAccess,
-            stripe_subscription_id: session.subscription,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("user_id", userId);
-        
-        if (error) {
-          console.error(`Error updating subscription for user ${userId}:`, error);
-        } else {
-          console.log(`Successfully updated subscription for user ${userId} with URLs limit: ${urlCount}`);
+        try {
+          // Direct database update with session metadata
+          console.log(`Updating subscription for user ${userId} with URLs limit: ${urlCount}`);
+          const { data, error } = await supabase
+            .from("subscriptions")
+            .update({
+              plan: plan,
+              urls_limit: urlCount,
+              has_api_access: hasApiAccess,
+              stripe_subscription_id: session.subscription,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("user_id", userId)
+            .select();
+          
+          if (error) {
+            console.error(`Error updating subscription for user ${userId}:`, error);
+          } else {
+            console.log(`Successfully updated subscription for user ${userId} with URLs limit: ${urlCount}`);
+            console.log("Updated subscription record:", data);
+          }
+        } catch (err) {
+          console.error(`Exception during subscription update: ${err.message}`);
         }
         
         // Fetch and force reload metadata from subscription too
@@ -115,19 +122,21 @@ serve(async (req) => {
             console.log(`Double-checking subscription with metadata: URL count=${subUrlCount}, API access=${subHasApiAccess}`);
             
             // Update the user's subscription in the database with the actual metadata from Stripe
-            const { error: updateError } = await supabase
+            const { data, error } = await supabase
               .from("subscriptions")
               .update({
                 urls_limit: subUrlCount,
                 has_api_access: subHasApiAccess,
                 updated_at: new Date().toISOString(),
               })
-              .eq("user_id", userId);
+              .eq("user_id", userId)
+              .select();
             
-            if (updateError) {
-              console.error(`Error updating subscription metadata for user ${userId}:`, updateError);
+            if (error) {
+              console.error(`Error updating subscription metadata for user ${userId}:`, error);
             } else {
               console.log(`Successfully updated subscription metadata for user ${userId} with URL count: ${subUrlCount}`);
+              console.log("Updated subscription record:", data);
             }
           } catch (err) {
             console.error(`Error retrieving subscription details: ${err.message}`);
@@ -177,12 +186,14 @@ serve(async (req) => {
             has_api_access: hasApiAccess,
             updated_at: new Date().toISOString(),
           })
-          .eq("user_id", userData.user_id);
+          .eq("user_id", userData.user_id)
+          .select();
         
         if (error) {
           console.error(`Error updating subscription for user ${userData.user_id}:`, error);
         } else {
           console.log(`Successfully updated subscription for user ${userData.user_id}`);
+          console.log("Updated subscription record:", data);
         }
         
         break;
@@ -224,12 +235,14 @@ serve(async (req) => {
             stripe_subscription_id: null,
             updated_at: new Date().toISOString(),
           })
-          .eq("user_id", userData.user_id);
+          .eq("user_id", userData.user_id)
+          .select();
         
         if (error) {
           console.error(`Error downgrading subscription for user ${userData.user_id}:`, error);
         } else {
           console.log(`Successfully downgraded subscription for user ${userData.user_id}`);
+          console.log("Updated subscription record:", data);
         }
         
         break;
@@ -239,7 +252,7 @@ serve(async (req) => {
         console.log(`Unhandled event type: ${event.type}`);
     }
 
-    return new Response(JSON.stringify({ received: true }), {
+    return new Response(JSON.stringify({ received: true, event_id: event.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

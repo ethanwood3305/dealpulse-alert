@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 
@@ -16,7 +16,7 @@ export const useSubscription = (userId: string | undefined) => {
   const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
   const [canAddMoreUrls, setCanAddMoreUrls] = useState(false);
   
-  const fetchSubscriptionData = async (userId: string) => {
+  const fetchSubscriptionData = useCallback(async (userId: string) => {
     try {
       console.log("Fetching subscription data for user:", userId);
       setIsLoading(true);
@@ -33,6 +33,7 @@ export const useSubscription = (userId: string | undefined) => {
           description: "Failed to load subscription details. Please try again later.",
           variant: "destructive"
         });
+        return false;
       } else if (subscriptionData && subscriptionData.length > 0) {
         console.log("Subscription data received:", subscriptionData[0]);
         setUserSubscription({
@@ -53,17 +54,20 @@ export const useSubscription = (userId: string | undefined) => {
       
       if (canAddMoreError) {
         console.error("Error checking if user can add more URLs:", canAddMoreError);
+        return false;
       } else {
         console.log("Can add more URLs:", canAddMoreData);
         setCanAddMoreUrls(canAddMoreData);
       }
       
       setIsLoading(false);
+      return true;
     } catch (error) {
       console.error("Error fetching subscription data:", error);
       setIsLoading(false);
+      return false;
     }
-  };
+  }, []);
 
   const generateApiKey = async () => {
     if (!userId) {
@@ -138,11 +142,32 @@ export const useSubscription = (userId: string | undefined) => {
     }
   };
 
+  // Force refresh subscription with retry
+  const refreshSubscription = useCallback(async () => {
+    if (userId) {
+      console.log("Manually refreshing subscription data");
+      
+      // First attempt
+      const success = await fetchSubscriptionData(userId);
+      
+      if (!success) {
+        // Add a short delay and retry if first attempt fails
+        console.log("First refresh attempt failed, retrying after delay...");
+        return new Promise<void>((resolve) => {
+          setTimeout(async () => {
+            await fetchSubscriptionData(userId);
+            resolve();
+          }, 2000);
+        });
+      }
+    }
+  }, [userId, fetchSubscriptionData]);
+
   useEffect(() => {
     if (userId) {
       fetchSubscriptionData(userId);
     }
-  }, [userId]);
+  }, [userId, fetchSubscriptionData]);
 
   return {
     isLoading,
@@ -150,11 +175,6 @@ export const useSubscription = (userId: string | undefined) => {
     canAddMoreUrls,
     cancelSubscription,
     generateApiKey,
-    refreshSubscription: async () => {
-      if (userId) {
-        console.log("Manually refreshing subscription data");
-        return await fetchSubscriptionData(userId);
-      }
-    }
+    refreshSubscription
   };
 };
