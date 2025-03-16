@@ -13,7 +13,6 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const stripeWebhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
-const stripeApiAccessPriceId = Deno.env.get("STRIPE_PRICE_ID_API_ACCESS") || "";
 
 const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2023-10-16",
@@ -31,6 +30,7 @@ serve(async (req) => {
     // Get the signature from the headers
     const signature = req.headers.get("stripe-signature");
     if (!signature) {
+      console.error("Webhook Error: No signature");
       return new Response(
         JSON.stringify({ error: "Webhook Error: No signature" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -58,12 +58,17 @@ serve(async (req) => {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object;
-        const userId = session.metadata.user_id;
-        const plan = session.metadata.plan;
-        const urlCount = parseInt(session.metadata.url_count) || 1;
-        const hasApiAccess = session.metadata.api_access === "yes";
+        const userId = session.metadata?.user_id;
+        const plan = session.metadata?.plan;
+        const urlCount = parseInt(session.metadata?.url_count) || 1;
+        const hasApiAccess = session.metadata?.api_access === "yes";
         
         console.log(`Checkout completed for user ${userId}: Plan=${plan}, URLs=${urlCount}, API=${hasApiAccess}`);
+        
+        if (!userId) {
+          console.error("No user ID found in session metadata");
+          break;
+        }
         
         // Update the user's subscription in the database
         const { data, error } = await supabase
@@ -83,16 +88,14 @@ serve(async (req) => {
           console.log(`Successfully updated subscription for user ${userId}`);
         }
         
-        console.log(`User ${userId} subscribed to ${plan} plan with ${urlCount} URLs, API access: ${hasApiAccess}`);
-        
         // Force reload metadata from subscription
         if (session.subscription) {
           try {
             const subscription = await stripe.subscriptions.retrieve(session.subscription);
             
             // Update the URLs limit and API access based on the metadata from the subscription
-            const urlCount = parseInt(subscription.metadata.url_count) || 1;
-            const hasApiAccess = subscription.metadata.api_access === "yes";
+            const urlCount = parseInt(subscription.metadata?.url_count) || 1;
+            const hasApiAccess = subscription.metadata?.api_access === "yes";
             
             console.log(`Retrieved subscription with metadata: URL count=${urlCount}, API access=${hasApiAccess}`);
             
@@ -124,6 +127,10 @@ serve(async (req) => {
         
         // Get the customer ID
         const customerId = subscription.customer;
+        if (!customerId) {
+          console.error("No customer ID found in subscription object");
+          break;
+        }
         
         // Look up the user by customer ID
         const { data: userData, error: userError } = await supabase
@@ -133,13 +140,13 @@ serve(async (req) => {
           .single();
         
         if (userError || !userData) {
-          console.error(`User not found for customer ${customerId}`);
+          console.error(`User not found for customer ${customerId}`, userError);
           break;
         }
         
         // Get subscription metadata directly
-        const urlCount = parseInt(subscription.metadata.url_count) || 1;
-        const hasApiAccess = subscription.metadata.api_access === "yes";
+        const urlCount = parseInt(subscription.metadata?.url_count) || 1;
+        const hasApiAccess = subscription.metadata?.api_access === "yes";
         
         console.log(`Subscription updated: Customer=${customerId}, URLs=${urlCount}, API=${hasApiAccess}`);
         
@@ -159,7 +166,6 @@ serve(async (req) => {
           console.log(`Successfully updated subscription for user ${userData.user_id}`);
         }
         
-        console.log(`User ${userData.user_id}'s subscription updated to ${urlCount} URLs, API access: ${hasApiAccess}`);
         break;
       }
       
@@ -168,6 +174,10 @@ serve(async (req) => {
         
         // Get the customer ID
         const customerId = subscription.customer;
+        if (!customerId) {
+          console.error("No customer ID found in subscription object");
+          break;
+        }
         
         // Look up the user by customer ID
         const { data: userData, error: userError } = await supabase
@@ -177,7 +187,7 @@ serve(async (req) => {
           .single();
         
         if (userError || !userData) {
-          console.error(`User not found for customer ${customerId}`);
+          console.error(`User not found for customer ${customerId}`, userError);
           break;
         }
         
@@ -199,7 +209,6 @@ serve(async (req) => {
           console.log(`Successfully downgraded subscription for user ${userData.user_id}`);
         }
         
-        console.log(`User ${userData.user_id}'s subscription cancelled, downgraded to free plan`);
         break;
       }
       

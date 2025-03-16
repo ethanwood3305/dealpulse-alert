@@ -1,13 +1,14 @@
 
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Copy, Check, ChevronDown } from "lucide-react";
+import { Copy, Check, ChevronDown, ChevronUp, KeyRound } from 'lucide-react';
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface ApiDocsCardProps {
   apiKey: string | null;
@@ -19,204 +20,169 @@ interface ApiDocsCardProps {
 export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: ApiDocsCardProps) => {
   const [copied, setCopied] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
-  const baseUrl = window.location.origin;
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const copyToClipboard = (text: string) => {
+  const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopied(true);
     toast({
       title: "Copied to clipboard",
-      description: "The API key has been copied to your clipboard."
+      description: "API key has been copied to your clipboard"
     });
-    setTimeout(() => setCopied(false), 2000);
+    
+    setTimeout(() => {
+      setCopied(false);
+    }, 3000);
   };
 
   const handleGenerateKey = async () => {
-    if (!hasApiAccess) {
+    setIsGenerating(true);
+    try {
+      await onGenerateKey();
       toast({
-        title: "API access required",
-        description: "Please upgrade your plan to include API access.",
+        title: "API key generated",
+        description: "Your new API key has been generated successfully"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate API key. Please try again later.",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setIsGenerating(false);
     }
-    
-    await onGenerateKey();
   };
 
-  const endpointExamples = [
-    {
-      name: "AddURL",
-      method: "POST",
-      endpoint: `${baseUrl}/api/urls`,
-      description: "Add a new URL to track",
-      parameters: {
-        url: "The URL to track (required)"
-      },
-      example: `curl -X POST ${baseUrl}/api/urls \\
-  -H "Content-Type: application/json" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -d '{"url": "https://example.com/product"}'`
-    },
-    {
-      name: "DeleteURL",
-      method: "DELETE",
-      endpoint: `${baseUrl}/api/urls/{id}`,
-      description: "Delete a tracked URL by ID",
-      parameters: {
-        id: "The ID of the URL to delete (required)"
-      },
-      example: `curl -X DELETE ${baseUrl}/api/urls/123456 \\
-  -H "Authorization: Bearer YOUR_API_KEY"`
-    },
-    {
-      name: "GetLastUpdates",
-      method: "GET",
-      endpoint: `${baseUrl}/api/urls/updates`,
-      description: "Get recent price updates for your tracked URLs",
-      parameters: {
-        limit: "Number of results to return (optional, default: 10)",
-        offset: "Offset for pagination (optional, default: 0)"
-      },
-      example: `curl -X GET "${baseUrl}/api/urls/updates?limit=5" \\
-  -H "Authorization: Bearer YOUR_API_KEY"`
-    }
-  ];
-
-  if (!hasApiAccess) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>API Access</CardTitle>
-          <CardDescription>Programmatic access to DealPulse Alert</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="p-6 text-center">
-            <h3 className="text-lg font-medium mb-2">API Access Not Available</h3>
-            <p className="text-muted-foreground mb-4">
-              API access is available on paid plans with the API access add-on.
-            </p>
-            <Button variant="outline" onClick={() => window.location.href = "/pricing"}>
-              Upgrade Your Plan
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const baseUrl = `${window.location.protocol}//${window.location.host}`;
+  const baseFetchUrl = `${baseUrl}/api/dealpulse`;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>API Access</CardTitle>
-          <CardDescription>Programmatic access to DealPulse Alert</CardDescription>
-        </div>
-        <CollapsibleTrigger 
-          onClick={() => setIsOpen(!isOpen)}
-          className="rounded-full p-2 hover:bg-muted transition-colors"
-        >
-          <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? '' : 'transform -rotate-90'}`} />
-        </CollapsibleTrigger>
-      </CardHeader>
+    <Card className="mb-10">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <div className="flex items-center justify-between p-6 border-b">
+          <h2 className="text-xl font-bold">API Documentation</h2>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" size="sm">
+              {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          </CollapsibleTrigger>
+        </div>
+        
         <CollapsibleContent>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Your API Key</label>
-                <div className="flex">
-                  <Input 
-                    value={apiKey || "No API key generated yet"} 
-                    readOnly 
-                    className="font-mono text-sm"
-                    type={apiKey ? "password" : "text"}
-                  />
+          <CardContent className="p-6">
+            {hasApiAccess ? (
+              <>
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Your API Key</h3>
                   {apiKey ? (
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      onClick={() => copyToClipboard(apiKey)}
-                      className="ml-2"
-                    >
-                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
+                    <div className="flex items-center">
+                      <code className="bg-muted p-2 rounded text-sm flex-grow overflow-x-auto">
+                        {apiKey}
+                      </code>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="ml-2 flex-shrink-0"
+                        onClick={() => handleCopy(apiKey)}
+                      >
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
                   ) : (
-                    <Button 
-                      variant="outline" 
-                      onClick={handleGenerateKey}
-                      className="ml-2 whitespace-nowrap"
-                    >
-                      Generate Key
-                    </Button>
+                    <div className="flex items-center">
+                      <span className="text-muted-foreground italic">No API key generated</span>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="ml-2"
+                        onClick={handleGenerateKey}
+                        disabled={isGenerating}
+                      >
+                        {isGenerating ? (
+                          <>Generating...</>
+                        ) : (
+                          <>
+                            <KeyRound className="h-4 w-4 mr-2" />
+                            Generate Key
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Keep this secret! This key provides full access to your account via the API.
-                </p>
-              </div>
 
-              <Tabs defaultValue="documentation">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="documentation">Documentation</TabsTrigger>
-                  <TabsTrigger value="examples">Code Examples</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="documentation" className="space-y-4 mt-4">
+                <div className="space-y-6">
                   <div>
-                    <h3 className="text-lg font-medium mb-2">API Endpoints</h3>
+                    <h3 className="text-lg font-semibold mb-2">API Endpoints</h3>
                     <div className="space-y-4">
-                      {endpointExamples.map((endpoint, index) => (
-                        <div key={index} className="border rounded-md p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-medium">{endpoint.name}</h4>
-                            <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded">
-                              {endpoint.method}
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-2">{endpoint.description}</p>
-                          <div className="font-mono text-sm bg-muted p-2 rounded mb-2">
-                            {endpoint.endpoint}
-                          </div>
-                          <div className="mt-2">
-                            <h5 className="text-sm font-medium mb-1">Parameters:</h5>
-                            <ul className="text-sm space-y-1">
-                              {Object.entries(endpoint.parameters).map(([key, value]) => (
-                                <li key={key}><span className="font-medium">{key}</span>: {value}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      ))}
+                      <div>
+                        <h4 className="font-medium mb-1">Get all tracked URLs</h4>
+                        <code className="bg-muted p-2 rounded text-sm block mb-2">
+                          GET {baseFetchUrl}/tracked-urls
+                        </code>
+                        <p className="text-sm text-muted-foreground">
+                          Returns all URLs you're currently tracking
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium mb-1">Get URL details</h4>
+                        <code className="bg-muted p-2 rounded text-sm block mb-2">
+                          GET {baseFetchUrl}/tracked-urls/:id
+                        </code>
+                        <p className="text-sm text-muted-foreground">
+                          Returns details for a specific tracked URL
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium mb-1">Add URL to track</h4>
+                        <code className="bg-muted p-2 rounded text-sm block mb-2">
+                          POST {baseFetchUrl}/tracked-urls
+                        </code>
+                        <p className="text-sm text-muted-foreground">
+                          Add a new URL to track
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </TabsContent>
-                
-                <TabsContent value="examples" className="space-y-4 mt-4">
-                  <div className="space-y-4">
-                    {endpointExamples.map((endpoint, index) => (
-                      <div key={index} className="border rounded-md p-4">
-                        <h4 className="font-medium mb-2">{endpoint.name}</h4>
-                        <div className="relative">
-                          <pre className="font-mono text-sm bg-muted p-3 rounded overflow-x-auto whitespace-pre-wrap">
-                            {endpoint.example.replace("YOUR_API_KEY", apiKey || "YOUR_API_KEY")}
-                          </pre>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="absolute top-2 right-2"
-                            onClick={() => copyToClipboard(endpoint.example.replace("YOUR_API_KEY", apiKey || "YOUR_API_KEY"))}
-                          >
-                            {copied ? <Check className="h-3 w-3 mr-1" /> : <Copy className="h-3 w-3 mr-1" />}
-                            Copy
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Authentication</h3>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Include your API key in the request headers:
+                    </p>
+                    <code className="bg-muted p-2 rounded text-sm block">
+                      Authorization: Bearer {apiKey || 'your-api-key'}
+                    </code>
                   </div>
-                </TabsContent>
-              </Tabs>
-            </div>
+                  
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Example Request</h3>
+                    <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
+{`fetch('${baseFetchUrl}/tracked-urls', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer ${apiKey || 'your-api-key'}',
+    'Content-Type': 'application/json'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));`}
+                    </pre>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-4 text-center">
+                <p className="text-muted-foreground mb-4">
+                  API access is not included in your current plan. 
+                  Upgrade your plan to get API access.
+                </p>
+              </div>
+            )}
           </CardContent>
         </CollapsibleContent>
       </Collapsible>

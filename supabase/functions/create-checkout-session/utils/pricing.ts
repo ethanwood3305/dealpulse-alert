@@ -40,12 +40,21 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
     const basePriceAt50 = basePriceAt25 + (50 - 25) * 0.33; // = $23.5
     const basePriceAt100 = basePriceAt50 + (100 - 50) * 0.25; // = $36
     const basePriceAt175 = basePriceAt100 + (175 - 100) * 0.22; // = $52.5
-    basePrice = basePriceAt175 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
-  }
-  
-  // Special case for 250 URLs - cap at $110 (not $63.75)
-  if (urls >= 250) {
-    basePrice = 110;
+    
+    // For URLs between 175 and 250, scale proportionally from $52.5 to $110
+    if (urls <= 250) {
+      const range = 250 - 175;
+      const position = urls - 175;
+      const startPrice = 52.5;
+      const endPrice = 110;
+      const priceIncrease = endPrice - startPrice;
+      
+      // Calculate price with linear scaling
+      basePrice = startPrice + (priceIncrease * position / range);
+    } else {
+      // Over 250 URLs - cap at $110
+      basePrice = 110;
+    }
   }
   
   // Add API access charge if needed
