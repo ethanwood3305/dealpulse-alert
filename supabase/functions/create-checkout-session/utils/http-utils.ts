@@ -6,8 +6,10 @@ export const corsHeaders = {
 
 export const getClientUrl = () => {
   const clientUrl = Deno.env.get("CLIENT_URL") || "http://localhost:5173";
-  console.log("Using client URL:", clientUrl);
-  return clientUrl;
+  // Ensure URL doesn't end with a slash
+  const normalizedUrl = clientUrl.endsWith('/') ? clientUrl.slice(0, -1) : clientUrl;
+  console.log("Using client URL:", normalizedUrl);
+  return normalizedUrl;
 };
 
 export const createErrorResponse = (error: Error) => {

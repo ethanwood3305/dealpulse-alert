@@ -60,6 +60,10 @@ serve(async (req) => {
     const client_url = getClientUrl();
     console.log("Client URL:", client_url);
     
+    // Normalize client URL to ensure no double slashes
+    const normalizedClientUrl = client_url.endsWith('/') ? client_url.slice(0, -1) : client_url;
+    console.log("Normalized client URL:", normalizedClientUrl);
+    
     // Check for existing customer ID
     const { data: subscriptionData, error: subscriptionError } = await getUserSubscription(userId);
     
@@ -96,8 +100,8 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${client_url}/dashboard?checkout=success`,
-      cancel_url: `${client_url}/pricing?checkout=cancelled`,
+      success_url: `${normalizedClientUrl}/dashboard?checkout=success`,
+      cancel_url: `${normalizedClientUrl}/pricing?checkout=cancelled`,
       subscription_data: {
         metadata: {
           user_id: userId,
