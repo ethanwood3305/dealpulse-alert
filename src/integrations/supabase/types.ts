@@ -51,6 +51,7 @@ export type Database = {
           id: string
           last_checked: string | null
           last_price: number | null
+          tags: string[] | null
           updated_at: string
           url: string
           user_id: string
@@ -60,6 +61,7 @@ export type Database = {
           id?: string
           last_checked?: string | null
           last_price?: number | null
+          tags?: string[] | null
           updated_at?: string
           url: string
           user_id: string
@@ -69,6 +71,7 @@ export type Database = {
           id?: string
           last_checked?: string | null
           last_price?: number | null
+          tags?: string[] | null
           updated_at?: string
           url?: string
           user_id?: string
