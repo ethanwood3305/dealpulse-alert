@@ -82,6 +82,8 @@ serve(async (req) => {
     try {
       body = await req.text();
       console.log("Received webhook payload of length:", body.length);
+      // Log a small portion of the body for debugging
+      console.log("Body preview:", body.substring(0, 100) + "...");
     } catch (err) {
       console.error(`Error reading request body: ${err.message}`);
       return new Response(JSON.stringify({ error: "Could not read request body" }), {
@@ -90,19 +92,21 @@ serve(async (req) => {
       });
     }
     
-    // Verify webhook signature - FIX: Use synchronous version instead of async
+    // Verify webhook signature
     let event;
     try {
       console.log("Verifying Stripe signature synchronously...");
       console.log("Signature:", signature.substring(0, 20) + "...");
       console.log("Webhook Secret:", webhookSecret.substring(0, 5) + "...");
       
-      // Use constructEvent instead of constructEventAsync
+      // Use constructEvent (synchronous version)
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
       console.log(`Webhook verified. Event type: ${event.type}`);
       console.log(`Event ID: ${event.id}`);
     } catch (err) {
       console.error(`⚠️ Webhook signature verification failed: ${err.message}`);
+      // Log more details about the error
+      console.error(`Error details: ${JSON.stringify(err)}`);
       return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}` }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -119,12 +123,15 @@ serve(async (req) => {
     try {
       switch (event.type) {
         case 'checkout.session.completed':
+          console.log("Handling checkout.session.completed event");
           result = await handleCheckoutSessionCompleted(event.data.object);
           break;
         case 'customer.subscription.updated':
+          console.log("Handling customer.subscription.updated event");
           result = await handleSubscriptionUpdated(event.data.object);
           break;
         case 'customer.subscription.deleted':
+          console.log("Handling customer.subscription.deleted event");
           result = await handleSubscriptionDeleted(event.data.object);
           break;
         default:
@@ -151,6 +158,19 @@ serve(async (req) => {
     // Catch-all error handler
     console.error(`⚠️ Critical webhook error: ${error.message}`);
     console.error(error.stack);
+    // Log detailed error information
+    if (error instanceof Error) {
+      console.error(`Error name: ${error.name}`);
+      console.error(`Error message: ${error.message}`);
+      console.error(`Error stack: ${error.stack}`);
+      if ('cause' in error) {
+        console.error(`Error cause: ${JSON.stringify(error.cause)}`);
+      }
+    } else {
+      console.error(`Unknown error type: ${typeof error}`);
+      console.error(`String representation: ${String(error)}`);
+    }
+    
     return new Response(JSON.stringify({ error: "Internal server error", details: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
