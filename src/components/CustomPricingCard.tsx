@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -53,13 +54,18 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
     } else if (urls <= 25) {
       basePrice = 6 + (urls - 5) * 0.5; // After 5 URLs, slower increase per URL
     } else if (urls <= 50) {
-      basePrice = 16 + (urls - 25) * 0.45; // After 25 URLs, even slower increase
+      // Fix for the 26-50 URLs range
+      const basePriceAt25 = 6 + (25 - 5) * 0.5; // = $16
+      basePrice = basePriceAt25 + (urls - 25) * 0.33; // Adjusted to $0.33 per URL after 25
     } else if (urls <= 100) {
-      basePrice = 27.25 + (urls - 50) * 0.4; // After 50 URLs, further discount
+      const basePriceAt50 = 16 + (50 - 25) * 0.33; // = $24.25
+      basePrice = basePriceAt50 + (urls - 50) * 0.4; // After 50 URLs, $0.40 per URL
     } else if (urls <= 175) {
-      basePrice = 47.25 + (urls - 100) * 0.35; // After 100 URLs, lower price
+      const basePriceAt100 = 24.25 + (100 - 50) * 0.4; // = $44.25
+      basePrice = basePriceAt100 + (urls - 100) * 0.35; // After 100 URLs, lower price
     } else {
-      basePrice = 73.5 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
+      const basePriceAt175 = 44.25 + (175 - 100) * 0.35; // = $70.5
+      basePrice = basePriceAt175 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
     }
     
     const needsApiAccessCharge = includeApiAccess && urls > 1 && urls <= 125;
