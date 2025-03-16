@@ -115,23 +115,6 @@ serve(async (req) => {
     // Remove trailing slash if it exists
     client_url = client_url.replace(/\/$/, '');
     
-    // Get the Stripe prices based on billing cycle
-    const stripePriceIdPerUrl = Deno.env.get(
-      billingCycle === 'yearly' 
-        ? 'STRIPE_PRICE_ID_PER_URL_YEARLY' 
-        : 'STRIPE_PRICE_ID_PER_URL'
-    );
-    
-    const stripePriceIdApiAccess = Deno.env.get(
-      billingCycle === 'yearly'
-        ? 'STRIPE_PRICE_ID_API_ACCESS_YEARLY'
-        : 'STRIPE_PRICE_ID_API_ACCESS'
-    );
-    
-    if (!stripePriceIdPerUrl) {
-      throw new Error('Stripe price ID not found for per-URL pricing');
-    }
-    
     // Check for existing customer ID
     const { data: subscriptionData, error: subscriptionError } = await supabase
       .from('subscriptions')
@@ -144,27 +127,51 @@ serve(async (req) => {
       throw new Error(`Error fetching subscription: ${subscriptionError.message}`);
     }
     
-    // Create line items array
-    const line_items = [
-      {
-        price: stripePriceIdPerUrl,
-        quantity: urlCount,
-      },
-    ];
+    // Create a new product for this specific subscription
+    const productName = `${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan (${urlCount} URLs)`;
+    console.log(`Creating custom product: ${productName}`);
     
-    // Add API access item if requested and needed
-    if (includeApiAccess && urlCount <= 125 && stripePriceIdApiAccess) {
-      line_items.push({
-        price: stripePriceIdApiAccess,
-        quantity: 1,
-      });
-    }
+    const product = await stripe.products.create({
+      name: productName,
+      metadata: {
+        plan: plan,
+        url_count: urlCount.toString(),
+        api_access: includeApiAccess ? 'yes' : 'no',
+      },
+    });
+    
+    console.log(`Created product: ${product.id}`);
+    
+    // Create a custom price for this product
+    const priceData = {
+      product: product.id,
+      currency: 'usd',
+      unit_amount: Math.round(calculatedPrice * 100), // Convert to cents
+      recurring: {
+        interval: billingCycle === 'yearly' ? 'year' : 'month',
+      },
+      metadata: {
+        plan: plan,
+        url_count: urlCount.toString(),
+        api_access: includeApiAccess ? 'yes' : 'no',
+        calculated_price: calculatedPrice.toString(),
+      },
+    };
+    
+    console.log(`Creating price: $${calculatedPrice} (${billingCycle})`);
+    const price = await stripe.prices.create(priceData);
+    console.log(`Created price: ${price.id}`);
     
     const params: Stripe.Checkout.SessionCreateParams = {
       customer: subscriptionData?.stripe_customer_id,
       client_reference_id: userId,
       payment_method_types: ['card'],
-      line_items,
+      line_items: [
+        {
+          price: price.id,
+          quantity: 1, // We use quantity of 1 since the price already includes everything
+        },
+      ],
       mode: 'subscription',
       success_url: `${client_url}/dashboard?checkout=success`,
       cancel_url: `${client_url}/pricing?checkout=cancelled`,
@@ -172,11 +179,15 @@ serve(async (req) => {
         metadata: {
           user_id: userId,
           calculated_price: calculatedPrice.toString(),
+          plan: plan,
+          url_count: urlCount.toString(),
+          api_access: includeApiAccess ? 'yes' : 'no',
+          billing_cycle: billingCycle,
         },
       },
       metadata: {
         user_id: userId,
-        plan,
+        plan: plan,
         url_count: urlCount.toString(),
         api_access: includeApiAccess ? 'yes' : 'no',
         billing_cycle: billingCycle,
@@ -214,8 +225,9 @@ serve(async (req) => {
     console.log("Creating Stripe checkout session with parameters:", {
       customerId: params.customer,
       userId: userId,
-      lineItems: line_items.length,
-      calculatedPrice
+      product: productName,
+      price: calculatedPrice,
+      billingCycle: billingCycle
     });
     
     // Create checkout session
