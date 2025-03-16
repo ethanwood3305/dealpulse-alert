@@ -9,13 +9,94 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      subscriptions: {
+        Row: {
+          created_at: string
+          id: string
+          plan: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          theme_preference: string | null
+          updated_at: string
+          urls_limit: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          theme_preference?: string | null
+          updated_at?: string
+          urls_limit?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          theme_preference?: string | null
+          updated_at?: string
+          urls_limit?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tracked_urls: {
+        Row: {
+          created_at: string
+          id: string
+          last_checked: string | null
+          last_price: number | null
+          updated_at: string
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_checked?: string | null
+          last_price?: number | null
+          updated_at?: string
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_checked?: string | null
+          last_price?: number | null
+          updated_at?: string
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      can_add_more_urls: {
+        Args: {
+          user_uuid: string
+        }
+        Returns: boolean
+      }
+      get_user_subscription: {
+        Args: {
+          user_uuid: string
+        }
+        Returns: {
+          plan: string
+          urls_limit: number
+          stripe_customer_id: string
+          stripe_subscription_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
