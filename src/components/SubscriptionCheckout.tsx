@@ -11,6 +11,7 @@ interface SubscriptionCheckoutProps {
   includeApiAccess?: boolean;
   buttonVariant?: "default" | "outline";
   className?: string;
+  buttonText?: string;
 }
 
 const SubscriptionCheckout = ({ 
@@ -18,7 +19,8 @@ const SubscriptionCheckout = ({
   urlCount,
   includeApiAccess = false,
   buttonVariant = "default", 
-  className = "" 
+  className = "",
+  buttonText
 }: SubscriptionCheckoutProps) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -62,6 +64,19 @@ const SubscriptionCheckout = ({
     }
   };
 
+  // Determine the button text based on the plan
+  const getButtonText = () => {
+    if (buttonText) {
+      return buttonText;
+    }
+    
+    if (plan === 'free') {
+      return "Start Free Trial";
+    }
+    
+    return "Subscribe Now";
+  };
+
   return (
     <Button 
       variant={buttonVariant} 
@@ -75,7 +90,7 @@ const SubscriptionCheckout = ({
           Processing...
         </>
       ) : (
-        "Start Free Trial"
+        getButtonText()
       )}
     </Button>
   );

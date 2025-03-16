@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -44,13 +43,11 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
     };
   }, []);
 
-  // Calculate price based on number of URLs with updated pricing structure
   const calculatePrice = (urls: number): number => {
     if (urls <= 1) return 0; // Free for 1 URL
     
     let basePrice;
     
-    // Progressive pricing tiers - revised to make lower URLs much cheaper
     if (urls <= 5) {
       basePrice = 3 + (urls - 2) * 0.75; // $3 for 2 URLs, then +$0.75 per URL
     } else if (urls <= 25) {
@@ -65,20 +62,16 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
       basePrice = 73.5 + (urls - 175) * 0.15; // After 175 URLs, lowest per-URL price
     }
     
-    // If over 125 URLs, API access is free
     const needsApiAccessCharge = includeApiAccess && urls > 1 && urls <= 125;
     
-    // Add API access cost if selected and not eligible for free API access
     if (needsApiAccessCharge) {
       basePrice += 6; // $6/month for API access
     }
     
-    // Ensure the price doesn't exceed $100 for 250 URLs
     if (urls === 250) {
       basePrice = Math.min(basePrice, 100);
     }
     
-    // Apply annual pricing - show full year price
     if (billingCycle === 'yearly') {
       basePrice = basePrice * 12 * 0.9; // 10% discount for annual billing, calculated on the full year
     }
@@ -86,7 +79,6 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
     return parseFloat(basePrice.toFixed(2));
   };
 
-  // Calculate check frequency based on URL count
   const getCheckFrequency = (urls: number): string => {
     if (urls <= 5) return 'Daily checks';
     if (urls <= 25) return '12-hour checks';
@@ -94,16 +86,13 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
     return 'Hourly checks';
   };
 
-  // Get price history based on URL count
   const getPriceHistory = (urls: number): string => {
     if (urls < 25) return '3-day price history';
     return '14-day price history';
   };
 
-  // Determine if API access is free based on URL count
   const isApiAccessFree = urlCount > 125;
 
-  // Determine plan ID based on URL count for backend
   const getPlanId = (urls: number): string => {
     if (urls <= 1) return 'free';
     if (urls <= 5) return 'starter';
@@ -119,7 +108,6 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
   const planId = getPlanId(urlCount);
   const isFreePlan = urlCount <= 1;
 
-  // Set API access to true automatically if eligible for free access
   useEffect(() => {
     if (isApiAccessFree) {
       setIncludeApiAccess(true);
@@ -228,6 +216,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
               includeApiAccess={includeApiAccess || isApiAccessFree}
               buttonVariant="default"
               className="w-full rounded-full mb-6"
+              buttonText={urlCount > 1 ? "Subscribe Now" : "Start Free Trial"}
             />
           )}
         </div>
@@ -270,3 +259,4 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
 };
 
 export default CustomPricingCard;
+
