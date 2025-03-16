@@ -89,7 +89,7 @@ serve(async (req) => {
     );
     console.log("Created price:", price.id);
     
-    // Prepare metadata
+    // Prepare metadata - this is critical for the webhook to process correctly
     const metadata = {
       user_id: userId,
       plan: plan,
@@ -99,6 +99,12 @@ serve(async (req) => {
       calculated_price: calculatedPrice.toString(),
       checkout_time: new Date().toISOString(),
     };
+    
+    console.log("Setting checkout metadata:", metadata);
+    
+    const timestamp = Date.now();
+    const successUrl = `${normalizedClientUrl}/dashboard?checkout=success&t=${timestamp}&plan=${plan}&urls=${urlCount}`;
+    console.log("Success URL:", successUrl);
     
     const params = {
       customer: subscriptionData?.stripe_customer_id,
@@ -111,7 +117,7 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${normalizedClientUrl}/dashboard?checkout=success&t=${Date.now()}&plan=${plan}&urls=${urlCount}`,
+      success_url: successUrl,
       cancel_url: `${normalizedClientUrl}/pricing?checkout=cancelled`,
       subscription_data: {
         metadata: metadata,
@@ -119,7 +125,7 @@ serve(async (req) => {
       metadata: metadata,
     };
     
-    console.log("Checkout session params:", JSON.stringify(params).substring(0, 200) + "...");
+    console.log("Checkout session params prepared");
     
     // Create new Stripe customer if needed
     if (!subscriptionData?.stripe_customer_id) {

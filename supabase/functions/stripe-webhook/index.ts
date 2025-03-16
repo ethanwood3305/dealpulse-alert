@@ -22,44 +22,82 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log("Received webhook request");
-  
-  // Handle CORS preflight request
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders, status: 200 });
-  }
-
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "Method not allowed" }), {
-      status: 405,
-      headers: { "Content-Type": "application/json", ...corsHeaders },
-    });
-  }
-
+  // Set up robust error handling to catch and log any errors
   try {
+    console.log("Received webhook request");
+    
+    // Handle CORS preflight requests
+    if (req.method === "OPTIONS") {
+      return new Response(null, { headers: corsHeaders, status: 200 });
+    }
+
+    if (req.method !== "POST") {
+      console.log(`Invalid method: ${req.method}`);
+      return new Response(JSON.stringify({ error: "Method not allowed" }), {
+        status: 405,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    // Check for environment variables
+    if (!stripeSecretKey) {
+      console.error("Missing STRIPE_SECRET_KEY environment variable");
+      return new Response(JSON.stringify({ error: "Server configuration error: Missing Stripe key" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error("Missing Supabase environment variables");
+      return new Response(JSON.stringify({ error: "Server configuration error: Missing Supabase credentials" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     // Get the webhook signature from headers
     const signature = req.headers.get('stripe-signature');
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
     
-    if (!signature || !webhookSecret) {
-      console.error("Missing signature or webhook secret");
-      return new Response(JSON.stringify({ error: "Missing signature or webhook secret" }), {
+    if (!signature) {
+      console.error("Missing Stripe signature in webhook request");
+      return new Response(JSON.stringify({ error: "Missing Stripe signature" }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
     }
 
+    if (!webhookSecret) {
+      console.error("Missing STRIPE_WEBHOOK_SECRET environment variable");
+      return new Response(JSON.stringify({ error: "Server configuration error: Missing webhook secret" }), {
+        status: 500,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
+
     // Get raw request body
-    const body = await req.text();
-    console.log("Webhook payload received");
+    let body;
+    try {
+      body = await req.text();
+      console.log("Received webhook payload");
+    } catch (err) {
+      console.error(`Error reading request body: ${err.message}`);
+      return new Response(JSON.stringify({ error: "Could not read request body" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
+    }
     
     // Verify webhook signature
     let event;
     try {
+      console.log("Verifying Stripe signature...");
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-      console.log(`Webhook event type: ${event.type}`);
+      console.log(`Webhook verified. Event type: ${event.type}`);
+      console.log(`Event ID: ${event.id}`);
     } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
+      console.error(`⚠️ Webhook signature verification failed: ${err.message}`);
       return new Response(JSON.stringify({ error: `Webhook Error: ${err.message}` }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -68,30 +106,46 @@ serve(async (req) => {
 
     // Handle the event
     let result = false;
-    console.log(`Processing event: ${event.type}`);
+    console.log(`Processing event type: ${event.type}`);
     
-    switch (event.type) {
-      case 'checkout.session.completed':
-        result = await handleCheckoutSessionCompleted(event.data.object);
-        break;
-      case 'customer.subscription.updated':
-        result = await handleSubscriptionUpdated(event.data.object);
-        break;
-      case 'customer.subscription.deleted':
-        result = await handleSubscriptionDeleted(event.data.object);
-        break;
-      default:
-        console.log(`Unhandled event type ${event.type}`);
+    // Log the event data for debugging
+    console.log(`Event data: ${JSON.stringify(event.data.object).substring(0, 200)}...`);
+    
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed':
+          result = await handleCheckoutSessionCompleted(event.data.object);
+          break;
+        case 'customer.subscription.updated':
+          result = await handleSubscriptionUpdated(event.data.object);
+          break;
+        case 'customer.subscription.deleted':
+          result = await handleSubscriptionDeleted(event.data.object);
+          break;
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+      
+      console.log(`Event ${event.type} processed successfully: ${result}`);
+    } catch (err) {
+      console.error(`Error processing event ${event.type}: ${err.message}`);
+      console.error(err.stack);
+      // We don't want to return an error to Stripe as this would cause it to retry
+      // Instead log the error and return a 200 response
+      return new Response(JSON.stringify({ received: true, warning: err.message }), {
+        status: 200, // Return 200 to prevent Stripe from retrying
+        headers: { "Content-Type": "application/json", ...corsHeaders },
+      });
     }
-    
-    console.log(`Event ${event.type} processed successfully: ${result}`);
 
     return new Response(JSON.stringify({ received: true, success: result }), {
       status: 200,
       headers: { "Content-Type": "application/json", ...corsHeaders },
     });
   } catch (error) {
-    console.error(`Error processing webhook: ${error.message}`);
+    // Catch-all error handler
+    console.error(`⚠️ Critical webhook error: ${error.message}`);
+    console.error(error.stack);
     return new Response(JSON.stringify({ error: "Internal server error", details: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -103,11 +157,11 @@ serve(async (req) => {
 async function handleCheckoutSessionCompleted(session) {
   console.log("Processing checkout.session.completed event");
   console.log(`Session ID: ${session.id}`);
-  console.log(`User ID: ${session.client_reference_id}`);
-  console.log(`Metadata: ${JSON.stringify(session.metadata)}`);
+  console.log(`User ID (client_reference_id): ${session.client_reference_id}`);
+  console.log(`Metadata: ${JSON.stringify(session.metadata || {})}`);
   
   if (!session.client_reference_id) {
-    console.error("No client_reference_id in session");
+    console.error("❌ No client_reference_id in session");
     return false;
   }
 
@@ -128,11 +182,11 @@ async function handleCheckoutSessionCompleted(session) {
       .single();
       
     if (checkError && checkError.code !== 'PGRST116') {
-      console.error(`Error checking subscription: ${checkError.message}`);
-      return false;
+      console.error(`❌ Error checking subscription: ${checkError.message}`);
+      throw new Error(`Database error: ${checkError.message}`);
     }
     
-    console.log(`Existing subscription: ${JSON.stringify(existingSubscription)}`);
+    console.log(`Existing subscription found: ${JSON.stringify(existingSubscription || {})}`);
     
     // Get subscription ID from the session
     let stripeSubscriptionId = null;
@@ -143,6 +197,7 @@ async function handleCheckoutSessionCompleted(session) {
         console.log(`Found subscription ID in session: ${stripeSubscriptionId}`);
       } else if (session.mode === 'subscription') {
         // Try to retrieve the latest subscription for the customer
+        console.log(`Fetching subscriptions for customer ${session.customer}`);
         const subscriptions = await stripe.subscriptions.list({
           customer: session.customer,
           limit: 1
@@ -151,10 +206,13 @@ async function handleCheckoutSessionCompleted(session) {
         if (subscriptions.data.length > 0) {
           stripeSubscriptionId = subscriptions.data[0].id;
           console.log(`Retrieved subscription ID from customer: ${stripeSubscriptionId}`);
+        } else {
+          console.log("No subscriptions found for customer");
         }
       }
     } catch (subError) {
-      console.error(`Error retrieving subscription ID: ${subError.message}`);
+      console.error(`❌ Error retrieving subscription ID: ${subError.message}`);
+      // Continue without subscription ID
     }
     
     // Update the subscription in the database
@@ -177,11 +235,11 @@ async function handleCheckoutSessionCompleted(session) {
       .eq('user_id', userId);
     
     if (updateError) {
-      console.error(`Error updating subscription for user ${userId}: ${updateError.message}`);
-      return false;
+      console.error(`❌ Error updating subscription for user ${userId}: ${updateError.message}`);
+      throw new Error(`Database update error: ${updateError.message}`);
     }
     
-    console.log(`Subscription updated successfully for user ${userId}`);
+    console.log(`✅ Subscription updated successfully for user ${userId}`);
     
     // Verify the update
     const { data: verifyData, error: verifyError } = await supabase
@@ -191,15 +249,16 @@ async function handleCheckoutSessionCompleted(session) {
       .single();
       
     if (verifyError) {
-      console.error(`Error verifying subscription update: ${verifyError.message}`);
-      return false;
+      console.error(`❌ Error verifying subscription update: ${verifyError.message}`);
+      throw new Error(`Database verification error: ${verifyError.message}`);
     }
     
-    console.log(`Verified subscription data: ${JSON.stringify(verifyData)}`);
+    console.log(`✅ Verified subscription data: ${JSON.stringify(verifyData || {})}`);
     return true;
   } catch (error) {
-    console.error(`Error in handleCheckoutSessionCompleted: ${error.message}`);
-    return false;
+    console.error(`❌ Error in handleCheckoutSessionCompleted: ${error.message}`);
+    console.error(error.stack);
+    throw error; // Re-throw to be caught by the main handler
   }
 }
 
@@ -207,13 +266,13 @@ async function handleCheckoutSessionCompleted(session) {
 async function handleSubscriptionUpdated(subscription) {
   console.log("Processing customer.subscription.updated event");
   console.log(`Subscription ID: ${subscription.id}`);
-  console.log(`Subscription metadata: ${JSON.stringify(subscription.metadata)}`);
+  console.log(`Subscription metadata: ${JSON.stringify(subscription.metadata || {})}`);
   
   try {
     // Get the user ID from metadata
-    const userId = subscription.metadata?.user_id;
+    let userId = subscription.metadata?.user_id;
     if (!userId) {
-      console.error("No user_id in subscription metadata");
+      console.log("No user_id in subscription metadata, trying to find in database");
       
       // Try to find the subscription in the database
       const { data: subData, error: subError } = await supabase
@@ -223,8 +282,8 @@ async function handleSubscriptionUpdated(subscription) {
         .single();
         
       if (subError || !subData) {
-        console.error(`Couldn't find user for subscription ${subscription.id}`);
-        return false;
+        console.error(`❌ Couldn't find user for subscription ${subscription.id}`);
+        throw new Error(`No user found for subscription ${subscription.id}`);
       }
       
       console.log(`Found user ${subData.user_id} for subscription ${subscription.id}`);
@@ -234,8 +293,8 @@ async function handleSubscriptionUpdated(subscription) {
     // Get the subscription item details
     const subscriptionItem = subscription.items.data[0];
     if (!subscriptionItem) {
-      console.error("No subscription item found");
-      return false;
+      console.error("❌ No subscription item found");
+      throw new Error("No subscription item found in the subscription data");
     }
     
     // Get the price metadata
@@ -244,40 +303,58 @@ async function handleSubscriptionUpdated(subscription) {
     let planId = 'free';
     
     try {
+      console.log(`Retrieving price details for ${subscriptionItem.price.id}`);
       const price = await stripe.prices.retrieve(subscriptionItem.price.id);
-      console.log(`Retrieved price: ${JSON.stringify(price.metadata)}`);
+      console.log(`Retrieved price: ${JSON.stringify(price.metadata || {})}`);
       urlCount = parseInt(price.metadata?.url_count || "1", 10);
       hasApiAccess = price.metadata?.api_access === 'yes';
       planId = price.metadata?.plan || 'free';
     } catch (priceError) {
-      console.error(`Error retrieving price: ${priceError.message}`);
+      console.error(`❌ Error retrieving price: ${priceError.message}`);
       // Continue with default values
     }
     
     console.log(`Updating subscription for user ${userId}: URLs=${urlCount}, API access=${hasApiAccess}, Plan=${planId}`);
     
     // Update the subscription in the database
+    const updateData = {
+      plan: planId,
+      urls_limit: urlCount,
+      has_api_access: hasApiAccess,
+      stripe_subscription_id: subscription.id,
+      updated_at: new Date().toISOString()
+    };
+    
     const { error: updateError } = await supabase
       .from('subscriptions')
-      .update({
-        plan: planId,
-        urls_limit: urlCount,
-        has_api_access: hasApiAccess,
-        stripe_subscription_id: subscription.id,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('user_id', userId);
     
     if (updateError) {
-      console.error(`Error updating subscription for user ${userId}: ${updateError.message}`);
-      return false;
+      console.error(`❌ Error updating subscription for user ${userId}: ${updateError.message}`);
+      throw new Error(`Database update error: ${updateError.message}`);
     }
     
-    console.log(`Subscription updated successfully for user ${userId}`);
+    console.log(`✅ Subscription updated successfully for user ${userId}`);
+    
+    // Verify the update
+    const { data: verifyData, error: verifyError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+      
+    if (verifyError) {
+      console.error(`❌ Error verifying subscription update: ${verifyError.message}`);
+      throw new Error(`Database verification error: ${verifyError.message}`);
+    }
+    
+    console.log(`✅ Verified subscription data: ${JSON.stringify(verifyData || {})}`);
     return true;
   } catch (error) {
-    console.error(`Error in handleSubscriptionUpdated: ${error.message}`);
-    return false;
+    console.error(`❌ Error in handleSubscriptionUpdated: ${error.message}`);
+    console.error(error.stack);
+    throw error; // Re-throw to be caught by the main handler
   }
 }
 
@@ -295,13 +372,13 @@ async function handleSubscriptionDeleted(subscription) {
       .single();
     
     if (findError) {
-      console.error(`Error finding subscription: ${findError.message}`);
-      return false;
+      console.error(`❌ Error finding subscription: ${findError.message}`);
+      throw new Error(`Database error: ${findError.message}`);
     }
     
     if (!subscriptionData) {
-      console.error(`No subscription found for ID ${subscription.id}`);
-      return false;
+      console.error(`❌ No subscription found for ID ${subscription.id}`);
+      throw new Error(`No subscription found for ID ${subscription.id}`);
     }
     
     const userId = subscriptionData.user_id;
@@ -320,14 +397,15 @@ async function handleSubscriptionDeleted(subscription) {
       .eq('user_id', userId);
     
     if (updateError) {
-      console.error(`Error resetting subscription for user ${userId}: ${updateError.message}`);
-      return false;
+      console.error(`❌ Error resetting subscription for user ${userId}: ${updateError.message}`);
+      throw new Error(`Database update error: ${updateError.message}`);
     }
     
-    console.log(`Subscription reset successfully for user ${userId}`);
+    console.log(`✅ Subscription reset successfully for user ${userId}`);
     return true;
   } catch (error) {
-    console.error(`Error in handleSubscriptionDeleted: ${error.message}`);
-    return false;
+    console.error(`❌ Error in handleSubscriptionDeleted: ${error.message}`);
+    console.error(error.stack);
+    throw error; // Re-throw to be caught by the main handler
   }
 }
