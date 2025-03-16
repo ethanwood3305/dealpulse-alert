@@ -92,14 +92,15 @@ serve(async (req) => {
       });
     }
     
-    // Verify webhook signature
+    // Verify webhook signature - UPDATED TO USE ASYNC VERSION
     let event;
     try {
-      console.log("Verifying Stripe signature...");
+      console.log("Verifying Stripe signature asynchronously...");
       console.log("Signature:", signature.substring(0, 20) + "...");
       console.log("Webhook Secret:", webhookSecret.substring(0, 5) + "...");
       
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      // Use constructEventAsync instead of constructEvent
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
       console.log(`Webhook verified. Event type: ${event.type}`);
       console.log(`Event ID: ${event.id}`);
     } catch (err) {
