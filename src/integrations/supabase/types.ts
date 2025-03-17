@@ -9,6 +9,91 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      car_brands: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      car_models: {
+        Row: {
+          brand_id: string
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          brand_id: string
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          brand_id?: string
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "car_models_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "car_brands"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      engine_types: {
+        Row: {
+          capacity: string | null
+          created_at: string | null
+          fuel_type: string
+          id: string
+          model_id: string
+          name: string
+          power: string | null
+        }
+        Insert: {
+          capacity?: string | null
+          created_at?: string | null
+          fuel_type: string
+          id?: string
+          model_id: string
+          name: string
+          power?: string | null
+        }
+        Update: {
+          capacity?: string | null
+          created_at?: string | null
+          fuel_type?: string
+          id?: string
+          model_id?: string
+          name?: string
+          power?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engine_types_model_id_fkey"
+            columns: ["model_id"]
+            isOneToOne: false
+            referencedRelation: "car_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           api_key: string | null
@@ -110,6 +195,20 @@ export type Database = {
           has_api_access: boolean
           api_key: string
           trial_end: string
+        }[]
+      }
+      get_vehicle_by_registration: {
+        Args: {
+          reg_number: string
+        }
+        Returns: {
+          brand: string
+          model: string
+          engine_type: string
+          mileage: string
+          registration: string
+          year: string
+          color: string
         }[]
       }
     }

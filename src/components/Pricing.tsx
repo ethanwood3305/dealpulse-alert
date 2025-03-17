@@ -112,7 +112,7 @@ const Pricing = () => {
     },
     {
       question: "How accurate is the price monitoring?",
-      answer: "Our system is designed to be highly accurate, with over 99% detection rate for price changes. However, some website structures can occasionally present challenges. If you encounter any issues with specific competitor websites, our support team is available to help optimize the monitoring for those sites."
+      answer: "Our system is designed to be highly accurate, with over 99% detection rate for price changes. However, some website structures can occasionally present challenges. If you encounter any issues with specific competitor vehicles, our support team is available to help optimize the monitoring for those models."
     },
     {
       question: "Do you offer discounts for annual billing?",

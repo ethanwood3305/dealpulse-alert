@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -9,6 +10,8 @@ export interface TrackedCar {
   engineType: string;
   registrationNumber?: string;
   mileage?: string;
+  year?: string;
+  color?: string;
   last_price: number | null;
   last_checked: string | null;
   created_at: string;
@@ -22,6 +25,8 @@ export interface AddCarParams {
   engineType: string;
   registrationNumber?: string;
   mileage?: string;
+  year?: string;
+  color?: string;
 }
 
 export const useTrackedCars = (userId: string | undefined) => {
@@ -52,8 +57,10 @@ export const useTrackedCars = (userId: string | undefined) => {
         const engineType = urlParts[2] || 'Unknown Engine';
         let registrationNumber;
         let mileage;
+        let year;
+        let color;
         
-        // Check for registration number and mileage in the URL
+        // Check for params in the URL
         if (urlParts[3]) {
           const params = urlParts[3].split('&');
           params.forEach(param => {
@@ -62,6 +69,12 @@ export const useTrackedCars = (userId: string | undefined) => {
             }
             if (param.includes('mil=')) {
               mileage = param.split('mil=')[1];
+            }
+            if (param.includes('year=')) {
+              year = param.split('year=')[1];
+            }
+            if (param.includes('color=')) {
+              color = param.split('color=')[1];
             }
           });
         }
@@ -73,6 +86,8 @@ export const useTrackedCars = (userId: string | undefined) => {
           engineType,
           registrationNumber,
           mileage,
+          year,
+          color,
           tags: item.tags || []
         };
       }) || [];
@@ -90,7 +105,7 @@ export const useTrackedCars = (userId: string | undefined) => {
     }
   };
 
-  // Update the addCar function to use our new AddCarParams interface with mileage field
+  // Update the addCar function to use our new AddCarParams interface with all fields
   const addCar = async (car: AddCarParams) => {
     try {
       if (!userId) return false;
@@ -99,7 +114,12 @@ export const useTrackedCars = (userId: string | undefined) => {
       // In a real implementation, we'd create a proper cars table
       const registrationParam = car.registrationNumber ? `reg=${car.registrationNumber}` : '';
       const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
-      const params = [registrationParam, mileageParam].filter(Boolean).join('&');
+      const yearParam = car.year ? `year=${car.year}` : '';
+      const colorParam = car.color ? `color=${car.color}` : '';
+      
+      const params = [registrationParam, mileageParam, yearParam, colorParam]
+        .filter(Boolean)
+        .join('&');
       
       const carUrl = `${car.brand}/${car.model}/${car.engineType}${params ? `/${params}` : ''}`;
       

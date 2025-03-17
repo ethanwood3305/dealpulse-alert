@@ -62,99 +62,107 @@ export const TrackedCarsTable = ({
         <CardDescription>Your tracked competitor vehicle models</CardDescription>
       </CardHeader>
       <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Brand</TableHead>
-              <TableHead>Model</TableHead>
-              <TableHead>Engine Type</TableHead>
-              <TableHead>Mileage</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Last Price</TableHead>
-              <TableHead>Last Checked</TableHead>
-              <TableHead>Tags</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sortedCars.map((car, index) => {
-              const isActive = index < carsLimit;
-              
-              return (
-                <TableRow key={car.id} className={!isActive ? "opacity-70" : ""}>
-                  <TableCell className="font-medium">{car.brand}</TableCell>
-                  <TableCell>{car.model}</TableCell>
-                  <TableCell>{car.engineType}</TableCell>
-                  <TableCell>{car.mileage || 'N/A'}</TableCell>
-                  <TableCell>
-                    {isActive ? (
-                      <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
-                        Active
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
-                        Not Active
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isActive ? (
-                      car.last_price ? (
-                        <span className="font-mono">${car.last_price.toFixed(2)}</span>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Brand</TableHead>
+                <TableHead>Model</TableHead>
+                <TableHead>Engine Type</TableHead>
+                <TableHead>Registration</TableHead>
+                <TableHead>Mileage</TableHead>
+                <TableHead>Year</TableHead>
+                <TableHead>Color</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Last Price</TableHead>
+                <TableHead>Last Checked</TableHead>
+                <TableHead>Tags</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sortedCars.map((car, index) => {
+                const isActive = index < carsLimit;
+                
+                return (
+                  <TableRow key={car.id} className={!isActive ? "opacity-70" : ""}>
+                    <TableCell className="font-medium">{car.brand}</TableCell>
+                    <TableCell>{car.model}</TableCell>
+                    <TableCell>{car.engineType}</TableCell>
+                    <TableCell>{car.registrationNumber || 'N/A'}</TableCell>
+                    <TableCell>{car.mileage || 'N/A'}</TableCell>
+                    <TableCell>{car.year || 'N/A'}</TableCell>
+                    <TableCell>{car.color || 'N/A'}</TableCell>
+                    <TableCell>
+                      {isActive ? (
+                        <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
+                          Active
+                        </Badge>
                       ) : (
-                        <span className="text-muted-foreground">Pending</span>
-                      )
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {isActive ? (
-                      car.last_checked ? (
-                        format(new Date(car.last_checked), 'MMM d, yyyy h:mm a')
+                        <Badge variant="outline" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300">
+                          Not Active
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isActive ? (
+                        car.last_price ? (
+                          <span className="font-mono">${car.last_price.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">Pending</span>
+                        )
                       ) : (
-                        <span className="text-muted-foreground">Not checked yet</span>
-                      )
-                    ) : (
-                      <span className="text-muted-foreground">Inactive</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <TagInput 
-                      urlId={car.id}
-                      existingTags={car.tags || []}
-                      onAddTag={onAddTag}
-                      onRemoveTag={onRemoveTag}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <TrashIcon className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete this tracked vehicle and remove all associated data.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => onDelete(car.id)}>
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {isActive ? (
+                        car.last_checked ? (
+                          format(new Date(car.last_checked), 'MMM d, yyyy h:mm a')
+                        ) : (
+                          <span className="text-muted-foreground">Not checked yet</span>
+                        )
+                      ) : (
+                        <span className="text-muted-foreground">Inactive</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <TagInput 
+                        urlId={car.id}
+                        existingTags={car.tags || []}
+                        onAddTag={onAddTag}
+                        onRemoveTag={onRemoveTag}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <TrashIcon className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete this tracked vehicle and remove all associated data.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDelete(car.id)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
