@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Bell, LineChart, ShieldCheck, Zap } from 'lucide-react';
+import { ChevronRight, Bell, LineChart, ShieldCheck, Zap, Car } from 'lucide-react';
 
 const Hero = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -14,9 +14,9 @@ const Hero = () => {
   // How it works steps
   const steps = [
     {
-      icon: <Bell className="h-6 w-6 text-primary" />,
+      icon: <Car className="h-6 w-6 text-primary" />,
       title: "Set up tracking",
-      description: "Easily add competitor URLs you want to monitor"
+      description: "Easily add car models you want to monitor"
     },
     {
       icon: <Zap className="h-6 w-6 text-primary" />,
@@ -47,7 +47,7 @@ const Hero = () => {
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            <span className="text-primary">New</span> — Real-time price monitoring for auto dealers
+            <span className="text-primary">New</span> — Real-time car price monitoring for auto dealers
           </div>
           
           {/* Main heading - Updated with stronger value proposition */}
@@ -56,12 +56,12 @@ const Hero = () => {
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            Stay Ahead with <span className="relative">
-              Instant Price Alerts
+            Track <span className="relative">
+              Car Prices
               <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M2 10C50.5 4 99 2.5 147.5 2.5C196 2.5 244.5 4 293 10" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round"/>
               </svg>
-            </span>
+            </span> with Instant Alerts
           </h1>
           
           {/* Subtitle - Made clearer */}
@@ -70,7 +70,7 @@ const Hero = () => {
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            Never miss a competitor's price change again! Get instant notifications when competitors adjust their prices and stay competitive 24/7.
+            Never miss a competitor's car price change again! Monitor prices for any make, model, and engine type. Get instant notifications when prices change and stay competitive 24/7.
           </p>
           
           {/* CTA buttons - Improved with action-driven text */}
@@ -81,7 +81,7 @@ const Hero = () => {
           >
             <Link to="/signup">
               <Button size="lg" className="rounded-full px-8 h-12 text-base w-full sm:w-auto">
-                Start Free Tracking Now
+                Start Free Car Tracking
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
@@ -124,25 +124,25 @@ const Hero = () => {
               </div>
               <h3 className="text-lg font-medium mb-2">Instant Alerts</h3>
               <p className="text-sm text-muted-foreground text-center">
-                Get notified immediately when competitors change their prices.
+                Get notified immediately when competitors change their car prices.
               </p>
             </div>
             <div className="flex flex-col items-center group">
               <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
                 <LineChart className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-lg font-medium mb-2">Trend Analysis</h3>
+              <h3 className="text-lg font-medium mb-2">Price History</h3>
               <p className="text-sm text-muted-foreground text-center">
-                Track price history and predict future pricing strategies.
+                Track price history for specific car models and predict future pricing strategies.
               </p>
             </div>
             <div className="flex flex-col items-center group">
               <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
-                <ShieldCheck className="h-6 w-6 text-primary" />
+                <Car className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-lg font-medium mb-2">Stay Competitive</h3>
+              <h3 className="text-lg font-medium mb-2">Registration Lookup</h3>
               <p className="text-sm text-muted-foreground text-center">
-                Maintain optimal pricing to maximize your profit margins.
+                Enter a registration number to automatically identify and track car details.
               </p>
             </div>
           </div>

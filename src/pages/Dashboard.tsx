@@ -10,18 +10,21 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
-import { AddUrlForm } from '@/components/dashboard/AddUrlForm';
-import { TrackedUrlsTable } from '@/components/dashboard/TrackedUrlsTable';
+import { AddCarForm } from '@/components/dashboard/AddCarForm';
+import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { useSubscription } from '@/hooks/use-subscription';
-import { useTrackedUrls } from '@/hooks/use-tracked-urls';
+import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import * as z from "zod";
 
-const urlSchema = z.object({
-  url: z.string().url("Please enter a valid URL").min(5, "URL must be at least 5 characters")
+const carSchema = z.object({
+  registrationNumber: z.string().optional(),
+  brand: z.string().min(1, "Brand is required"),
+  model: z.string().min(1, "Model is required"),
+  engineType: z.string().min(1, "Engine type is required"),
 });
 
 const Dashboard = () => {
-  const [isAddingUrl, setIsAddingUrl] = useState(false);
+  const [isAddingCar, setIsAddingCar] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [checkoutProcessed, setCheckoutProcessed] = useState(false);
   const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
@@ -31,7 +34,7 @@ const Dashboard = () => {
   
   const { 
     userSubscription, 
-    canAddMoreUrls, 
+    canAddMoreUrls: canAddMoreCars, 
     isLoading: isLoadingSubscription,
     refreshSubscription,
     cancelSubscription,
@@ -40,15 +43,15 @@ const Dashboard = () => {
   } = useSubscription(user?.id);
   
   const { 
-    trackedUrls, 
-    isLoading: isLoadingUrls,
-    addUrl,
-    deleteUrl,
+    trackedCars, 
+    isLoading: isLoadingCars,
+    addCar,
+    deleteCar,
     addTag,
     removeTag
-  } = useTrackedUrls(user?.id);
+  } = useTrackedCars(user?.id);
 
-  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingUrls);
+  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars);
 
   const processCheckout = useCallback(async () => {
     if (checkoutProcessed) return;
@@ -157,14 +160,14 @@ const Dashboard = () => {
   }, [navigate, location.search, checkoutProcessed, processCheckout]);
 
   useEffect(() => {
-    if (!isLoadingSubscription && !isLoadingUrls && !initialLoadComplete) {
+    if (!isLoadingSubscription && !isLoadingCars && !initialLoadComplete) {
       setInitialLoadComplete(true);
     }
-  }, [isLoadingSubscription, isLoadingUrls, initialLoadComplete]);
+  }, [isLoadingSubscription, isLoadingCars, initialLoadComplete]);
 
-  const onSubmitUrl = async (values: z.infer<typeof urlSchema>) => {
+  const onSubmitCar = async (values: z.infer<typeof carSchema>) => {
     if (!user) return;
-    setIsAddingUrl(true);
+    setIsAddingCar(true);
     
     try {
       const { data: canAddMore, error: checkError } = await supabase.rpc('can_add_more_urls', {
@@ -178,34 +181,34 @@ const Dashboard = () => {
       if (!canAddMore) {
         toast({
           title: "Limit reached",
-          description: `You've reached your limit of ${userSubscription?.urls_limit} URLs. Please upgrade your plan to add more.`,
+          description: `You've reached your limit of ${userSubscription?.urls_limit} cars. Please upgrade your plan to add more.`,
           variant: "destructive"
         });
         return;
       }
 
-      const success = await addUrl(values.url);
+      const success = await addCar(values);
       if (success) {
         refreshSubscription();
         toast({
-          title: "URL added",
-          description: "The URL has been added to your tracking list."
+          title: "Car added",
+          description: "The car has been added to your tracking list."
         });
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add URL. Please try again later.",
+        description: error.message || "Failed to add car. Please try again later.",
         variant: "destructive"
       });
     } finally {
-      setIsAddingUrl(false);
+      setIsAddingCar(false);
     }
   };
 
-  const handleDeleteUrl = async (id: string) => {
+  const handleDeleteCar = async (id: string) => {
     if (!user) return;
-    const success = await deleteUrl(id);
+    const success = await deleteCar(id);
     if (success) {
       refreshSubscription();
     }
@@ -241,8 +244,8 @@ const Dashboard = () => {
     }
   };
 
-  const scrollToAddUrlForm = () => {
-    document.getElementById('add-url-form')?.scrollIntoView({
+  const scrollToAddCarForm = () => {
+    document.getElementById('add-car-form')?.scrollIntoView({
       behavior: 'smooth'
     });
   };
@@ -306,15 +309,15 @@ const Dashboard = () => {
             <SubscriptionCard 
               plan={userSubscription?.plan}
               urls_limit={userSubscription?.urls_limit}
-              trackedUrlsCount={trackedUrls.length}
+              trackedUrlsCount={trackedCars.length}
               onCancelSubscription={handleCancelSubscription}
               hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
               onRefreshSubscription={manuallyRefreshSubscription}
             />
             
             <QuickActionsCard 
-              canAddMoreUrls={canAddMoreUrls}
-              onAddUrlClick={scrollToAddUrlForm}
+              canAddMoreUrls={canAddMoreCars}
+              onAddUrlClick={scrollToAddCarForm}
             />
           </div>
           
@@ -327,18 +330,18 @@ const Dashboard = () => {
             />
           </div>
           
-          <AddUrlForm 
-            onSubmit={onSubmitUrl}
-            isAddingUrl={isAddingUrl}
-            canAddMoreUrls={canAddMoreUrls}
+          <AddCarForm 
+            onSubmit={onSubmitCar}
+            isAddingCar={isAddingCar}
+            canAddMoreCars={canAddMoreCars}
           />
           
-          <TrackedUrlsTable 
-            trackedUrls={trackedUrls}
-            onDelete={handleDeleteUrl}
+          <TrackedCarsTable 
+            trackedCars={trackedCars}
+            onDelete={handleDeleteCar}
             onAddTag={handleAddTag}
             onRemoveTag={handleRemoveTag}
-            urlsLimit={userSubscription?.urls_limit}
+            carsLimit={userSubscription?.urls_limit}
           />
         </div>
       </main>
