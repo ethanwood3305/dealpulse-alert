@@ -66,7 +66,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
       <CardContent className="p-6">
         <h3 className="text-xl font-bold mb-2">Custom Plan</h3>
         <p className="text-muted-foreground mb-6">
-          Choose exactly how many URLs you want to monitor
+          Choose exactly how many vehicles you want to monitor
         </p>
         
         <PricingSlider urlCount={urlCount} setUrlCount={setUrlCount} />
@@ -100,7 +100,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
         ) : (
           <SubscriptionCheckout 
             plan={planId}
-            urlCount={urlCount}
+            carCount={urlCount}
             includeApiAccess={includeApiAccess || isApiAccessFree}
             billingCycle={billingCycle}
             buttonVariant="default"
