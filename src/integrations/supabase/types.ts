@@ -19,6 +19,7 @@ export type Database = {
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           theme_preference: string | null
+          trial_end: string | null
           updated_at: string
           urls_limit: number
           user_id: string
@@ -32,6 +33,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           theme_preference?: string | null
+          trial_end?: string | null
           updated_at?: string
           urls_limit?: number
           user_id: string
@@ -45,6 +47,7 @@ export type Database = {
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           theme_preference?: string | null
+          trial_end?: string | null
           updated_at?: string
           urls_limit?: number
           user_id?: string
@@ -106,6 +109,7 @@ export type Database = {
           stripe_subscription_id: string
           has_api_access: boolean
           api_key: string
+          trial_end: string
         }[]
       }
     }
