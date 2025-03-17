@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { 
@@ -6,9 +7,9 @@ import {
   generateApiKeyForUser,
   cancelUserSubscription
 } from "@/utils/subscription-utils";
-import { UserSubscription } from "@/types/subscription-types";
+import type { UserSubscription } from "@/types/subscription-types";
 
-export { UserSubscription };
+export type { UserSubscription };
 
 export const useSubscription = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);

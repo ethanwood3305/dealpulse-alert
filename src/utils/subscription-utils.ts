@@ -23,7 +23,8 @@ export async function fetchSubscriptionData(userId: string) {
     } else if (subscriptionData && subscriptionData.length > 0) {
       console.log("[subscription-utils] Subscription data received:", subscriptionData[0]);
       
-      // Check if trial has expired
+      // Check if trial has expired - note that trial_end might not be in the database yet
+      // so we need to handle it as an optional property
       if (subscriptionData[0].plan === 'trial' && subscriptionData[0].trial_end) {
         const trialEnd = new Date(subscriptionData[0].trial_end);
         const now = new Date();
