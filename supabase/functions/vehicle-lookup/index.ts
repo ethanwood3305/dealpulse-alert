@@ -36,10 +36,18 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // In a real implementation, we would call the DVLA API here
-    // For now, we'll use our mock data function in the database
+    // In a real implementation, we would call the DVLA API here with:
+    // const dvlaApiKey = Deno.env.get('DVLA_API_KEY')
+    // const dvlaResponse = await fetch('https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles', {
+    //   method: 'POST',
+    //   headers: {
+    //     'x-api-key': dvlaApiKey,
+    //     'Content-Type': 'application/json'
+    //   },
+    //   body: JSON.stringify({ registrationNumber: formattedReg })
+    // })
     
-    // Call the database function to get vehicle data
+    // For now, we'll call our database function to get mock data
     const { data, error } = await supabaseAdmin.rpc(
       'get_vehicle_by_registration',
       { reg_number: formattedReg }
@@ -51,7 +59,15 @@ serve(async (req) => {
     }
 
     // Mock different responses based on registration patterns
-    let mockData = data[0]
+    let mockData = data[0] || {
+      brand: 'Not Found',
+      model: 'Not Found',
+      engine_type: 'Not Found',
+      mileage: '0',
+      registration: formattedReg,
+      year: 'Unknown',
+      color: 'Unknown'
+    }
     
     // Simulate different car data based on registration prefix
     if (formattedReg.startsWith('A')) {
@@ -104,6 +120,36 @@ serve(async (req) => {
         year: '2017',
         color: 'Silver'
       }
+    } else if (formattedReg.startsWith('M')) {
+      mockData = {
+        brand: 'Mercedes-Benz',
+        model: 'C-Class',
+        engine_type: 'C220d 2.0L',
+        mileage: '35000',
+        registration: formattedReg,
+        year: '2020',
+        color: 'Grey'
+      }
+    } else if (formattedReg.startsWith('H')) {
+      mockData = {
+        brand: 'Honda',
+        model: 'Civic',
+        engine_type: '1.5 VTEC Turbo',
+        mileage: '22000',
+        registration: formattedReg,
+        year: '2019',
+        color: 'Blue'
+      }
+    } else if (formattedReg.startsWith('L')) {
+      mockData = {
+        brand: 'Land Rover',
+        model: 'Discovery',
+        engine_type: '3.0 SDV6',
+        mileage: '40000',
+        registration: formattedReg,
+        year: '2018',
+        color: 'Green'
+      }
     }
 
     console.log(`Vehicle lookup response for ${formattedReg}:`, mockData)
@@ -119,7 +165,7 @@ serve(async (req) => {
     console.error('Error in vehicle lookup:', error)
     
     return new Response(
-      JSON.stringify({ error: 'Failed to lookup vehicle details' }),
+      JSON.stringify({ error: 'Failed to lookup vehicle details', details: error.message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
