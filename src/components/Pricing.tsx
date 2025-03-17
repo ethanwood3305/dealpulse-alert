@@ -48,10 +48,10 @@ const Pricing = () => {
         if (user) {
           const timestamp = Date.now();
           const plan = searchParams.get('plan') || '';
-          const urls = searchParams.get('urls') || '';
+          const cars = searchParams.get('cars') || '';
           
           console.log("User is logged in, redirecting to dashboard with checkout info");
-          navigate(`/dashboard?checkout=success&t=${timestamp}&plan=${plan}&urls=${urls}`, { replace: true });
+          navigate(`/dashboard?checkout=success&t=${timestamp}&plan=${plan}&cars=${cars}`, { replace: true });
         } else {
           console.log("User not logged in, staying on pricing page");
           navigate('/pricing', { replace: true });
@@ -96,19 +96,19 @@ const Pricing = () => {
   const faqs = [
     {
       question: "How does the pricing work?",
-      answer: "Our pricing is based on the number of URLs you want to monitor. The more URLs you track, the lower the per-URL cost becomes. You can use our slider to select exactly how many URLs you need, and see the price adjust in real-time."
+      answer: "Our pricing is based on the number of cars you want to monitor. The more cars you track, the lower the per-car cost becomes. You can use our slider to select exactly how many cars you need, and see the price adjust in real-time."
     },
     {
       question: "How does the 48-hour free trial work?",
-      answer: "When you sign up, you'll get full access to monitor up to 10 URLs for 48 hours without being charged. If you decide to continue using DealPulse Alert, we'll start billing you according to your chosen plan at the end of the trial period. You can cancel anytime during the trial with no obligation."
+      answer: "When you sign up, you'll get full access to monitor up to 10 cars for 48 hours without being charged. If you decide to continue using DealPulse Alert, we'll start billing you according to your chosen plan at the end of the trial period. You can cancel anytime during the trial with no obligation."
     },
     {
       question: "Can I change my plan later?",
-      answer: "Yes! You can upgrade, downgrade, or adjust the number of URLs you're tracking at any time. When upgrading or adding more URLs, the new features will be immediately available. When downgrading, the changes will take effect at the start of your next billing cycle."
+      answer: "Yes! You can upgrade, downgrade, or adjust the number of cars you're tracking at any time. When upgrading or adding more cars, the new features will be immediately available. When downgrading, the changes will take effect at the start of your next billing cycle."
     },
     {
-      question: "What happens when I reach my URL monitoring limit?",
-      answer: "When you reach your URL monitoring limit, you'll need to either remove some URLs from your monitoring list or upgrade to add more URLs. We'll notify you when you're approaching your limit so you can make an informed decision."
+      question: "What happens when I reach my car monitoring limit?",
+      answer: "When you reach your car monitoring limit, you'll need to either remove some cars from your monitoring list or upgrade to add more cars. We'll notify you when you're approaching your limit so you can make an informed decision."
     },
     {
       question: "How accurate is the price monitoring?",
@@ -119,8 +119,8 @@ const Pricing = () => {
       answer: "Yes, we offer a 10% discount when you choose annual billing compared to monthly billing. This discount is automatically applied when you select the annual billing option."
     },
     {
-      question: "What if I need to track more than 250 URLs?",
-      answer: "For customers needing to track more than 250 URLs, we offer custom enterprise plans. Please contact our sales team through the Enterprise tab, and we'll create a tailored solution for your business needs."
+      question: "What if I need to track more than 250 cars?",
+      answer: "For customers needing to track more than 250 cars, we offer custom enterprise plans. Please contact our sales team through the Enterprise tab, and we'll create a tailored solution for your business needs."
     }
   ];
 
@@ -140,7 +140,7 @@ const Pricing = () => {
         >
           <h2 className="text-3xl md:text-4xl font-bold mb-4">Simple, transparent pricing</h2>
           <p className="text-muted-foreground text-lg mb-8">
-            Choose exactly how many URLs you want to monitor. All plans include a 48-hour free trial with 10 URLs.
+            Choose exactly how many cars you want to monitor. All plans include a 48-hour free trial with 10 cars.
           </p>
           
           <div className="flex items-center justify-center space-x-4 mb-8">

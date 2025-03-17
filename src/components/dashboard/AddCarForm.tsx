@@ -33,55 +33,178 @@ const carBrands = [
   "Tesla", "Toyota", "Volkswagen", "Volvo"
 ];
 
-const engineTypes = [
-  "Petrol", "Diesel", "Hybrid", "Electric", "Plug-in Hybrid", "CNG", "LPG"
-];
-
-// These would typically come from an API based on the selected brand
-const getModelsByBrand = (brand: string) => {
-  const modelMap: Record<string, string[]> = {
-    "Audi": ["A1", "A3", "A4", "A6", "Q3", "Q5", "Q7", "e-tron"],
-    "BMW": ["1 Series", "3 Series", "5 Series", "7 Series", "X1", "X3", "X5", "i3", "i8"],
-    "Ford": ["Fiesta", "Focus", "Mustang", "Explorer", "F-150", "Ranger"],
-    "Tesla": ["Model 3", "Model S", "Model X", "Model Y", "Cybertruck"],
-    "Toyota": ["Corolla", "Camry", "RAV4", "Highlander", "Prius", "Land Cruiser"]
-  };
-  
-  return modelMap[brand] || ["Other"];
-};
-
-// Engine types by brand and model
-const getEngineTypesByBrandAndModel = (brand: string, model: string) => {
-  if (brand === "Ford" && model === "Fiesta") {
-    return [
+// Engine types map for each brand and model
+const engineTypesMap: Record<string, Record<string, string[]>> = {
+  "Ford": {
+    "Fiesta": [
       "EcoBoost 1.0 100PS", 
       "EcoBoost 1.0 125PS", 
       "EcoBoost 1.0 155PS", 
       "EcoBoost 1.5 200PS"
-    ];
-  }
-  
-  if (brand === "Ford" && model === "Focus") {
-    return [
+    ],
+    "Focus": [
       "EcoBoost 1.0 125PS", 
       "EcoBoost 1.5 150PS", 
       "EcoBoost 1.5 182PS", 
       "EcoBlue 1.5 95PS", 
       "EcoBlue 1.5 120PS"
-    ];
-  }
-  
-  if (brand === "BMW" && model === "3 Series") {
-    return [
+    ],
+    "Mustang": [
+      "2.3L EcoBoost 310HP",
+      "5.0L V8 460HP",
+      "5.2L V8 760HP Shelby GT500"
+    ]
+  },
+  "BMW": {
+    "1 Series": [
+      "118i 1.5L 136HP",
+      "120i 2.0L 178HP",
+      "M135i 2.0L 306HP"
+    ],
+    "3 Series": [
       "318i 2.0L 156HP", 
       "320i 2.0L 184HP", 
       "330i 2.0L 258HP", 
       "320d 2.0L 190HP", 
       "330d 3.0L 286HP"
-    ];
+    ],
+    "5 Series": [
+      "520i 2.0L 184HP",
+      "530i 2.0L 252HP",
+      "540i 3.0L 340HP",
+      "520d 2.0L 190HP",
+      "530d 3.0L 286HP"
+    ]
+  },
+  "Audi": {
+    "A1": [
+      "30 TFSI 1.0L 110HP",
+      "35 TFSI 1.5L 150HP",
+      "40 TFSI 2.0L 200HP"
+    ],
+    "A3": [
+      "30 TFSI 1.0L 110HP",
+      "35 TFSI 1.5L 150HP",
+      "40 TFSI 2.0L 190HP",
+      "S3 2.0L 310HP"
+    ],
+    "A4": [
+      "35 TFSI 2.0L 150HP",
+      "40 TFSI 2.0L 190HP",
+      "45 TFSI 2.0L 245HP",
+      "35 TDI 2.0L 163HP",
+      "S4 3.0L 347HP"
+    ]
+  },
+  "Tesla": {
+    "Model 3": [
+      "Standard Range RWD 283HP",
+      "Long Range AWD 346HP",
+      "Performance AWD 455HP"
+    ],
+    "Model S": [
+      "Long Range AWD 670HP",
+      "Plaid AWD 1,020HP"
+    ],
+    "Model X": [
+      "Long Range AWD 670HP",
+      "Plaid AWD 1,020HP"
+    ],
+    "Model Y": [
+      "Standard Range RWD 283HP",
+      "Long Range AWD 384HP",
+      "Performance AWD 455HP"
+    ]
   }
+};
+
+// Default engine types if no specific ones are defined
+const defaultEngineTypes = [
+  "Petrol", "Diesel", "Hybrid", "Electric", "Plug-in Hybrid", "CNG", "LPG"
+];
+
+// Get models for a specific brand
+const getModelsByBrand = (brand: string) => {
+  if (engineTypesMap[brand]) {
+    return Object.keys(engineTypesMap[brand]);
+  }
+  return ["Other"];
+};
+
+// Get engine types for a specific brand and model
+const getEngineTypesByBrandAndModel = (brand: string, model: string) => {
+  if (engineTypesMap[brand] && engineTypesMap[brand][model]) {
+    return engineTypesMap[brand][model];
+  }
+  return defaultEngineTypes;
+};
+
+// Mock registration lookup service
+const lookupRegistrationDetails = async (regNumber: string) => {
+  // Simulate API call
+  await new Promise(resolve => setTimeout(resolve, 1500));
   
-  return engineTypes;
+  // Normalize registration to lowercase for matching
+  const reg = regNumber.toLowerCase().trim();
+  
+  // Predefined registration patterns for demo
+  if (reg.startsWith('f')) {
+    return {
+      success: true,
+      data: {
+        brand: "Ford",
+        model: "Fiesta",
+        engineType: "EcoBoost 1.0 125PS",
+        mileage: "28500"
+      }
+    };
+  } else if (reg.startsWith('b')) {
+    return {
+      success: true,
+      data: {
+        brand: "BMW",
+        model: "3 Series",
+        engineType: "320d 2.0L 190HP",
+        mileage: "32000"
+      }
+    };
+  } else if (reg.startsWith('a')) {
+    return {
+      success: true,
+      data: {
+        brand: "Audi",
+        model: "A4",
+        engineType: "35 TFSI 2.0L 150HP",
+        mileage: "45000"
+      }
+    };
+  } else if (reg.startsWith('t')) {
+    return {
+      success: true,
+      data: {
+        brand: "Tesla",
+        model: "Model 3",
+        engineType: "Standard Range RWD 283HP",
+        mileage: "15000"
+      }
+    };
+  } else if (reg.startsWith('v')) {
+    return {
+      success: true,
+      data: {
+        brand: "Volkswagen",
+        model: "Golf",
+        engineType: "Petrol",
+        mileage: "50000"
+      }
+    };
+  } else {
+    // If no pattern matches, return a failed lookup
+    return {
+      success: false,
+      error: "Vehicle not found"
+    };
+  }
 };
 
 export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarFormProps) => {
@@ -118,46 +241,31 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     setIsLookingUp(true);
     
     try {
-      // In a real application, you would call an API here to look up the details
-      // For now, we'll simulate a call with a timeout and dummy data based on the reg number
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const result = await lookupRegistrationDetails(regNumber);
       
-      // Simulate different car data based on first character of reg number
-      const firstChar = regNumber.trim().charAt(0).toLowerCase();
-      
-      if (firstChar === 'a') {
-        form.setValue("brand", "Audi");
-        form.setValue("model", "A4");
-        form.setValue("engineType", "Petrol");
-        form.setValue("mileage", "45000");
-      } else if (firstChar === 'b') {
-        form.setValue("brand", "BMW");
-        form.setValue("model", "3 Series");
-        form.setValue("engineType", "320d 2.0L 190HP");
-        form.setValue("mileage", "32000");
-      } else if (firstChar === 'f') {
-        form.setValue("brand", "Ford");
-        form.setValue("model", "Fiesta");
-        form.setValue("engineType", "EcoBoost 1.0 125PS");
-        form.setValue("mileage", "28500");
-      } else if (firstChar === 't') {
-        form.setValue("brand", "Tesla");
-        form.setValue("model", "Model 3");
-        form.setValue("engineType", "Electric");
-        form.setValue("mileage", "15000");
+      if (result.success) {
+        const { brand, model, engineType, mileage } = result.data;
+        
+        // Set form values using the retrieved data
+        form.setValue("brand", brand);
+        form.setValue("model", model);
+        form.setValue("engineType", engineType);
+        form.setValue("mileage", mileage);
+        
+        toast({
+          title: "Vehicle found",
+          description: "Registration details have been loaded"
+        });
+        
+        return true;
       } else {
-        form.setValue("brand", "Volkswagen");
-        form.setValue("model", "Other");
-        form.setValue("engineType", "Petrol");
-        form.setValue("mileage", "50000");
+        toast({
+          title: "Vehicle not found",
+          description: result.error || "Could not find vehicle with that registration",
+          variant: "destructive"
+        });
+        return false;
       }
-      
-      toast({
-        title: "Vehicle found",
-        description: "Registration details have been loaded"
-      });
-      
-      return true;
     } catch (error) {
       console.error("Error looking up car details:", error);
       toast({
@@ -213,7 +321,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                     </Button>
                   </div>
                   <FormDescription>
-                    Enter the vehicle's registration number to automatically fetch details
+                    Enter the vehicle's registration number to automatically fetch details (try numbers starting with A, B, F, T, or V)
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -229,7 +337,12 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                     <FormLabel>Brand</FormLabel>
                     <Select 
                       disabled={isAddingCar || !canAddMoreCars || isLookingUp}
-                      onValueChange={field.onChange} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Reset model and engine type when brand changes
+                        form.setValue("model", "");
+                        form.setValue("engineType", "");
+                      }} 
                       value={field.value}
                     >
                       <FormControl>
@@ -256,7 +369,11 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                     <FormLabel>Model</FormLabel>
                     <Select 
                       disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLookingUp}
-                      onValueChange={field.onChange} 
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                        // Reset engine type when model changes
+                        form.setValue("engineType", "");
+                      }} 
                       value={field.value}
                     >
                       <FormControl>
@@ -282,7 +399,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                   <FormItem>
                     <FormLabel>Engine Type</FormLabel>
                     <Select 
-                      disabled={isAddingCar || !canAddMoreCars || isLookingUp}
+                      disabled={!selectedModel || isAddingCar || !canAddMoreCars || isLookingUp}
                       onValueChange={field.onChange} 
                       value={field.value}
                     >

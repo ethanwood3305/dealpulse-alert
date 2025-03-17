@@ -16,7 +16,7 @@ interface CustomPricingCardProps {
 }
 
 const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
-  const [urlCount, setUrlCount] = useState(10);
+  const [carCount, setCarCount] = useState(10);
   const [isVisible, setIsVisible] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [includeApiAccess, setIncludeApiAccess] = useState(false);
@@ -45,13 +45,13 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
     };
   }, []);
 
-  const isApiAccessFree = urlCount > 125;
-  const isFreePlan = urlCount <= 1;
+  const isApiAccessFree = carCount > 125;
+  const isFreePlan = carCount <= 1;
   
-  const price = calculatePrice(urlCount, includeApiAccess, billingCycle);
-  const checkFrequency = getCheckFrequency(urlCount);
-  const priceHistory = getPriceHistory(urlCount);
-  const planId = getPlanId(urlCount);
+  const price = calculatePrice(carCount, includeApiAccess, billingCycle);
+  const checkFrequency = getCheckFrequency(carCount);
+  const priceHistory = getPriceHistory(carCount);
+  const planId = getPlanId(carCount);
 
   useEffect(() => {
     if (isApiAccessFree) {
@@ -69,7 +69,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
           Choose exactly how many vehicles you want to monitor
         </p>
         
-        <PricingSlider urlCount={urlCount} setUrlCount={setUrlCount} />
+        <PricingSlider urlCount={carCount} setUrlCount={setCarCount} />
         
         <ApiAccessOption 
           includeApiAccess={includeApiAccess}
@@ -81,7 +81,7 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
         
         <PricingSummary 
           price={price}
-          urlCount={urlCount}
+          urlCount={carCount}
           checkFrequency={checkFrequency}
           includeApiAccess={includeApiAccess}
           isApiAccessFree={isApiAccessFree}
@@ -100,17 +100,17 @@ const CustomPricingCard = ({ billingCycle }: CustomPricingCardProps) => {
         ) : (
           <SubscriptionCheckout 
             plan={planId}
-            carCount={urlCount}
+            carCount={carCount}
             includeApiAccess={includeApiAccess || isApiAccessFree}
             billingCycle={billingCycle}
             buttonVariant="default"
             className="w-full rounded-full mb-6"
-            buttonText={urlCount > 1 ? "Subscribe Now" : "Start Free Trial"}
+            buttonText={carCount > 1 ? "Subscribe Now" : "Start Free Trial"}
           />
         )}
         
         <PricingFeatures 
-          urlCount={urlCount}
+          urlCount={carCount}
           includeApiAccess={includeApiAccess}
           isApiAccessFree={isApiAccessFree}
           priceHistory={priceHistory}
