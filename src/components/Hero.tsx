@@ -1,155 +1,43 @@
 
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { ChevronRight, Bell, LineChart, ShieldCheck, Zap, Car } from 'lucide-react';
+import { Link } from "react-router-dom";
+import { ArrowRight, Car } from "lucide-react";
 
-const Hero = () => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    setIsVisible(true);
-  }, []);
-
-  // How it works steps
-  const steps = [
-    {
-      icon: <Car className="h-6 w-6 text-primary" />,
-      title: "Set up tracking",
-      description: "Easily add car models you want to monitor"
-    },
-    {
-      icon: <Zap className="h-6 w-6 text-primary" />,
-      title: "Get instant alerts",
-      description: "Receive notifications when prices change"
-    },
-    {
-      icon: <LineChart className="h-6 w-6 text-primary" />,
-      title: "Stay competitive",
-      description: "Adjust your pricing strategy accordingly"
-    }
-  ];
-
+export default function Hero() {
   return (
-    <div className="relative overflow-hidden pt-24 md:pt-32 pb-16 md:pb-24">
-      {/* Background gradient */}
-      <div className="absolute top-0 left-0 right-0 h-[70%] bg-gradient-to-b from-blue-50 to-transparent -z-10"></div>
-      
-      {/* Floating circles decoration */}
-      <div className="absolute top-20 right-[10%] w-72 h-72 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-float"></div>
-      <div className="absolute top-40 left-[5%] w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-float animate-delay-200"></div>
-      
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="max-w-5xl mx-auto text-center">
-          {/* Small tag line */}
-          <div 
-            className={`inline-block glass px-4 py-1.5 rounded-full text-sm font-medium mb-6 transition-all duration-700 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`}
-          >
-            <span className="text-primary">New</span> — Real-time car price monitoring for auto dealers
+    <div className="relative isolate px-6 pt-14 lg:px-8">
+      <div className="mx-auto max-w-4xl py-24 sm:py-32">
+        <div className="text-center">
+          <div className="flex justify-center mb-6">
+            <div className="rounded-full bg-primary/10 p-3">
+              <Car className="h-10 w-10 text-primary" />
+            </div>
           </div>
-          
-          {/* Main heading - Updated with stronger value proposition */}
-          <h1 
-            className={`text-4xl md:text-5xl lg:text-6xl font-bold leading-tight md:leading-tight lg:leading-tight mb-6 transition-all duration-700 delay-100 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`}
-          >
-            Track <span className="relative">
-              Car Prices
-              <svg className="absolute -bottom-2 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M2 10C50.5 4 99 2.5 147.5 2.5C196 2.5 244.5 4 293 10" stroke="hsl(var(--primary))" strokeWidth="3" strokeLinecap="round"/>
-              </svg>
-            </span> with Instant Alerts
+          <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
+            Monitor Car Prices <span className="text-primary">Effortlessly</span>
           </h1>
-          
-          {/* Subtitle - Made clearer */}
-          <p 
-            className={`text-muted-foreground text-lg md:text-xl max-w-3xl mx-auto mb-8 transition-all duration-700 delay-200 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`}
-          >
-            Never miss a competitor's car price change again! Monitor prices for any make, model, and engine type. Get instant notifications when prices change and stay competitive 24/7.
+          <p className="mt-6 text-lg leading-8 text-muted-foreground">
+            Stay ahead of the market with real-time price tracking for any vehicle model. Get alerts when prices change and make informed decisions.
           </p>
-          
-          {/* CTA buttons - Improved with action-driven text */}
-          <div 
-            className={`flex flex-col sm:flex-row gap-4 justify-center mb-16 transition-all duration-700 delay-300 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`}
-          >
-            <Link to="/signup">
-              <Button size="lg" className="rounded-full px-8 h-12 text-base w-full sm:w-auto">
-                Start Free Car Tracking
-                <ChevronRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link to="/pricing">
-              <Button variant="outline" size="lg" className="rounded-full px-8 h-12 text-base w-full sm:w-auto">
-                See Pricing Plans
-              </Button>
-            </Link>
+          <div className="mt-10 flex items-center justify-center gap-4">
+            <Button asChild size="lg">
+              <Link to="/signup">
+                Start Tracking Cars
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
+            <Button variant="outline" asChild size="lg">
+              <Link to="/pricing">
+                View Pricing
+              </Link>
+            </Button>
           </div>
-          
-          {/* How it works section */}
-          <div className={`mb-16 transition-all duration-700 delay-400 ${
-            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-          }`}>
-            <h2 className="text-2xl font-bold mb-8">How It Works</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-              {steps.map((step, index) => (
-                <div key={index} className="flex flex-col items-center group">
-                  <div className="rounded-full bg-blue-100 p-4 mb-4 transition-all duration-300 group-hover:bg-primary group-hover:text-white">
-                    {step.icon}
-                  </div>
-                  <h3 className="text-lg font-medium mb-2">{step.title}</h3>
-                  <p className="text-sm text-muted-foreground text-center">
-                    {step.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-          
-          {/* Feature highlights */}
-          <div 
-            className={`grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto transition-all duration-700 delay-500 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
-            }`}
-          >
-            <div className="flex flex-col items-center group">
-              <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
-                <Bell className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">Instant Alerts</h3>
-              <p className="text-sm text-muted-foreground text-center">
-                Get notified immediately when competitors change their car prices.
-              </p>
-            </div>
-            <div className="flex flex-col items-center group">
-              <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
-                <LineChart className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">Price History</h3>
-              <p className="text-sm text-muted-foreground text-center">
-                Track price history for specific car models and predict future pricing strategies.
-              </p>
-            </div>
-            <div className="flex flex-col items-center group">
-              <div className="rounded-full bg-blue-100 p-3 mb-4 transition-all duration-300 group-hover:scale-110">
-                <Car className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-lg font-medium mb-2">Registration Lookup</h3>
-              <p className="text-sm text-muted-foreground text-center">
-                Enter a registration number to automatically identify and track car details.
-              </p>
-            </div>
+          <div className="mt-8 text-sm text-muted-foreground">
+            <span className="font-medium">No credit card required</span> for the free plan.
+            Track your first car in under 2 minutes.
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default Hero;
+}

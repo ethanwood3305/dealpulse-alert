@@ -1,21 +1,10 @@
 
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Car, CheckCircle, XCircle, CreditCard, Loader2, RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { RefreshCw } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 
 interface SubscriptionCardProps {
   plan: string | undefined;
@@ -23,119 +12,157 @@ interface SubscriptionCardProps {
   trackedUrlsCount: number;
   onCancelSubscription: () => Promise<void>;
   hasActiveSubscription: boolean;
-  onRefreshSubscription?: () => void;
+  onRefreshSubscription: () => void;
 }
 
-const getPlanColor = (plan: string | undefined) => {
-  switch (plan) {
-    case 'professional':
-    case 'business':
-    case 'enterprise':
-      return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900 dark:text-purple-300 dark:border-purple-800';
-    case 'basic':
-    case 'starter':
-      return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-300 dark:border-blue-800';
-    default:
-      return 'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700';
-  }
-};
-
 export const SubscriptionCard = ({ 
-  plan, 
-  urls_limit, 
+  plan = 'free', 
+  urls_limit = 1, 
   trackedUrlsCount,
   onCancelSubscription,
   hasActiveSubscription,
   onRefreshSubscription
 }: SubscriptionCardProps) => {
-  const progressPercentage = urls_limit ? (trackedUrlsCount / urls_limit) * 100 : 100;
-  const isOverLimit = trackedUrlsCount > (urls_limit || 1);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  let planLabel = 'Free Plan';
+  let planDescription = 'Basic tracking features';
+  let planFeatures = ['Limited to 1 car', 'Daily price checks', 'Basic notifications'];
+
+  if (plan === 'pro') {
+    planLabel = 'Pro Plan';
+    planDescription = 'Advanced tracking features';
+    planFeatures = [
+      `Up to ${urls_limit} cars`, 
+      'Hourly price checks', 
+      'Advanced notifications',
+      'API access',
+      'Historical data'
+    ];
+  } else if (plan === 'business') {
+    planLabel = 'Business Plan';
+    planDescription = 'Enterprise-grade tracking';
+    planFeatures = [
+      `Up to ${urls_limit} cars`, 
+      'Real-time price monitoring', 
+      'Advanced analytics',
+      'API access',
+      'Priority support',
+      'Custom integrations'
+    ];
+  }
+
+  const handleCancelSubscription = async () => {
+    setIsCancelling(true);
+    await onCancelSubscription();
+    setIsCancelling(false);
+  };
+
+  const handleRefreshSubscription = () => {
+    setIsRefreshing(true);
+    onRefreshSubscription();
+    setTimeout(() => setIsRefreshing(false), 1500);
+  };
 
   return (
-    <Card className="shadow-md hover:shadow-lg transition-shadow">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <div>
-          <CardTitle>Subscription</CardTitle>
-          <CardDescription>Your current plan and usage</CardDescription>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{planLabel}</CardTitle>
+            <CardDescription>{planDescription}</CardDescription>
+          </div>
+          <div className="bg-primary/10 p-2 rounded-full">
+            <Car className="h-5 w-5 text-primary" />
+          </div>
         </div>
-        {onRefreshSubscription && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={onRefreshSubscription} 
-            title="Refresh subscription status"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-        )}
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Current Plan</span>
-            <Badge 
-              variant={plan === 'free' ? 'outline' : 'default'}
-              className={`capitalize ${plan !== 'free' ? getPlanColor(plan) : ''}`}
-            >
-              {plan || 'Free'}
-            </Badge>
-          </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">URLs Usage</span>
-              <span className={`font-medium ${isOverLimit ? 'text-red-500' : ''}`}>
-                {trackedUrlsCount} / {urls_limit || 1}
-              </span>
+        <div className="space-y-2">
+          {planFeatures.map((feature, index) => (
+            <div key={index} className="flex items-center">
+              <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+              <span className="text-sm">{feature}</span>
             </div>
-            <Progress 
-              value={Math.min(progressPercentage, 100)} 
-              className={isOverLimit ? 'bg-red-100 dark:bg-red-950' : ''} 
-            />
-            {isOverLimit && (
-              <p className="text-xs text-red-500">
-                You've exceeded your plan limit. Only the first {urls_limit} URLs are being tracked.
-              </p>
-            )}
+          ))}
+        </div>
+        
+        <div className="mt-4 p-3 bg-muted rounded-md">
+          <div className="flex items-center justify-between text-sm">
+            <span>Cars used</span>
+            <span className="font-medium">{trackedUrlsCount} / {urls_limit}</span>
           </div>
-          
-          <div className="grid grid-cols-2 gap-2 pt-2">
-            <Link to="/pricing">
-              <Button variant="outline" className="w-full">View Plans</Button>
-            </Link>
-            
-            {hasActiveSubscription ? (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="w-full text-destructive border-destructive hover:bg-destructive/10">
-                    Cancel Plan
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel Subscription</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to cancel your subscription? Your plan will remain active until the end of the current billing period.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                    <AlertDialogAction onClick={onCancelSubscription}>
-                      Yes, Cancel
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            ) : (
-              <Link to="/pricing">
-                <Button variant="outline" className="w-full">
-                  Upgrade
-                </Button>
-              </Link>
-            )}
+          <div className="mt-2 h-2 bg-muted-foreground/20 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-primary rounded-full"
+              style={{ width: `${Math.min(100, (trackedUrlsCount / (urls_limit || 1)) * 100)}%` }}
+            />
           </div>
         </div>
       </CardContent>
+      <CardFooter className="flex flex-col space-y-2">
+        {plan === 'free' ? (
+          <Button className="w-full" asChild>
+            <Link to="/pricing">
+              Upgrade to Pro
+            </Link>
+          </Button>
+        ) : hasActiveSubscription ? (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" className="w-full">
+                {isCancelling ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Cancelling...
+                  </>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel Subscription
+                  </>
+                )}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will cancel your subscription. You'll still have access to your current plan until the end of your billing period.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
+                <AlertDialogAction onClick={handleCancelSubscription}>
+                  Yes, Cancel
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        ) : (
+          <Button className="w-full" asChild>
+            <Link to="/pricing">
+              <CreditCard className="h-4 w-4 mr-2" />
+              Reactivate Subscription
+            </Link>
+          </Button>
+        )}
+        
+        <Button variant="ghost" size="sm" className="w-full" onClick={handleRefreshSubscription}>
+          {isRefreshing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh Subscription Status
+            </>
+          )}
+        </Button>
+      </CardFooter>
     </Card>
   );
 };

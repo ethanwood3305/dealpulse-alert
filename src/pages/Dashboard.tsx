@@ -326,8 +326,8 @@ const Dashboard = () => {
             />
             
             <QuickActionsCard 
-              canAddMoreUrls={canAddMoreCars}
-              onAddUrlClick={scrollToAddCarForm}
+              canAddMoreCars={canAddMoreCars}
+              onAddCarClick={scrollToAddCarForm}
             />
           </div>
           

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -7,7 +6,7 @@ import { Loader2 } from "lucide-react";
 
 interface SubscriptionCheckoutProps {
   plan: string;
-  urlCount?: number;
+  carCount?: number;
   includeApiAccess?: boolean;
   billingCycle?: 'monthly' | 'yearly';
   buttonVariant?: "default" | "outline";
@@ -17,7 +16,7 @@ interface SubscriptionCheckoutProps {
 
 const SubscriptionCheckout = ({ 
   plan, 
-  urlCount,
+  carCount,
   includeApiAccess = false,
   billingCycle = 'monthly',
   buttonVariant = "default", 
@@ -55,9 +54,8 @@ const SubscriptionCheckout = ({
         return;
       }
       
-      console.log("Starting checkout for:", { plan, urlCount, includeApiAccess, billingCycle, userId });
+      console.log("Starting checkout for:", { plan, carCount, includeApiAccess, billingCycle, userId });
       
-      // Get the current subscription to check if user already has one
       const { data: currentSub } = await supabase.rpc('get_user_subscription', {
         user_uuid: userId
       });
@@ -67,11 +65,10 @@ const SubscriptionCheckout = ({
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: { 
           plan, 
-          urlCount, 
+          carCount, 
           includeApiAccess, 
           billingCycle,
           userId,
-          // Include current subscription ID if available for upgrades
           currentSubscriptionId: currentSub && currentSub.length > 0 ? currentSub[0].stripe_subscription_id : null
         },
       });
@@ -84,9 +81,8 @@ const SubscriptionCheckout = ({
       if (data?.url) {
         console.log("Checkout success! Redirecting to checkout URL:", data.url);
         
-        // Record checkout initiation time in sessionStorage to help with post-checkout checks
         sessionStorage.setItem('checkoutInitiated', Date.now().toString());
-        sessionStorage.setItem('expectedUrlCount', urlCount?.toString() || '1');
+        sessionStorage.setItem('expectedCarCount', carCount?.toString() || '1');
         sessionStorage.setItem('expectedPlan', plan);
         
         window.location.href = data.url;
@@ -106,7 +102,6 @@ const SubscriptionCheckout = ({
     }
   };
 
-  // Determine the button text based on the plan
   const getButtonText = () => {
     if (buttonText) {
       return buttonText;
