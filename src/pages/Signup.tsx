@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIAL_URLS, TRIAL_HOURS } from "@/components/pricing/PricingTiers";
+import { TRIAL_CARS, TRIAL_HOURS } from "@/components/pricing/PricingTiers";
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -40,7 +39,6 @@ const Signup = () => {
   useEffect(() => {
     setIsVisible(true);
     
-    // Check if user is already logged in
     const checkSession = async () => {
       const { data } = await supabase.auth.getSession();
       if (data?.session) {
@@ -55,16 +53,14 @@ const Signup = () => {
     try {
       console.log("Setting up trial subscription for user:", userId);
       
-      // Calculate trial end date (48 hours from now)
       const trialEnd = new Date();
       trialEnd.setHours(trialEnd.getHours() + TRIAL_HOURS);
       
-      // Update the subscription to include trial parameters
       const { error } = await supabase
         .from('subscriptions')
         .update({
           plan: 'trial',
-          urls_limit: TRIAL_URLS,
+          urls_limit: TRIAL_CARS,
           trial_end: trialEnd.toISOString()
         })
         .eq('user_id', userId);
@@ -86,7 +82,6 @@ const Signup = () => {
     setIsLoading(true);
     
     try {
-      // Register the user
       const { data, error } = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
@@ -102,13 +97,12 @@ const Signup = () => {
       }
 
       if (data?.user) {
-        // Set up trial subscription
         const trialSetup = await setupTrialSubscription(data.user.id);
         
         if (trialSetup) {
           toast({
             title: "Account created successfully!",
-            description: `Your 48-hour trial with ${TRIAL_URLS} URLs is now active. You can now log in to your account.`,
+            description: `Your 48-hour trial with ${TRIAL_CARS} cars is now active. You can now log in to your account.`,
           });
         } else {
           toast({
@@ -136,7 +130,6 @@ const Signup = () => {
       
       <main className="flex-grow pt-24 flex items-center justify-center">
         <div className="relative w-full max-w-5xl mx-auto px-4 py-8">
-          {/* Background decoration */}
           <div className="absolute inset-0 -z-10">
             <div className="absolute inset-0 overflow-hidden">
               <div className="absolute top-1/4 right-1/4 w-64 h-64 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
@@ -257,7 +250,7 @@ const Signup = () => {
                     <div>
                       <h3 className="font-medium">Easy Setup</h3>
                       <p className="text-muted-foreground text-sm">
-                        Start monitoring competitor prices in just a few minutes.
+                        Start monitoring competitor car prices in just a few minutes.
                       </p>
                     </div>
                   </div>
@@ -267,7 +260,7 @@ const Signup = () => {
                     <div>
                       <h3 className="font-medium">48-Hour Free Trial</h3>
                       <p className="text-muted-foreground text-sm">
-                        Test with up to 10 URLs for 48 hours with no commitment or credit card required.
+                        Test with up to {TRIAL_CARS} cars for 48 hours with no commitment or credit card required.
                       </p>
                     </div>
                   </div>
