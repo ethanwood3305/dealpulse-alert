@@ -1,15 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { 
+  fetchSubscriptionData, 
+  checkCanAddMoreUrls,
+  generateApiKeyForUser,
+  cancelUserSubscription
+} from "@/utils/subscription-utils";
+import { UserSubscription } from "@/types/subscription-types";
 
-export interface UserSubscription {
-  plan: string;
-  urls_limit: number;
-  stripe_subscription_id: string | null;
-  has_api_access: boolean;
-  api_key: string | null;
-  trial_end: string | null;
-}
+export { UserSubscription };
 
 export const useSubscription = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -18,78 +17,16 @@ export const useSubscription = (userId: string | undefined) => {
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [refreshAttempts, setRefreshAttempts] = useState(0);
   
-  const fetchSubscriptionData = useCallback(async (userId: string) => {
+  const fetchData = useCallback(async (userId: string) => {
     try {
       console.log(`[useSubscription] Fetching subscription data for user: ${userId}`);
       setIsLoading(true);
       
-      const { data: subscriptionData, error: subscriptionError } = await supabase.rpc(
-        'get_user_subscription', 
-        { user_uuid: userId }
-      );
+      const { success, data } = await fetchSubscriptionData(userId);
       
-      if (subscriptionError) {
-        console.error("[useSubscription] Error fetching subscription:", subscriptionError);
-        toast({
-          title: "Error",
-          description: "Failed to load subscription details. Please try again later.",
-          variant: "destructive"
-        });
-        return false;
-      } else if (subscriptionData && subscriptionData.length > 0) {
-        console.log("[useSubscription] Subscription data received:", subscriptionData[0]);
-        
-        // Check if trial has expired
-        if (subscriptionData[0].plan === 'trial' && subscriptionData[0].trial_end) {
-          const trialEnd = new Date(subscriptionData[0].trial_end);
-          const now = new Date();
-          
-          if (now > trialEnd) {
-            console.log("[useSubscription] Trial has expired, reverting to free plan");
-            
-            // Revert to free plan if trial expired
-            const { error: updateError } = await supabase
-              .from('subscriptions')
-              .update({
-                plan: 'free',
-                urls_limit: 1,
-                trial_end: null,
-                updated_at: new Date().toISOString()
-              })
-              .eq('user_id', userId);
-              
-            if (updateError) {
-              console.error("[useSubscription] Error reverting to free plan:", updateError);
-            } else {
-              // Update local subscription to free
-              subscriptionData[0].plan = 'free';
-              subscriptionData[0].urls_limit = 1;
-              subscriptionData[0].trial_end = null;
-              
-              toast({
-                title: "Trial Expired",
-                description: "Your 48-hour trial has ended. You've been reverted to the free plan.",
-              });
-            }
-          } else {
-            // Trial still active
-            const hoursLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60));
-            console.log(`[useSubscription] Trial active with ${hoursLeft} hours remaining`);
-          }
-        }
-        
+      if (success && data) {
         // Compare with current subscription to see if there's a change
-        const newSub = {
-          plan: subscriptionData[0].plan,
-          urls_limit: subscriptionData[0].urls_limit,
-          stripe_subscription_id: subscriptionData[0].stripe_subscription_id,
-          has_api_access: subscriptionData[0].has_api_access || false,
-          api_key: subscriptionData[0].api_key || null,
-          trial_end: subscriptionData[0].trial_end || null
-        };
-        
-        // Check if subscription has changed
-        const hasChanged = JSON.stringify(newSub) !== JSON.stringify(userSubscription);
+        const hasChanged = JSON.stringify(data) !== JSON.stringify(userSubscription);
         
         if (hasChanged) {
           console.log("[useSubscription] Subscription has changed, updating state");
@@ -98,10 +35,10 @@ export const useSubscription = (userId: string | undefined) => {
           const checkoutTime = sessionStorage.getItem('checkoutInitiated');
           const expectedPlan = sessionStorage.getItem('expectedPlan');
           
-          if (checkoutTime && expectedPlan && expectedPlan === newSub.plan) {
+          if (checkoutTime && expectedPlan && expectedPlan === data.plan) {
             toast({
               title: "Subscription Updated!",
-              description: `Your subscription has been successfully updated to the ${newSub.plan} plan.`,
+              description: `Your subscription has been successfully updated to the ${data.plan} plan.`,
             });
             // Clear checkout data from session storage
             sessionStorage.removeItem('checkoutInitiated');
@@ -110,23 +47,11 @@ export const useSubscription = (userId: string | undefined) => {
           }
         }
         
-        setUserSubscription(newSub);
-      } else {
-        console.log("[useSubscription] No subscription data returned");
+        setUserSubscription(data);
       }
 
-      const { data: canAddMoreData, error: canAddMoreError } = await supabase.rpc(
-        'can_add_more_urls',
-        { user_uuid: userId }
-      );
-      
-      if (canAddMoreError) {
-        console.error("[useSubscription] Error checking if user can add more URLs:", canAddMoreError);
-        return false;
-      } else {
-        console.log("[useSubscription] Can add more URLs:", canAddMoreData);
-        setCanAddMoreUrls(canAddMoreData);
-      }
+      const canAddMore = await checkCanAddMoreUrls(userId);
+      setCanAddMoreUrls(canAddMore);
       
       setIsLoading(false);
       setLastRefreshed(new Date());
@@ -148,34 +73,12 @@ export const useSubscription = (userId: string | undefined) => {
       return false;
     }
 
-    try {
-      const { data, error } = await supabase.functions.invoke('generate-api-key', {
-        body: { userId }
-      });
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data?.api_key) {
-        setUserSubscription(prev => prev ? {...prev, api_key: data.api_key} : null);
-        toast({
-          title: "API Key Generated",
-          description: "Your new API key has been generated successfully."
-        });
-        return true;
-      } else {
-        throw new Error('No API key returned');
-      }
-    } catch (error: any) {
-      console.error("[useSubscription] Error generating API key:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate API key. Please try again later.",
-        variant: "destructive"
-      });
-      return false;
+    const apiKey = await generateApiKeyForUser(userId);
+    if (apiKey) {
+      setUserSubscription(prev => prev ? {...prev, api_key: apiKey} : null);
+      return true;
     }
+    return false;
   };
 
   const cancelSubscription = async (): Promise<boolean> => {
@@ -188,42 +91,13 @@ export const useSubscription = (userId: string | undefined) => {
       return false;
     }
 
-    try {
-      toast({
-        title: "Processing",
-        description: "Canceling your subscription, please wait..."
-      });
-      
-      const { error } = await supabase.functions.invoke('cancel-subscription', {
-        body: { 
-          subscription_id: userSubscription.stripe_subscription_id 
-        }
-      });
-
-      if (error) {
-        throw error;
-      }
-      
-      // Once successful, update the local subscription state
-      setUserSubscription(prev => {
-        if (!prev) return null;
-        return {
-          ...prev,
-          // Keep the ID but note it's being canceled
-          // The stripe-webhook handler will update DB when processing is done
-        };
-      });
-
+    const success = await cancelUserSubscription(userSubscription.stripe_subscription_id);
+    if (success) {
+      // Local state will be updated on next refresh
       return true;
-    } catch (error: any) {
-      console.error("[useSubscription] Error canceling subscription:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to cancel subscription. Please try again later.",
-        variant: "destructive"
-      });
-      return false;
     }
+    
+    return false;
   };
 
   const refreshSubscription = useCallback(async (maxRetries = 5) => {
@@ -237,7 +111,7 @@ export const useSubscription = (userId: string | undefined) => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       console.log(`[useSubscription] Refresh attempt ${attempt} of ${maxRetries}`);
       
-      const success = await fetchSubscriptionData(userId);
+      const success = await fetchData(userId);
       
       if (success) {
         console.log("[useSubscription] Subscription refreshed successfully");
@@ -259,13 +133,13 @@ export const useSubscription = (userId: string | undefined) => {
       variant: "destructive"
     });
     return false;
-  }, [userId, fetchSubscriptionData, refreshAttempts]);
+  }, [userId, fetchData, refreshAttempts]);
 
   useEffect(() => {
     if (userId) {
-      fetchSubscriptionData(userId);
+      fetchData(userId);
     }
-  }, [userId, fetchSubscriptionData]);
+  }, [userId, fetchData]);
 
   useEffect(() => {
     const checkSearchParams = async () => {
