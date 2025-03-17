@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -16,6 +17,7 @@ import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import * as z from "zod";
 
+// Define the car schema with proper types
 const carSchema = z.object({
   registrationNumber: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
@@ -187,7 +189,15 @@ const Dashboard = () => {
         return;
       }
 
-      const success = await addCar(values);
+      // Here's the fix: ensure we pass an object with the required fields (brand, model, engineType)
+      // and the optional registrationNumber field
+      const success = await addCar({
+        brand: values.brand,
+        model: values.model,
+        engineType: values.engineType,
+        registrationNumber: values.registrationNumber
+      });
+      
       if (success) {
         refreshSubscription();
         toast({

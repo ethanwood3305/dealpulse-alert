@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -9,18 +8,20 @@ import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-interface AddCarFormProps {
-  onSubmit: (values: z.infer<typeof carSchema>) => Promise<void>;
-  isAddingCar: boolean;
-  canAddMoreCars: boolean;
-}
-
+// Define the car schema that ensures brand, model, and engineType are required
 const carSchema = z.object({
   registrationNumber: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
   engineType: z.string().min(1, "Engine type is required"),
 });
+
+// Type for the props
+interface AddCarFormProps {
+  onSubmit: (values: z.infer<typeof carSchema>) => Promise<void>;
+  isAddingCar: boolean;
+  canAddMoreCars: boolean;
+}
 
 const carBrands = [
   "Audi", "BMW", "Chevrolet", "Dodge", "Ford", "Honda", "Hyundai", "Jaguar", 

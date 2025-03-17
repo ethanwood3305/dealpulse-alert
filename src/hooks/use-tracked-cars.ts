@@ -15,6 +15,14 @@ export interface TrackedCar {
   tags: string[];
 }
 
+// Create an interface for adding cars to ensure consistent types
+export interface AddCarParams {
+  brand: string;
+  model: string;
+  engineType: string;
+  registrationNumber?: string;
+}
+
 export const useTrackedCars = (userId: string | undefined) => {
   const [trackedCars, setTrackedCars] = useState<TrackedCar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +73,8 @@ export const useTrackedCars = (userId: string | undefined) => {
     }
   };
 
-  const addCar = async (car: { brand: string; model: string; engineType: string; registrationNumber?: string }) => {
+  // Update the addCar function to use our new AddCarParams interface
+  const addCar = async (car: AddCarParams) => {
     try {
       if (!userId) return false;
       
