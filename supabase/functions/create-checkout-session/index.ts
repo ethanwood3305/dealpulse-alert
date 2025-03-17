@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { calculatePrice } from "./utils/pricing.ts";
 import { 
@@ -74,6 +73,12 @@ serve(async (req) => {
     
     console.log("Existing subscription data:", subscriptionData);
     
+    // Check if this is a trial user converting to paid
+    const isTrialConversion = subscriptionData?.plan === 'trial';
+    if (isTrialConversion) {
+      console.log("User is converting from trial to paid subscription");
+    }
+    
     // Create a new product for this specific subscription
     const product = await createSubscriptionProduct(plan, urlCount, includeApiAccess);
     console.log("Created product:", product.id);
@@ -101,6 +106,11 @@ serve(async (req) => {
     };
     
     console.log("Setting checkout metadata:", metadata);
+    
+    // Add trial conversion metadata if applicable
+    if (isTrialConversion) {
+      metadata.trial_conversion = 'yes';
+    }
     
     const timestamp = Date.now();
     const successUrl = `${normalizedClientUrl}/dashboard?checkout=success&t=${timestamp}&plan=${plan}&urls=${urlCount}`;

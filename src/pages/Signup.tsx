@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { TRIAL_URLS, TRIAL_HOURS } from "@/components/pricing/PricingTiers";
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -50,6 +51,37 @@ const Signup = () => {
     checkSession();
   }, [navigate]);
 
+  const setupTrialSubscription = async (userId: string) => {
+    try {
+      console.log("Setting up trial subscription for user:", userId);
+      
+      // Calculate trial end date (48 hours from now)
+      const trialEnd = new Date();
+      trialEnd.setHours(trialEnd.getHours() + TRIAL_HOURS);
+      
+      // Update the subscription to include trial parameters
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          plan: 'trial',
+          urls_limit: TRIAL_URLS,
+          trial_end: trialEnd.toISOString()
+        })
+        .eq('user_id', userId);
+        
+      if (error) {
+        console.error("Error setting up trial:", error);
+        throw error;
+      }
+      
+      console.log("Trial subscription setup successfully");
+      return true;
+    } catch (error) {
+      console.error("Failed to setup trial subscription:", error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
     
@@ -70,10 +102,21 @@ const Signup = () => {
       }
 
       if (data?.user) {
-        toast({
-          title: "Account created successfully!",
-          description: "You can now log in to your account.",
-        });
+        // Set up trial subscription
+        const trialSetup = await setupTrialSubscription(data.user.id);
+        
+        if (trialSetup) {
+          toast({
+            title: "Account created successfully!",
+            description: `Your 48-hour trial with ${TRIAL_URLS} URLs is now active. You can now log in to your account.`,
+          });
+        } else {
+          toast({
+            title: "Account created successfully!",
+            description: "There was an issue setting up your trial. Please contact support.",
+          });
+        }
+        
         navigate('/login');
       }
     } catch (error: any) {

@@ -53,3 +53,7 @@ export const calculatePrice = (urls: number, includeApiAccess: boolean, billingC
   // Round to 2 decimal places for consistency with Stripe
   return Math.round(basePrice * 100) / 100;
 };
+
+// Trial parameters
+export const TRIAL_URLS = 10; // Number of URLs for the trial
+export const TRIAL_HOURS = 48; // Trial duration in hours

@@ -21,3 +21,7 @@ export const ENTERPRISE_CAP = 110; // Maximum price for enterprise tier
 // API Access pricing
 export const API_ACCESS_MONTHLY_PRICE = 6;
 export const API_ACCESS_FREE_THRESHOLD = 125; // URLs above which API access is free
+
+// Trial parameters
+export const TRIAL_URLS = 10; // Number of URLs for the trial
+export const TRIAL_HOURS = 48; // Trial duration in hours

@@ -8,6 +8,7 @@ export interface UserSubscription {
   stripe_subscription_id: string | null;
   has_api_access: boolean;
   api_key: string | null;
+  trial_end?: string | null;
 }
 
 export const useSubscription = (userId: string | undefined) => {
@@ -38,13 +39,53 @@ export const useSubscription = (userId: string | undefined) => {
       } else if (subscriptionData && subscriptionData.length > 0) {
         console.log("[useSubscription] Subscription data received:", subscriptionData[0]);
         
+        // Check if trial has expired
+        if (subscriptionData[0].plan === 'trial' && subscriptionData[0].trial_end) {
+          const trialEnd = new Date(subscriptionData[0].trial_end);
+          const now = new Date();
+          
+          if (now > trialEnd) {
+            console.log("[useSubscription] Trial has expired, reverting to free plan");
+            
+            // Revert to free plan if trial expired
+            const { error: updateError } = await supabase
+              .from('subscriptions')
+              .update({
+                plan: 'free',
+                urls_limit: 1,
+                trial_end: null,
+                updated_at: new Date().toISOString()
+              })
+              .eq('user_id', userId);
+              
+            if (updateError) {
+              console.error("[useSubscription] Error reverting to free plan:", updateError);
+            } else {
+              // Update local subscription to free
+              subscriptionData[0].plan = 'free';
+              subscriptionData[0].urls_limit = 1;
+              subscriptionData[0].trial_end = null;
+              
+              toast({
+                title: "Trial Expired",
+                description: "Your 48-hour trial has ended. You've been reverted to the free plan.",
+              });
+            }
+          } else {
+            // Trial still active
+            const hoursLeft = Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60));
+            console.log(`[useSubscription] Trial active with ${hoursLeft} hours remaining`);
+          }
+        }
+        
         // Compare with current subscription to see if there's a change
         const newSub = {
           plan: subscriptionData[0].plan,
           urls_limit: subscriptionData[0].urls_limit,
           stripe_subscription_id: subscriptionData[0].stripe_subscription_id,
           has_api_access: subscriptionData[0].has_api_access || false,
-          api_key: subscriptionData[0].api_key || null
+          api_key: subscriptionData[0].api_key || null,
+          trial_end: subscriptionData[0].trial_end || null
         };
         
         // Check if subscription has changed
