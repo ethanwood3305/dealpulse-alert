@@ -21,7 +21,7 @@ const PricingFeatures = ({
       <PriceFeatureItem text={priceHistory} />
       
       {urlCount > 5 && (
-        <PriceFeatureItem text="Competitor tagging" />
+        <PriceFeatureItem text="Competitor vehicles comparison" />
       )}
       
       {(urlCount > 20 || includeApiAccess || isApiAccessFree) && (

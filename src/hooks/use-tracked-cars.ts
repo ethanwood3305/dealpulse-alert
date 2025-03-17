@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -9,6 +8,7 @@ export interface TrackedCar {
   model: string;
   engineType: string;
   registrationNumber?: string;
+  mileage?: string;
   last_price: number | null;
   last_checked: string | null;
   created_at: string;
@@ -21,6 +21,7 @@ export interface AddCarParams {
   model: string;
   engineType: string;
   registrationNumber?: string;
+  mileage?: string;
 }
 
 export const useTrackedCars = (userId: string | undefined) => {
@@ -49,13 +50,29 @@ export const useTrackedCars = (userId: string | undefined) => {
         const brand = urlParts[0] || 'Unknown Brand';
         const model = urlParts[1] || 'Unknown Model';
         const engineType = urlParts[2] || 'Unknown Engine';
+        let registrationNumber;
+        let mileage;
+        
+        // Check for registration number and mileage in the URL
+        if (urlParts[3]) {
+          const params = urlParts[3].split('&');
+          params.forEach(param => {
+            if (param.includes('reg=')) {
+              registrationNumber = param.split('reg=')[1];
+            }
+            if (param.includes('mil=')) {
+              mileage = param.split('mil=')[1];
+            }
+          });
+        }
         
         return {
           ...item,
           brand,
           model, 
           engineType,
-          registrationNumber: item.url.includes('reg=') ? item.url.split('reg=')[1] : undefined,
+          registrationNumber,
+          mileage,
           tags: item.tags || []
         };
       }) || [];
@@ -65,7 +82,7 @@ export const useTrackedCars = (userId: string | undefined) => {
       console.error("Error fetching tracked cars:", error);
       toast({
         title: "Error",
-        description: "Failed to load your tracked cars. Please try again later.",
+        description: "Failed to load your tracked vehicles. Please try again later.",
         variant: "destructive"
       });
     } finally {
@@ -73,14 +90,18 @@ export const useTrackedCars = (userId: string | undefined) => {
     }
   };
 
-  // Update the addCar function to use our new AddCarParams interface
+  // Update the addCar function to use our new AddCarParams interface with mileage field
   const addCar = async (car: AddCarParams) => {
     try {
       if (!userId) return false;
       
       // Format car data as a URL for storage in existing table
       // In a real implementation, we'd create a proper cars table
-      const carUrl = `${car.brand}/${car.model}/${car.engineType}${car.registrationNumber ? `/reg=${car.registrationNumber}` : ''}`;
+      const registrationParam = car.registrationNumber ? `reg=${car.registrationNumber}` : '';
+      const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
+      const params = [registrationParam, mileageParam].filter(Boolean).join('&');
+      
+      const carUrl = `${car.brand}/${car.model}/${car.engineType}${params ? `/${params}` : ''}`;
       
       const { data, error } = await supabase
         .from('tracked_urls')
@@ -100,7 +121,7 @@ export const useTrackedCars = (userId: string | undefined) => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add car. Please try again later.",
+        description: error.message || "Failed to add vehicle. Please try again later.",
         variant: "destructive"
       });
       return false;
@@ -122,15 +143,15 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       await fetchTrackedCars(userId);
       toast({
-        title: "Car removed",
-        description: "The car has been removed from your tracking list."
+        title: "Vehicle removed",
+        description: "The vehicle has been removed from your tracking list."
       });
       
       return true;
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to remove car. Please try again later.",
+        description: error.message || "Failed to remove vehicle. Please try again later.",
         variant: "destructive"
       });
       return false;

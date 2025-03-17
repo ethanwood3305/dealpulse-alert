@@ -14,7 +14,7 @@ export default function Hero() {
             </div>
           </div>
           <h1 className="text-4xl font-bold tracking-tight text-foreground sm:text-6xl">
-            Monitor Car Prices <span className="text-primary">Effortlessly</span>
+            Monitor Vehicle Prices <span className="text-primary">Effortlessly</span>
           </h1>
           <p className="mt-6 text-lg leading-8 text-muted-foreground">
             Stay ahead of the market with real-time price tracking for any vehicle model. Get alerts when prices change and make informed decisions.
@@ -22,7 +22,7 @@ export default function Hero() {
           <div className="mt-10 flex items-center justify-center gap-4">
             <Button asChild size="lg">
               <Link to="/signup">
-                Start Tracking Cars
+                Start Tracking Vehicles
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
@@ -34,7 +34,7 @@ export default function Hero() {
           </div>
           <div className="mt-8 text-sm text-muted-foreground">
             <span className="font-medium">No credit card required</span> for the free plan.
-            Track your first car in under 2 minutes.
+            Track your first vehicle in under 2 minutes.
           </div>
         </div>
       </div>

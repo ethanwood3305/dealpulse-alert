@@ -10,8 +10,8 @@ const PricingSlider = ({ urlCount, setUrlCount }: PricingSliderProps) => {
   return (
     <div className="mb-8">
       <div className="flex justify-between mb-2">
-        <span className="font-medium">URLs to monitor</span>
-        <span className="font-bold">{urlCount} {urlCount === 1 ? 'URL' : 'URLs'}</span>
+        <span className="font-medium">Cars to monitor</span>
+        <span className="font-bold">{urlCount} {urlCount === 1 ? 'Car' : 'Cars'}</span>
       </div>
       <Slider
         value={[urlCount]}

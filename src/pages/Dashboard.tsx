@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -17,12 +16,12 @@ import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import * as z from "zod";
 
-// Define the car schema with proper types
 const carSchema = z.object({
   registrationNumber: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
   engineType: z.string().min(1, "Engine type is required"),
+  mileage: z.string().optional(),
 });
 
 const Dashboard = () => {
@@ -183,32 +182,31 @@ const Dashboard = () => {
       if (!canAddMore) {
         toast({
           title: "Limit reached",
-          description: `You've reached your limit of ${userSubscription?.urls_limit} cars. Please upgrade your plan to add more.`,
+          description: `You've reached your limit of ${userSubscription?.urls_limit} vehicles. Please upgrade your plan to add more.`,
           variant: "destructive"
         });
         return;
       }
 
-      // Here's the fix: ensure we pass an object with the required fields (brand, model, engineType)
-      // and the optional registrationNumber field
       const success = await addCar({
         brand: values.brand,
         model: values.model,
         engineType: values.engineType,
-        registrationNumber: values.registrationNumber
+        registrationNumber: values.registrationNumber,
+        mileage: values.mileage
       });
       
       if (success) {
         refreshSubscription();
         toast({
-          title: "Car added",
-          description: "The car has been added to your tracking list."
+          title: "Vehicle added",
+          description: "The vehicle has been added to your tracking list."
         });
       }
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add car. Please try again later.",
+        description: error.message || "Failed to add vehicle. Please try again later.",
         variant: "destructive"
       });
     } finally {

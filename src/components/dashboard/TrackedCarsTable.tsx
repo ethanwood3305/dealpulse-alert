@@ -38,12 +38,12 @@ export const TrackedCarsTable = ({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Tracked Cars</CardTitle>
-          <CardDescription>You're not tracking any cars yet.</CardDescription>
+          <CardTitle>Tracked Vehicles</CardTitle>
+          <CardDescription>You're not tracking any vehicles yet.</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Add a car above to start tracking competitor prices.
+            Add a vehicle above to start tracking competitor prices.
           </p>
         </CardContent>
       </Card>
@@ -58,8 +58,8 @@ export const TrackedCarsTable = ({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tracked Cars</CardTitle>
-        <CardDescription>Your tracked competitor car models</CardDescription>
+        <CardTitle>Tracked Vehicles</CardTitle>
+        <CardDescription>Your tracked competitor vehicle models</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -68,6 +68,7 @@ export const TrackedCarsTable = ({
               <TableHead>Brand</TableHead>
               <TableHead>Model</TableHead>
               <TableHead>Engine Type</TableHead>
+              <TableHead>Mileage</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Last Price</TableHead>
               <TableHead>Last Checked</TableHead>
@@ -84,6 +85,7 @@ export const TrackedCarsTable = ({
                   <TableCell className="font-medium">{car.brand}</TableCell>
                   <TableCell>{car.model}</TableCell>
                   <TableCell>{car.engineType}</TableCell>
+                  <TableCell>{car.mileage || 'N/A'}</TableCell>
                   <TableCell>
                     {isActive ? (
                       <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">
@@ -136,7 +138,7 @@ export const TrackedCarsTable = ({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete this tracked car and remove all associated data.
+                            This will permanently delete this tracked vehicle and remove all associated data.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

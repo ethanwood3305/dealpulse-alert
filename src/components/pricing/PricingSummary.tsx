@@ -34,7 +34,7 @@ const PricingSummary = ({
       
       <div className="mb-6 space-y-2">
         <div className="flex items-center">
-          <span className="font-medium mr-1">URLs:</span> {urlCount} {urlCount === 1 ? 'URL' : 'URLs'}
+          <span className="font-medium mr-1">Cars:</span> {urlCount} {urlCount === 1 ? 'Car' : 'Cars'}
         </div>
         <div className="flex items-center">
           <span className="font-medium mr-1">Check Frequency:</span> {checkFrequency}
