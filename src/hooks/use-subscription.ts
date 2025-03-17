@@ -8,7 +8,7 @@ export interface UserSubscription {
   stripe_subscription_id: string | null;
   has_api_access: boolean;
   api_key: string | null;
-  trial_end?: string | null;
+  trial_end: string | null;
 }
 
 export const useSubscription = (userId: string | undefined) => {
