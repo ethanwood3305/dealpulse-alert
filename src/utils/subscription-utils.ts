@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { UserSubscription } from "@/types/subscription-types";
@@ -61,32 +60,34 @@ export async function checkCanAddMoreUrls(userId: string) {
   }
 }
 
-export async function generateApiKeyForUser(userId: string): Promise<string | null> {
+export const generateApiKeyForUser = async (userId: string): Promise<string | null> => {
   try {
-    const { data, error } = await supabase.functions.invoke('generate-api-key', {
-      body: { userId }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+
+    const response = await fetch(`${import.meta.env.VITE_PUBLIC_SUPABASE_URL}/functions/v1/generate-api-key`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
     });
-    
-    if (error) {
-      throw error;
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to generate API key');
     }
-    
-    if (data?.api_key) {
-      toast({
-        title: "API Key Generated",
-        description: "Your new API key has been generated successfully."
-      });
-      return data.api_key;
-    } else {
-      throw new Error('No API key returned');
-    }
-  } catch (error: any) {
-    console.error("[subscription-utils] Error generating API key:", error);
+
+    const { api_key } = await response.json();
+    return api_key;
+  } catch (error) {
+    console.error('Error generating API key:', error);
     toast({
-      title: "Error",
-      description: "Failed to generate API key. Please try again later.",
+      title: "API Key Generation Failed",
+      description: error instanceof Error ? error.message : "Failed to generate API key. Please try again later.",
       variant: "destructive"
     });
     return null;
   }
-}
+};
