@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -12,7 +11,6 @@ import * as z from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-// Define the car schema that ensures brand, model, and engineType are required
 const carSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
@@ -22,14 +20,12 @@ const carSchema = z.object({
   color: z.string().optional(),
 });
 
-// Type for the props
 interface AddCarFormProps {
   onSubmit: (values: z.infer<typeof carSchema>) => Promise<void>;
   isAddingCar: boolean;
   canAddMoreCars: boolean;
 }
 
-// Comprehensive car brands and models with engine types
 const carBrandsData = {
   "Audi": [
     "A1", "A3", "A4", "A5", "A6", "A7", "A8", "Q2", "Q3", "Q4 e-tron", "Q5", "Q7", "Q8", 
@@ -144,7 +140,6 @@ const carBrandsData = {
   ]
 };
 
-// Default engine types map to ensure we always have fallback data
 const defaultEngineTypesMap = {
   "Ford": {
     "Fiesta": [
@@ -465,7 +460,6 @@ const defaultEngineTypesMap = {
   }
 };
 
-// Default common engine types for any model not specifically defined
 const defaultCommonEngineTypes = [
   "Petrol",
   "Diesel",
@@ -495,11 +489,9 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     }
   });
 
-  // Get the selected brand to show relevant models
   const selectedBrand = form.watch("brand");
   const selectedModel = form.watch("model");
 
-  // Load car brands on component mount
   useEffect(() => {
     const fetchBrands = async () => {
       setIsLoadingBrands(true);
@@ -517,7 +509,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           setBrands(data);
         } else {
           console.log("No brands in database, using hardcoded list");
-          // If no brands in the database yet, use our hardcoded list
           const defaultBrands = Object.keys(carBrandsData);
           setBrands(defaultBrands.map(name => ({ id: name, name })));
         }
@@ -529,7 +520,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           variant: "destructive"
         });
         
-        // Fallback to default list
         const defaultBrands = Object.keys(carBrandsData);
         setBrands(defaultBrands.map(name => ({ id: name, name })));
       } finally {
@@ -540,7 +530,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     fetchBrands();
   }, []);
 
-  // Load models when brand changes
   useEffect(() => {
     if (!selectedBrand) {
       setModels([]);
@@ -552,16 +541,11 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       try {
         console.log(`Fetching models for brand: ${selectedBrand}`);
         
-        // Get the selected brand object
         const selectedBrandObj = brands.find(b => b.name === selectedBrand);
         console.log("Selected brand object:", selectedBrandObj);
         
-        // Skip database call if using default brands (id = name)
-        const isDefaultBrand = selectedBrandObj?.id === selectedBrandObj?.name;
-        
-        // Only try database if it's not a default brand
         let databaseModels = [];
-        if (!isDefaultBrand && selectedBrandObj?.id) {
+        if (selectedBrandObj?.id) {
           const { data, error } = await supabase
             .from('car_models')
             .select('id, name')
@@ -584,14 +568,12 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         } else {
           console.log(`No models in database for ${selectedBrand}, using hardcoded data`);
           
-          // Get models from our comprehensive dataset
           const brandModels = carBrandsData[selectedBrand as keyof typeof carBrandsData] || [];
           console.log(`Found ${brandModels.length} models for ${selectedBrand} in hardcoded data`);
           
           if (brandModels.length > 0) {
             setModels(brandModels.map(name => ({ id: name, name })));
           } else {
-            // Fallback to generic models if we don't have specific ones
             const defaultModels = ["Standard", "Deluxe", "Sport", "Limited", "Other"];
             setModels(defaultModels.map(name => ({ id: name, name })));
           }
@@ -604,7 +586,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           variant: "destructive"
         });
         
-        // Fallback to hardcoded list
         const defaultModels = ["Standard", "Deluxe", "Sport", "Limited", "Other"];
         setModels(defaultModels.map(name => ({ id: name, name })));
       } finally {
@@ -613,12 +594,10 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     };
 
     fetchModels();
-    // Reset engine type when brand changes
     form.setValue("engineType", "");
     form.setValue("model", "");
   }, [selectedBrand, brands, form]);
 
-  // Load engine types when model changes
   useEffect(() => {
     if (!selectedModel || !selectedBrand) {
       setEngineTypes([]);
@@ -630,16 +609,11 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       try {
         console.log(`Fetching engine types for ${selectedBrand} ${selectedModel}`);
         
-        // Get the selected model object
         const selectedModelObj = models.find(m => m.name === selectedModel);
         console.log("Selected model object:", selectedModelObj);
         
-        // Skip database call if using default models (id = name)
-        const isDefaultModel = selectedModelObj?.id === selectedModelObj?.name;
-        
-        // Only try database if it's not a default model
         let databaseEngineTypes = [];
-        if (!isDefaultModel && selectedModelObj?.id) {
+        if (selectedModelObj?.id) {
           const { data, error } = await supabase
             .from('engine_types')
             .select('id, name, fuel_type, capacity, power')
@@ -660,9 +634,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         if (databaseEngineTypes.length > 0) {
           setEngineTypes(databaseEngineTypes);
         } else {
-          console.log('No engine types in database, using fallback data');
-          
-          // Check for specific engine types in our map
           let engineTypesList: string[] = [];
           
           if (defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap] && 
@@ -670,7 +641,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
             engineTypesList = defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap][selectedModel];
             console.log(`Using specific engine types for ${selectedBrand} ${selectedModel}, found ${engineTypesList.length}`);
           } else {
-            // Use generic engine types
             engineTypesList = defaultCommonEngineTypes;
             console.log(`Using generic engine types for ${selectedBrand} ${selectedModel}`);
           }
@@ -689,7 +659,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           variant: "destructive"
         });
         
-        // Use most universal fallback
         setEngineTypes(defaultCommonEngineTypes.map(name => ({
           id: name,
           name,
@@ -703,10 +672,9 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     fetchEngineTypes();
   }, [selectedModel, selectedBrand, models]);
 
-  // Helper to determine fuel type from engine name
   const determineFuelType = (engineName: string): string => {
     const lowerName = engineName.toLowerCase();
-    if (lowerName.includes('diesel') || lowerName.includes('tdi') || lowerName.includes('bluetec') || lowerName.match(/\bd\d/) || lowerName.includes('cdi')) return 'Diesel';
+    if (lowerName.includes('diesel') || lowerName.includes('tdi') || lowerName.match(/\bd\d/) || lowerName.includes('cdi')) return 'Diesel';
     if (lowerName.includes('electric') || lowerName.includes('ev') || lowerName.includes('e-tron') || lowerName.includes('eqs') || lowerName.includes('taycan') || lowerName.includes('id.')) return 'Electric';
     if (lowerName.includes('hybrid') && lowerName.includes('plug') || lowerName.includes('phev') || lowerName.includes('e:phev')) return 'Plug-in Hybrid';
     if (lowerName.includes('hybrid') || lowerName.includes('e:hev') || lowerName.includes('e-power')) return 'Hybrid';
@@ -736,7 +704,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                       disabled={isAddingCar || !canAddMoreCars || isLoadingBrands}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // Reset model and engine type when brand changes
                         form.setValue("model", "");
                         form.setValue("engineType", "");
                       }} 
@@ -775,7 +742,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                       disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLoadingModels}
                       onValueChange={(value) => {
                         field.onChange(value);
-                        // Reset engine type when model changes
                         form.setValue("engineType", "");
                       }} 
                       value={field.value}
@@ -833,7 +799,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                             </SelectItem>
                           ))
                         ) : (
-                          // Fallback if somehow engine types array is empty
                           <SelectItem value="standard">Standard</SelectItem>
                         )}
                       </SelectContent>
