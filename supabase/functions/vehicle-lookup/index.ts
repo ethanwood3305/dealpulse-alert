@@ -21,25 +21,47 @@ serve(async (req) => {
 
     if (req.method === 'GET') {
       console.log('Fetching car brands')
-      const { data: brands, error: brandsError } = await supabaseClient
-        .from('car_brands')
-        .select('id, name')
-        .order('name')
+      
+      try {
+        const { data: brands, error: brandsError } = await supabaseClient
+          .from('car_brands')
+          .select('id, name')
+          .order('name')
 
-      if (brandsError) {
-        console.error('Error fetching brands:', brandsError)
-        throw brandsError
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          brands: brands || []
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
+        if (brandsError) {
+          console.error('Error fetching brands:', brandsError)
+          throw brandsError
         }
-      )
+
+        console.log(`Successfully fetched ${brands?.length || 0} brands`)
+        
+        return new Response(
+          JSON.stringify({ 
+            brands: brands || [],
+            success: true
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        )
+      } catch (brandsQueryError) {
+        console.error('Critical error when fetching brands:', brandsQueryError)
+        
+        // Fallback to returning an empty array but with a 200 status
+        // This prevents the UI from showing an error and allows the default brands to be used
+        return new Response(
+          JSON.stringify({ 
+            brands: [],
+            success: false,
+            error: brandsQueryError.message || 'Failed to query car brands'
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        )
+      }
     } else if (req.method === 'POST') {
       const { brandId, modelId, registration } = await req.json()
       
@@ -81,41 +103,67 @@ serve(async (req) => {
       // If we have a brandId, fetch models for that brand
       if (brandId) {
         console.log('Fetching models for brand ID:', brandId)
-        const { data: models, error: modelsError } = await supabaseClient
-          .from('car_models')
-          .select('id, name')
-          .eq('brand_id', brandId)
-          .order('name')
+        try {
+          const { data: models, error: modelsError } = await supabaseClient
+            .from('car_models')
+            .select('id, name')
+            .eq('brand_id', brandId)
+            .order('name')
 
-        if (modelsError) {
-          console.error('Error fetching models:', modelsError)
-          throw modelsError
+          if (modelsError) {
+            console.error('Error fetching models:', modelsError)
+            throw modelsError
+          }
+
+          console.log(`Successfully fetched ${models?.length || 0} models for brand ${brandId}`)
+          
+          return new Response(
+            JSON.stringify({ models: models || [] }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
+        } catch (modelsQueryError) {
+          console.error('Critical error when fetching models:', modelsQueryError)
+          return new Response(
+            JSON.stringify({ 
+              models: [],
+              error: modelsQueryError.message || 'Failed to query car models'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
         }
-
-        return new Response(
-          JSON.stringify({ models: models || [] }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        )
       }
       
       // If we have a modelId, fetch engine types for that model
       if (modelId) {
         console.log('Fetching engine types for model ID:', modelId)
-        const { data: engineTypes, error: engineTypesError } = await supabaseClient
-          .from('engine_types')
-          .select('id, name, fuel_type, capacity, power')
-          .eq('model_id', modelId)
-          .order('name')
+        try {
+          const { data: engineTypes, error: engineTypesError } = await supabaseClient
+            .from('engine_types')
+            .select('id, name, fuel_type, capacity, power')
+            .eq('model_id', modelId)
+            .order('name')
 
-        if (engineTypesError) {
-          console.error('Error fetching engine types:', engineTypesError)
-          throw engineTypesError
+          if (engineTypesError) {
+            console.error('Error fetching engine types:', engineTypesError)
+            throw engineTypesError
+          }
+
+          console.log(`Successfully fetched ${engineTypes?.length || 0} engine types for model ${modelId}`)
+          
+          return new Response(
+            JSON.stringify({ engineTypes: engineTypes || [] }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
+        } catch (engineTypesQueryError) {
+          console.error('Critical error when fetching engine types:', engineTypesQueryError)
+          return new Response(
+            JSON.stringify({ 
+              engineTypes: [],
+              error: engineTypesQueryError.message || 'Failed to query engine types'
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          )
         }
-
-        return new Response(
-          JSON.stringify({ engineTypes: engineTypes || [] }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        )
       }
       
       return new Response(
