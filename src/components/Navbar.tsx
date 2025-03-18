@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Menu, X, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
@@ -12,6 +12,7 @@ const Navbar = () => {
   const [user, setUser] = useState<any>(null);
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -57,6 +58,22 @@ const Navbar = () => {
     navigate('/');
   };
 
+  const handleFeatureClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // If on home page, scroll to features
+    if (location.pathname === '/') {
+      const featuresSection = document.getElementById('features');
+      if (featuresSection) {
+        featuresSection.scrollIntoView({ behavior: 'smooth' });
+        setIsMobileMenuOpen(false);
+      }
+    } else {
+      // Navigate to home page with hash
+      navigate('/#features');
+    }
+  };
+
   return (
     <header 
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -74,11 +91,15 @@ const Navbar = () => {
             <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">
               Home
             </Link>
-            <Link to="/#features" className="text-sm font-medium hover:text-primary transition-colors">
+            <a 
+              href="/#features" 
+              className="text-sm font-medium hover:text-primary transition-colors"
+              onClick={handleFeatureClick}
+            >
               Features
-            </Link>
+            </a>
             <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">
-              Pricing
+              Enterprise
             </Link>
             <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">
               About
@@ -169,19 +190,19 @@ const Navbar = () => {
             >
               Home
             </Link>
-            <Link
-              to="/#features"
+            <a
+              href="/#features"
               className="block text-lg font-medium hover:text-primary"
-              onClick={() => setIsMobileMenuOpen(false)}
+              onClick={handleFeatureClick}
             >
               Features
-            </Link>
+            </a>
             <Link
               to="/pricing"
               className="block text-lg font-medium hover:text-primary"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Pricing
+              Enterprise
             </Link>
             <Link
               to="/about"
