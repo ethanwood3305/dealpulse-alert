@@ -30,3 +30,10 @@ export interface TrackedCar {
   created_at: string;
   tags: string[];
 }
+
+export interface DealerVehicle extends TrackedCarWithLocation {
+  dealerName: string;
+  dealerPhone: string;
+  dealerAddress?: string;
+  dealerWebsite?: string;
+}

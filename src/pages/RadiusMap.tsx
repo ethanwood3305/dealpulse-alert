@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Search } from 'lucide-react';
+import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TrackedCarWithLocation } from '@/types/car-types';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,9 +31,11 @@ const RadiusMap = () => {
   const [postcode, setPostcode] = useState('');
   const [targetPrice, setTargetPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isMapLoading, setIsMapLoading] = useState(true);
   const [trackedCars, setTrackedCars] = useState<TrackedCarWithLocation[]>([]);
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
   
   // Parse query parameters
   useEffect(() => {
@@ -50,29 +52,44 @@ const RadiusMap = () => {
     }
   }, [location.search]);
   
-  // Initialize map
+  // Initialize map - Fixed to ensure proper loading
   useEffect(() => {
     if (mapContainer.current && !map.current) {
       console.log('Initializing map with container:', mapContainer.current);
       
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/light-v11',
-        center: DEFAULT_CENTER,
-        zoom: DEFAULT_ZOOM,
-      });
-      
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-      
-      // Log when map is loaded
-      map.current.on('load', () => {
-        console.log('Map loaded successfully');
-      });
-      
-      // Log any errors
-      map.current.on('error', (e) => {
-        console.error('Mapbox error:', e);
-      });
+      try {
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: 'mapbox://styles/mapbox/light-v11',
+          center: DEFAULT_CENTER,
+          zoom: DEFAULT_ZOOM,
+        });
+        
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        
+        // Log when map is loaded
+        map.current.on('load', () => {
+          console.log('Map loaded successfully');
+          setIsMapLoading(false);
+        });
+        
+        // Log any errors
+        map.current.on('error', (e) => {
+          console.error('Mapbox error:', e);
+          toast({
+            title: "Map Error",
+            description: "There was an error loading the map. Please try refreshing the page.",
+            variant: "destructive"
+          });
+        });
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        toast({
+          title: "Map Error",
+          description: "Failed to initialize the map. Please check your connection and try again.",
+          variant: "destructive" 
+        });
+      }
     }
     
     return () => {
@@ -208,6 +225,88 @@ const RadiusMap = () => {
     return `${prefix}${number} ${suffix}XX`;
   };
   
+  // Function to search for similar vehicles from dealers
+  const searchDealerVehicles = async () => {
+    if (!selectedCar) return [];
+    
+    setIsLoading(true);
+    
+    try {
+      // Simulate API call to get dealer vehicles with similar specifications
+      // In a real implementation, this would call an external API
+
+      // Generate 50-100 simulated dealer listings
+      const dealerCount = Math.floor(Math.random() * 50) + 50;
+      const results = [];
+      
+      for (let i = 0; i < dealerCount; i++) {
+        // Generate a random price deviation from target price
+        const priceDeviation = (Math.random() * 0.3) - 0.15; // -15% to +15%
+        const marketPrice = selectedCar.priceComparison?.targetPrice 
+          ? selectedCar.priceComparison.targetPrice * (1 + priceDeviation)
+          : (parseFloat(targetPrice) || 20000) * (1 + priceDeviation);
+        
+        // Create a random UK location
+        const lat = 51.5 + (Math.random() * 3) - 1.5;
+        const lng = -1.9 + (Math.random() * 4) - 2;
+        
+        // Generate random postcode
+        const postcode = generateRandomPostcode();
+        
+        // Generate a random mileage deviation
+        const mileageBase = selectedCar.mileage ? parseInt(selectedCar.mileage) : 30000;
+        const mileageDev = (Math.random() * 0.3) - 0.15; // -15% to +15%
+        const mileage = Math.round(mileageBase * (1 + mileageDev));
+        
+        // Generate dealer name
+        const dealerNames = ['AutoWorld', 'CarZone', 'MotorHub', 'DriveTime', 'WheelsDirect', 
+                            'CityMotors', 'PremiumAutos', 'MetroCars', 'CountyAutos', 'ExcellentCars'];
+        const dealerName = dealerNames[Math.floor(Math.random() * dealerNames.length)];
+        
+        results.push({
+          id: `dealer-${i}`,
+          brand: selectedCar.brand,
+          model: selectedCar.model,
+          engineType: selectedCar.engineType,
+          year: selectedCar.year,
+          mileage: mileage.toString(),
+          color: ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey'][Math.floor(Math.random() * 6)],
+          dealerName: `${dealerName} ${['Ltd', 'Motors', 'Group', 'Cars'][Math.floor(Math.random() * 4)]}`,
+          dealerPhone: `0${Math.floor(Math.random() * 10000000000)}`.substring(0, 11),
+          location: {
+            postcode,
+            lat,
+            lng
+          },
+          priceComparison: {
+            targetPrice: selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000,
+            marketPrice,
+            difference: (selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000) - marketPrice,
+            percentageDifference: ((selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000) - marketPrice) / 
+                                (selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000) * 100
+          }
+        });
+      }
+      
+      toast({
+        title: "Search Complete",
+        description: `Found ${results.length} vehicles matching your specifications from dealers.`
+      });
+      
+      return results;
+    } catch (error) {
+      console.error('Error searching for dealer vehicles:', error);
+      toast({
+        variant: "destructive",
+        title: "Search Error",
+        description: "Failed to search for vehicles from dealers."
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const searchPostcode = async (postcodeValue = postcode, targetPriceValue = targetPrice) => {
     if (!postcodeValue.trim()) {
       toast({
@@ -269,16 +368,20 @@ const RadiusMap = () => {
           .setPopup(new mapboxgl.Popup().setHTML(`<p><strong>Postcode:</strong> ${postcodeValue}</p>`))
           .addTo(map.current);
           
+        // Search for dealer vehicles if we have a selected car
+        const dealerResults = await searchDealerVehicles();
+        setSearchResults(dealerResults);
+        
         // Add radius circles
         // First, ensure the map has a source
         if (map.current.loaded()) {
           console.log('Map is loaded, adding circles');
-          addCircles(map.current, [lng, lat], parseFloat(targetPriceValue));
+          addCircles(map.current, [lng, lat], parseFloat(targetPriceValue), dealerResults);
         } else {
           console.log('Map not loaded yet, waiting for load event');
           map.current.once('load', () => {
             console.log('Map loaded, now adding circles');
-            addCircles(map.current!, [lng, lat], parseFloat(targetPriceValue));
+            addCircles(map.current!, [lng, lat], parseFloat(targetPriceValue), dealerResults);
           });
         }
         
@@ -306,7 +409,7 @@ const RadiusMap = () => {
     }
   };
   
-  const addCircles = (map: Map, center: [number, number], price: number) => {
+  const addCircles = (map: Map, center: [number, number], price: number, dealerResults: any[] = []) => {
     console.log('Adding circles to map at', center, 'with price', price);
     
     // Add a source for the circles
@@ -379,9 +482,17 @@ const RadiusMap = () => {
       filter: ['==', '$index', 0]
     });
     
+    // Combine tracked cars with dealer results for displaying on map
+    const allVehicles = [...trackedCars];
+    
+    // Add dealer search results if any
+    if (dealerResults && dealerResults.length > 0) {
+      allVehicles.push(...dealerResults);
+    }
+    
     // Filter for similar car builds if a car is selected
     const filteredCars = selectedCar 
-      ? trackedCars.filter(car => 
+      ? allVehicles.filter(car => 
           car.brand === selectedCar.brand && 
           car.model === selectedCar.model && 
           car.engineType === selectedCar.engineType &&
@@ -391,9 +502,9 @@ const RadiusMap = () => {
              parseInt(car.mileage) >= parseInt(selectedCar.mileage) * 0.7 && 
              parseInt(car.mileage) <= parseInt(selectedCar.mileage) * 1.3))
         )
-      : trackedCars;
+      : allVehicles;
     
-    console.log(`Showing ${filteredCars.length} similar cars out of ${trackedCars.length} total cars`);
+    console.log(`Showing ${filteredCars.length} similar cars out of ${allVehicles.length} total cars`);
     
     // Add car markers for filtered cars
     filteredCars.forEach(car => {
@@ -414,7 +525,7 @@ const RadiusMap = () => {
         markerEl.style.color = 'white';
         markerEl.style.fontWeight = 'bold';
         markerEl.style.fontSize = '16px';
-        markerEl.innerHTML = '🚗';
+        markerEl.innerHTML = car.id.includes('dealer-') ? '🏬' : '🚗';
         
         // Highlight the selected car with a special style
         if (selectedCarId && car.id === selectedCarId) {
@@ -424,8 +535,19 @@ const RadiusMap = () => {
           markerEl.style.zIndex = '1000';
         }
         
-        const popupHTML = `
-          <div class="p-2">
+        // Build popup HTML differently for dealer and tracked cars
+        const popupHTML = car.id.includes('dealer-') ? 
+          `<div class="p-2">
+            <h3 class="font-bold">${car.brand} ${car.model}</h3>
+            <p><strong>Engine:</strong> ${car.engineType || 'N/A'}</p>
+            <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
+            <p><strong>Mileage:</strong> ${car.mileage ? `${car.mileage} miles` : 'N/A'}</p>
+            <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
+            <p><strong>Dealer:</strong> ${car.dealerName}</p>
+            <p><strong>Phone:</strong> ${car.dealerPhone}</p>
+            <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
+          </div>` :
+          `<div class="p-2">
             <h3 class="font-bold">${car.brand} ${car.model}</h3>
             <p><strong>Engine:</strong> ${car.engineType || 'N/A'}</p>
             <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
@@ -434,8 +556,7 @@ const RadiusMap = () => {
             <p><strong>Target:</strong> £${car.priceComparison?.targetPrice.toLocaleString() || 'N/A'}</p>
             <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
             ${car.id === selectedCarId ? '<p class="text-yellow-500 font-bold">★ Selected Vehicle</p>' : ''}
-          </div>
-        `;
+          </div>`;
         
         new mapboxgl.Marker(markerEl)
           .setLngLat([car.location.lng, car.location.lat])
@@ -527,13 +648,29 @@ const RadiusMap = () => {
                       <div className="w-4 h-4 rounded-full bg-red-500"></div>
                       <span className="text-sm">Above Target Price</span>
                     </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex items-center justify-center">🚗</div>
+                      <span className="text-sm">Your tracked vehicle</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center">🏬</div>
+                      <span className="text-sm">Dealer vehicle</span>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             </div>
             
-            <div className="flex-1 rounded-lg overflow-hidden border border-border shadow-sm" style={{ height: "600px" }}>
+            <div className="flex-1 rounded-lg overflow-hidden border border-border shadow-sm" style={{ height: "600px", position: "relative" }}>
               <div ref={mapContainer} id="map" className="w-full h-full rounded-lg" />
+              {isMapLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="mt-2">Loading map...</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
