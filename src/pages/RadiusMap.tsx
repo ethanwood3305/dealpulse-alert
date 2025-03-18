@@ -7,17 +7,16 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { TrackedCarWithLocation } from '@/types/car-types';
-import { supabase } from '@/integrations/supabase/client';
+import { TrackedCarWithLocation, DealerVehicle } from '@/types/car-types';
+import { supabase, MAPBOX_TOKEN } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGVhbHB1bHNlIiwiYSI6ImNsbXg1cHdrOTAxZWwycW50bmNjNnF0aW4ifQ.GSIBL15yI1TQ_ElD3Ll0YQ';
-mapboxgl.accessToken = MAPBOX_TOKEN;
-
 const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
+
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 const RadiusMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -55,7 +54,7 @@ const RadiusMap = () => {
       try {
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/light-v11',
+          style: 'mapbox://styles/mapbox/streets-v12',
           center: DEFAULT_CENTER,
           zoom: DEFAULT_ZOOM,
         });
@@ -500,8 +499,8 @@ const RadiusMap = () => {
             <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
             <p><strong>Mileage:</strong> ${car.mileage ? `${car.mileage} miles` : 'N/A'}</p>
             <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
-            <p><strong>Dealer:</strong> ${isDealerVehicle ? (car as DealerVehicle).dealerName : 'N/A'}</p>
-            <p><strong>Phone:</strong> ${isDealerVehicle ? (car as DealerVehicle).dealerPhone : 'N/A'}</p>
+            <p><strong>Dealer:</strong> ${(car as DealerVehicle).dealerName || 'N/A'}</p>
+            <p><strong>Phone:</strong> ${(car as DealerVehicle).dealerPhone || 'N/A'}</p>
             <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
           </div>` :
           `<div class="p-2">

@@ -138,22 +138,23 @@ const Dashboard = () => {
     return success;
   };
 
-  const handleAddTag = async (urlId: string, tag: string) => {
+  const handleAddTag = async (urlId: string, tag: string): Promise<void> => {
     if (!user) return;
     await addTag(urlId, tag);
   };
 
-  const handleRemoveTag = async (urlId: string, tag: string) => {
+  const handleRemoveTag = async (urlId: string, tag: string): Promise<void> => {
     if (!user) return;
     await removeTag(urlId, tag);
   };
 
-  const handleGenerateApiKey = async () => {
-    if (!user) return;
+  const handleGenerateApiKey = async (): Promise<boolean> => {
+    if (!user) return false;
     const success = await generateApiKey();
     if (success) {
       refreshSubscription();
     }
+    return success;
   };
 
   const scrollToAddCarForm = () => {

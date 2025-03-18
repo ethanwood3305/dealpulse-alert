@@ -1,10 +1,14 @@
 
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { toast } from "@/components/ui/use-toast";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Copy, KeyRound, KeySquare } from "lucide-react";
+import { useState } from 'react';
+import { Check, Copy, KeyRound, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger 
+} from '@/components/ui/accordion';
 
 interface ApiDocsCardProps {
   apiKey: string | null;
@@ -13,152 +17,134 @@ interface ApiDocsCardProps {
   onGenerateKey: () => Promise<boolean>;
 }
 
-export function ApiDocsCard({
-  apiKey,
+export const ApiDocsCard = ({ 
+  apiKey, 
   userId,
   hasApiAccess,
-  onGenerateKey
-}: ApiDocsCardProps) {
-  const handleCopyApiKey = () => {
-    if (!apiKey) return;
-    
-    navigator.clipboard.writeText(apiKey);
-    toast({
-      title: "API Key Copied",
-      description: "The API key has been copied to your clipboard."
-    });
-  };
+  onGenerateKey 
+}: ApiDocsCardProps) => {
+  const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   
-  const handleCopyUserId = () => {
-    if (!userId) return;
-    
-    navigator.clipboard.writeText(userId);
-    toast({
-      title: "User ID Copied",
-      description: "Your User ID has been copied to your clipboard."
-    });
+  const copyApiKey = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
   
   const handleGenerateKey = async () => {
-    const loading = toast({
-      title: "Generating API Key",
-      description: "Please wait while we generate a new API key for you."
-    });
-    
-    const success = await onGenerateKey();
-    
-    if (success) {
-      toast({
-        title: "API Key Generated",
-        description: "Your new API key has been generated successfully."
-      });
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to generate API key. Please try again later."
-      });
+    setIsGenerating(true);
+    try {
+      await onGenerateKey();
+    } finally {
+      setIsGenerating(false);
     }
   };
   
   return (
-    <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value="api-docs">
-        <Card className="border-none shadow-none overflow-visible">
-          <CardHeader className="p-0">
-            <AccordionTrigger className="py-4 px-6 hover:no-underline">
-              <div className="flex flex-col items-start text-left">
-                <CardTitle className="text-xl">API Access</CardTitle>
-                <CardDescription>
-                  Access your car data programmatically
-                </CardDescription>
-              </div>
-            </AccordionTrigger>
-          </CardHeader>
-          <AccordionContent>
-            <CardContent className="px-6 pb-6 pt-0">
+    <Card>
+      <CardHeader>
+        <CardTitle>API Access</CardTitle>
+        <CardDescription>
+          Access vehicle data programmatically via our API
+        </CardDescription>
+      </CardHeader>
+      
+      <CardContent>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="api-docs">
+            <AccordionTrigger>API Documentation</AccordionTrigger>
+            <AccordionContent>
               {hasApiAccess ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="text-sm font-medium mb-1.5">Your API Key</div>
-                    <div className="flex gap-2">
-                      <Input 
-                        value={apiKey || ""} 
-                        readOnly 
-                        className="font-mono text-sm"
-                      />
+                <div>
+                  <div className="mb-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium">Your API Key</span>
                       <Button 
-                        size="icon" 
-                        variant="outline" 
-                        onClick={handleCopyApiKey}
-                        title="Copy API Key"
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8"
+                        onClick={handleGenerateKey}
+                        disabled={isGenerating}
                       >
-                        <Copy className="h-4 w-4" />
+                        {isGenerating ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4" />
+                        )}
+                        <span className="ml-2">Regenerate</span>
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Keep this key secure and don't share it publicly.
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <div className="text-sm font-medium mb-1.5">Your User ID</div>
-                    <div className="flex gap-2">
-                      <Input 
-                        value={userId} 
-                        readOnly 
-                        className="font-mono text-sm"
-                      />
+                    <div className="flex">
+                      <div className="flex-1 p-2 bg-muted rounded-l-md font-mono text-xs truncate">
+                        {apiKey || 'No API key found'}
+                      </div>
                       <Button 
-                        size="icon" 
-                        variant="outline" 
-                        onClick={handleCopyUserId}
-                        title="Copy User ID"
+                        variant="secondary" 
+                        size="sm" 
+                        className="rounded-l-none"
+                        onClick={copyApiKey}
+                        disabled={!apiKey}
                       >
-                        <Copy className="h-4 w-4" />
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      You'll need this to authenticate your API requests.
-                    </p>
                   </div>
                   
-                  <div className="pt-2">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleGenerateKey}
-                    >
-                      <KeySquare className="mr-2 h-4 w-4" /> Generate New API Key
-                    </Button>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      This will invalidate your current API key.
-                    </p>
-                  </div>
-                  
-                  <div className="space-y-2 border-t border-border pt-4 mt-4">
-                    <h3 className="text-sm font-medium">Example API Request</h3>
-                    <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">
-                      {`curl -X GET "https://api.dealpulse.app/cars" \\
-  -H "Authorization: Bearer ${apiKey || 'your-api-key'}" \\
-  -H "User-ID: ${userId}" \\
-  -H "Content-Type: application/json"`}
-                    </pre>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Get all tracked vehicles</h4>
+                      <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                        <pre>GET https://api.dealpulse.app/vehicles</pre>
+                        <pre>{`Headers: { "x-api-key": "${apiKey || 'YOUR_API_KEY'}" }`}</pre>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Get vehicle by ID</h4>
+                      <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                        <pre>GET https://api.dealpulse.app/vehicles/:id</pre>
+                        <pre>{`Headers: { "x-api-key": "${apiKey || 'YOUR_API_KEY'}" }`}</pre>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Example with curl</h4>
+                      <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                        <pre>{`curl -X GET \\
+  https://api.dealpulse.app/vehicles \\
+  -H "x-api-key: ${apiKey || 'YOUR_API_KEY'}"`}</pre>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="py-4 text-center space-y-2">
-                  <KeyRound className="h-8 w-8 mx-auto text-muted-foreground" />
-                  <h3 className="font-medium">API Access Not Available</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Upgrade to a paid plan to access the API.
+                <div className="py-4 flex flex-col items-center justify-center">
+                  <KeyRound className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium">API Access Unavailable</h3>
+                  <p className="text-sm text-muted-foreground text-center max-w-md mt-2">
+                    API access is only available on paid plans. Upgrade to access our API and integrate with your applications.
                   </p>
+                  <Button 
+                    className="mt-4"
+                    onClick={handleGenerateKey}
+                    disabled={isGenerating}
+                  >
+                    {isGenerating ? (
+                      <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <KeyRound className="h-4 w-4 mr-2" />
+                    )}
+                    Generate API Key
+                  </Button>
                 </div>
               )}
-            </CardContent>
-          </AccordionContent>
-        </Card>
-      </AccordionItem>
-    </Accordion>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
   );
-}
+};
