@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,11 +13,9 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Replace with your Mapbox access token
 const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGVhbHB1bHNlIiwiYSI6ImNsbXg1cHdrOTAxZWwycW50bmNjNnF0aW4ifQ.GSIBL15yI1TQ_ElD3Ll0YQ';
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
-// Set the center of the UK as the default map center
 const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
 
@@ -37,7 +34,6 @@ const RadiusMap = () => {
   const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   
-  // Parse query parameters
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const carId = params.get('car');
@@ -52,7 +48,6 @@ const RadiusMap = () => {
     }
   }, [location.search]);
   
-  // Initialize map - Fixed to ensure proper loading
   useEffect(() => {
     if (mapContainer.current && !map.current) {
       console.log('Initializing map with container:', mapContainer.current);
@@ -67,13 +62,11 @@ const RadiusMap = () => {
         
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
         
-        // Log when map is loaded
         map.current.on('load', () => {
           console.log('Map loaded successfully');
           setIsMapLoading(false);
         });
         
-        // Log any errors
         map.current.on('error', (e) => {
           console.error('Mapbox error:', e);
           toast({
@@ -117,9 +110,7 @@ const RadiusMap = () => {
           
         if (error) throw error;
         
-        // Parse data from URL field and add required fields for TrackedCarWithLocation
         const carsWithLocations = data.map((car) => {
-          // Extract car info from URL and fill required TrackedCar properties
           let brand = 'Unknown';
           let model = 'Unknown';
           let engineType = '';
@@ -127,13 +118,11 @@ const RadiusMap = () => {
           let year = '';
           let color = '';
           
-          // Parse URL to extract car details (similar to how it's done in useTrackedCars)
           const urlParts = car.url ? car.url.split('/') : [];
           if (urlParts.length > 0) brand = urlParts[0] || 'Unknown';
           if (urlParts.length > 1) model = urlParts[1] || 'Unknown';
           if (urlParts.length > 2) engineType = urlParts[2] || '';
           
-          // Parse parameters if available
           if (urlParts.length > 3) {
             const params = urlParts[3].split('&');
             params.forEach(param => {
@@ -149,17 +138,14 @@ const RadiusMap = () => {
             });
           }
           
-          // Generate random postcode and coordinates for demo
           const randomPostcode = generateRandomPostcode();
           const randomLat = 51.5 + Math.random() * 2;
           const randomLng = -1.9 + Math.random() * 3;
           
-          // Calculate a target price based on mileage or use a default
           const parsedMileage = mileage ? parseInt(mileage) : 10000;
           const targetPrice = 10000 + parsedMileage * 0.5;
           const marketPrice = car.last_price || targetPrice * (0.9 + Math.random() * 0.3);
           
-          // Calculate price differences
           const difference = targetPrice - marketPrice;
           const percentageDifference = (difference / targetPrice) * 100;
           
@@ -191,14 +177,12 @@ const RadiusMap = () => {
         
         setTrackedCars(carsWithLocations);
         
-        // If selectedCarId is set, auto-populate form values from the selected car
         if (selectedCarId && targetPrice) {
           const foundCar = carsWithLocations.find(car => car.id === selectedCarId);
           if (foundCar && foundCar.location) {
             setSelectedCar(foundCar);
             setPostcode(foundCar.location.postcode);
             
-            // Automatically trigger the search if we have all needed data
             setTimeout(() => {
               searchPostcode(foundCar.location?.postcode || '', targetPrice);
             }, 1000);
@@ -225,40 +209,30 @@ const RadiusMap = () => {
     return `${prefix}${number} ${suffix}XX`;
   };
   
-  // Function to search for similar vehicles from dealers
   const searchDealerVehicles = async () => {
     if (!selectedCar) return [];
     
     setIsLoading(true);
     
     try {
-      // Simulate API call to get dealer vehicles with similar specifications
-      // In a real implementation, this would call an external API
-
-      // Generate 50-100 simulated dealer listings
       const dealerCount = Math.floor(Math.random() * 50) + 50;
       const results = [];
       
       for (let i = 0; i < dealerCount; i++) {
-        // Generate a random price deviation from target price
-        const priceDeviation = (Math.random() * 0.3) - 0.15; // -15% to +15%
+        const priceDeviation = (Math.random() * 0.3) - 0.15;
         const marketPrice = selectedCar.priceComparison?.targetPrice 
           ? selectedCar.priceComparison.targetPrice * (1 + priceDeviation)
           : (parseFloat(targetPrice) || 20000) * (1 + priceDeviation);
         
-        // Create a random UK location
         const lat = 51.5 + (Math.random() * 3) - 1.5;
         const lng = -1.9 + (Math.random() * 4) - 2;
         
-        // Generate random postcode
         const postcode = generateRandomPostcode();
         
-        // Generate a random mileage deviation
         const mileageBase = selectedCar.mileage ? parseInt(selectedCar.mileage) : 30000;
-        const mileageDev = (Math.random() * 0.3) - 0.15; // -15% to +15%
+        const mileageDev = (Math.random() * 0.3) - 0.15;
         const mileage = Math.round(mileageBase * (1 + mileageDev));
         
-        // Generate dealer name
         const dealerNames = ['AutoWorld', 'CarZone', 'MotorHub', 'DriveTime', 'WheelsDirect', 
                             'CityMotors', 'PremiumAutos', 'MetroCars', 'CountyAutos', 'ExcellentCars'];
         const dealerName = dealerNames[Math.floor(Math.random() * dealerNames.length)];
@@ -331,8 +305,6 @@ const RadiusMap = () => {
     try {
       console.log('Searching postcode:', postcodeValue, 'with target price:', targetPriceValue);
       
-      // Geocode the postcode (in a real app this would call an API)
-      // For demo, we'll use a random UK location
       const lat = 51.5 + Math.random() * 2;
       const lng = -1.9 + Math.random() * 3;
       
@@ -345,22 +317,19 @@ const RadiusMap = () => {
           essential: true
         });
         
-        // Clear existing markers
         const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
         existingMarkers.forEach(marker => marker.remove());
         
-        // Remove existing circles if any
         if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
         if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
         if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
         
-        // Add a marker for the searched postcode
         const markerEl = document.createElement('div');
         markerEl.className = 'marker';
         markerEl.style.width = '20px';
         markerEl.style.height = '20px';
         markerEl.style.borderRadius = '50%';
-        markerEl.style.backgroundColor = '#8B5CF6'; // Primary purple to match theme
+        markerEl.style.backgroundColor = '#8B5CF6';
         markerEl.style.border = '2px solid white';
         
         new mapboxgl.Marker(markerEl)
@@ -368,12 +337,9 @@ const RadiusMap = () => {
           .setPopup(new mapboxgl.Popup().setHTML(`<p><strong>Postcode:</strong> ${postcodeValue}</p>`))
           .addTo(map.current);
           
-        // Search for dealer vehicles if we have a selected car
         const dealerResults = await searchDealerVehicles();
         setSearchResults(dealerResults);
         
-        // Add radius circles
-        // First, ensure the map has a source
         if (map.current.loaded()) {
           console.log('Map is loaded, adding circles');
           addCircles(map.current, [lng, lat], parseFloat(targetPriceValue), dealerResults);
@@ -412,13 +378,11 @@ const RadiusMap = () => {
   const addCircles = (map: Map, center: [number, number], price: number, dealerResults: any[] = []) => {
     console.log('Adding circles to map at', center, 'with price', price);
     
-    // Add a source for the circles
     map.addSource('radius-source', {
       type: 'geojson',
       data: {
         type: 'FeatureCollection',
         features: [
-          // Best price radius (inner circle) - primary color
           {
             type: 'Feature',
             properties: {},
@@ -427,7 +391,6 @@ const RadiusMap = () => {
               coordinates: center
             }
           },
-          // Competitive radius (outer circle) - secondary color
           {
             type: 'Feature',
             properties: {},
@@ -440,7 +403,6 @@ const RadiusMap = () => {
       }
     });
     
-    // Add a transparent fill layer for the competitive radius
     map.addLayer({
       id: 'competitive-radius',
       type: 'circle',
@@ -449,11 +411,11 @@ const RadiusMap = () => {
         'circle-radius': {
           stops: [
             [0, 0],
-            [20, 3000000] // Scaled for zoom level
+            [20, 3000000]
           ],
           base: 2
         },
-        'circle-color': '#7E69AB', // Secondary purple
+        'circle-color': '#7E69AB',
         'circle-opacity': 0.2,
         'circle-stroke-width': 2,
         'circle-stroke-color': '#7E69AB'
@@ -461,7 +423,6 @@ const RadiusMap = () => {
       filter: ['==', '$index', 1]
     });
     
-    // Add a transparent fill layer for the best price radius
     map.addLayer({
       id: 'best-price-radius',
       type: 'circle',
@@ -470,11 +431,11 @@ const RadiusMap = () => {
         'circle-radius': {
           stops: [
             [0, 0],
-            [20, 1500000] // Scaled for zoom level, smaller than competitive radius
+            [20, 1500000]
           ],
           base: 2
         },
-        'circle-color': '#9b87f5', // Primary purple
+        'circle-color': '#9b87f5',
         'circle-opacity': 0.2,
         'circle-stroke-width': 2,
         'circle-stroke-color': '#9b87f5'
@@ -482,15 +443,12 @@ const RadiusMap = () => {
       filter: ['==', '$index', 0]
     });
     
-    // Combine tracked cars with dealer results for displaying on map
     const allVehicles = [...trackedCars];
     
-    // Add dealer search results if any
     if (dealerResults && dealerResults.length > 0) {
       allVehicles.push(...dealerResults);
     }
     
-    // Filter for similar car builds if a car is selected
     const filteredCars = selectedCar 
       ? allVehicles.filter(car => 
           car.brand === selectedCar.brand && 
@@ -506,7 +464,6 @@ const RadiusMap = () => {
     
     console.log(`Showing ${filteredCars.length} similar cars out of ${allVehicles.length} total cars`);
     
-    // Add car markers for filtered cars
     filteredCars.forEach(car => {
       if (car.location) {
         const isPriceCompetitive = car.priceComparison && car.priceComparison.marketPrice <= price;
@@ -527,7 +484,6 @@ const RadiusMap = () => {
         markerEl.style.fontSize = '16px';
         markerEl.innerHTML = car.id.includes('dealer-') ? '🏬' : '🚗';
         
-        // Highlight the selected car with a special style
         if (selectedCarId && car.id === selectedCarId) {
           markerEl.style.border = '3px solid yellow';
           markerEl.style.width = '36px';
@@ -535,16 +491,17 @@ const RadiusMap = () => {
           markerEl.style.zIndex = '1000';
         }
         
-        // Build popup HTML differently for dealer and tracked cars
-        const popupHTML = car.id.includes('dealer-') ? 
+        const isDealerVehicle = 'dealerName' in car && 'dealerPhone' in car;
+        
+        const popupHTML = isDealerVehicle ? 
           `<div class="p-2">
             <h3 class="font-bold">${car.brand} ${car.model}</h3>
             <p><strong>Engine:</strong> ${car.engineType || 'N/A'}</p>
             <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
             <p><strong>Mileage:</strong> ${car.mileage ? `${car.mileage} miles` : 'N/A'}</p>
             <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
-            <p><strong>Dealer:</strong> ${car.dealerName}</p>
-            <p><strong>Phone:</strong> ${car.dealerPhone}</p>
+            <p><strong>Dealer:</strong> ${isDealerVehicle ? (car as DealerVehicle).dealerName : 'N/A'}</p>
+            <p><strong>Phone:</strong> ${isDealerVehicle ? (car as DealerVehicle).dealerPhone : 'N/A'}</p>
             <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
           </div>` :
           `<div class="p-2">

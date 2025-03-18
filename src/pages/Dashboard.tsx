@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -130,12 +129,13 @@ const Dashboard = () => {
     }
   };
 
-  const handleDeleteCar = async (id: string) => {
-    if (!user) return;
+  const handleDeleteCar = async (id: string): Promise<boolean> => {
+    if (!user) return false;
     const success = await deleteCar(id);
     if (success) {
       refreshSubscription();
     }
+    return success;
   };
 
   const handleAddTag = async (urlId: string, tag: string) => {
