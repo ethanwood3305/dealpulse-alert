@@ -65,32 +65,79 @@ const RadiusMap = () => {
           
         if (error) throw error;
         
-        // Simulate cars with locations and price data
-        const carsWithLocations = data.map((car) => ({
-          ...car,
-          location: {
-            postcode: car.postcode || generateRandomPostcode(),
-            lat: car.lat || (51.5 + Math.random() * 2),
-            lng: car.lng || (-1.9 + Math.random() * 3)
-          },
-          priceComparison: {
-            targetPrice: car.target_price || parseInt(car.mileage || '10000'), // Use mileage as a proxy for price
-            marketPrice: car.last_price || parseInt(car.mileage || '10000') * (0.9 + Math.random() * 0.3), // Random variation
-            difference: 0, // Will be calculated
-            percentageDifference: 0 // Will be calculated
+        // Parse data from URL field and add required fields for TrackedCarWithLocation
+        const carsWithLocations = data.map((car) => {
+          // Extract car info from URL and fill required TrackedCar properties
+          let brand = 'Unknown';
+          let model = 'Unknown';
+          let engineType = '';
+          let mileage = '';
+          let year = '';
+          let color = '';
+          
+          // Parse URL to extract car details (similar to how it's done in useTrackedCars)
+          const urlParts = car.url ? car.url.split('/') : [];
+          if (urlParts.length > 0) brand = urlParts[0] || 'Unknown';
+          if (urlParts.length > 1) model = urlParts[1] || 'Unknown';
+          if (urlParts.length > 2) engineType = urlParts[2] || '';
+          
+          // Parse parameters if available
+          if (urlParts.length > 3) {
+            const params = urlParts[3].split('&');
+            params.forEach(param => {
+              if (param.includes('mil=')) {
+                mileage = param.split('mil=')[1];
+              }
+              if (param.includes('year=')) {
+                year = param.split('year=')[1];
+              }
+              if (param.includes('color=')) {
+                color = param.split('color=')[1];
+              }
+            });
           }
-        }));
-        
-        // Calculate price differences
-        const processedCars = carsWithLocations.map(car => {
-          if (car.priceComparison) {
-            car.priceComparison.difference = car.priceComparison.targetPrice - car.priceComparison.marketPrice;
-            car.priceComparison.percentageDifference = (car.priceComparison.difference / car.priceComparison.targetPrice) * 100;
-          }
-          return car;
+          
+          // Generate random postcode and coordinates for demo
+          const randomPostcode = generateRandomPostcode();
+          const randomLat = 51.5 + Math.random() * 2;
+          const randomLng = -1.9 + Math.random() * 3;
+          
+          // Calculate a target price based on mileage or use a default
+          const parsedMileage = mileage ? parseInt(mileage) : 10000;
+          const targetPrice = 10000 + parsedMileage * 0.5;
+          const marketPrice = car.last_price || targetPrice * (0.9 + Math.random() * 0.3);
+          
+          // Calculate price differences
+          const difference = targetPrice - marketPrice;
+          const percentageDifference = (difference / targetPrice) * 100;
+          
+          return {
+            id: car.id,
+            brand,
+            model,
+            engineType,
+            mileage,
+            year,
+            color,
+            last_price: car.last_price,
+            last_checked: car.last_checked,
+            created_at: car.created_at,
+            tags: car.tags || [],
+            location: {
+              postcode: randomPostcode,
+              lat: randomLat,
+              lng: randomLng
+            },
+            priceComparison: {
+              targetPrice,
+              marketPrice,
+              difference,
+              percentageDifference
+            }
+          } as TrackedCarWithLocation;
         });
         
-        setTrackedCars(processedCars);
+        setTrackedCars(carsWithLocations);
       } catch (error) {
         console.error('Error fetching tracked cars:', error);
         toast({
