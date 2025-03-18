@@ -393,7 +393,7 @@ const defaultEngineTypesMap = {
       "AMG EQS 53 4MATIC+ 658HP"
     ]
   },
-  "Honda": [
+  "Honda": {
     "Civic": [
       "1.0 VTEC Turbo 126HP",
       "1.5 VTEC Turbo 182HP",
