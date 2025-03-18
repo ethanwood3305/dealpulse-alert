@@ -17,7 +17,6 @@ export interface TrackedCarWithLocation extends TrackedCar {
   priceComparison?: PriceComparison;
 }
 
-// Re-export TrackedCar from tracked-cars.ts to maintain compatibility
 export interface TrackedCar {
   id: string;
   brand: string;

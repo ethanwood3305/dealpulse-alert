@@ -35,7 +35,7 @@ export const QuickActionsCard = ({ canAddMoreCars, onAddCarClick }: QuickActions
           onClick={() => window.location.href = "/radius-map"}
         >
           <MapPin className="mr-2 h-4 w-4" />
-          Radius Price Map
+          Price Radius Map
         </Button>
       </CardContent>
     </Card>

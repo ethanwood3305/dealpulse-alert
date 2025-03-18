@@ -2,11 +2,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrashIcon } from "lucide-react";
+import { TrashIcon, MapPinIcon } from "lucide-react";
 import { format } from "date-fns";
 import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { TagInput } from "./TagInput";
 import { Badge } from "@/components/ui/badge";
+import { useNavigate } from "react-router-dom";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -35,6 +36,8 @@ export const TrackedCarsTable = ({
   onRemoveTag,
   carsLimit = 1
 }: TrackedCarsTableProps) => {
+  const navigate = useNavigate();
+
   if (trackedCars.length === 0) {
     return (
       <Card>
@@ -67,6 +70,16 @@ export const TrackedCarsTable = ({
         variant: "destructive"
       });
     }
+  };
+
+  const handleViewOnMap = (car: TrackedCar) => {
+    // Calculate an estimated target price based on car details
+    const basePrice = car.year ? parseInt(car.year) * 100 : 10000;
+    const mileageAdjustment = car.mileage ? -parseInt(car.mileage) * 0.05 : 0;
+    const estimatedTargetPrice = Math.max(5000, basePrice + mileageAdjustment);
+    
+    // Navigate to radius map with car details as URL params
+    navigate(`/radius-map?car=${encodeURIComponent(car.id)}&targetPrice=${estimatedTargetPrice}`);
   };
 
   return (
@@ -146,7 +159,15 @@ export const TrackedCarsTable = ({
                         onRemoveTag={onRemoveTag}
                       />
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right flex items-center justify-end space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleViewOnMap(car)}
+                        title="View on radius map"
+                      >
+                        <MapPinIcon className="h-4 w-4" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="icon">

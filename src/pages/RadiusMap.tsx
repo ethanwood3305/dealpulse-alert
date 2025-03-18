@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Search } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { TrackedCarWithLocation } from '@/types/car-types';
 import { supabase } from '@/integrations/supabase/client';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Replace with your Mapbox access token
@@ -24,16 +26,34 @@ const RadiusMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const navigate = useNavigate();
+  const location = useLocation();
+  
   const [postcode, setPostcode] = useState('');
   const [targetPrice, setTargetPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [trackedCars, setTrackedCars] = useState<TrackedCarWithLocation[]>([]);
+  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  
+  // Parse query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const carId = params.get('car');
+    const price = params.get('targetPrice');
+    
+    if (carId) {
+      setSelectedCarId(carId);
+    }
+    
+    if (price) {
+      setTargetPrice(price);
+    }
+  }, [location.search]);
   
   useEffect(() => {
     if (mapContainer.current && !map.current) {
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
+        style: 'mapbox://styles/mapbox/light-v11',
         center: DEFAULT_CENTER,
         zoom: DEFAULT_ZOOM,
       });
@@ -138,6 +158,19 @@ const RadiusMap = () => {
         });
         
         setTrackedCars(carsWithLocations);
+        
+        // If selectedCarId is set, auto-populate form values from the selected car
+        if (selectedCarId && targetPrice) {
+          const selectedCar = carsWithLocations.find(car => car.id === selectedCarId);
+          if (selectedCar && selectedCar.location) {
+            setPostcode(selectedCar.location.postcode);
+            
+            // Automatically trigger the search if we have all needed data
+            setTimeout(() => {
+              searchPostcode(selectedCar.location?.postcode || '', targetPrice);
+            }, 1000);
+          }
+        }
       } catch (error) {
         console.error('Error fetching tracked cars:', error);
         toast({
@@ -149,7 +182,7 @@ const RadiusMap = () => {
     };
     
     fetchTrackedCars();
-  }, [navigate]);
+  }, [navigate, selectedCarId, targetPrice]);
   
   const generateRandomPostcode = () => {
     const prefixes = ['SW', 'NW', 'SE', 'NE', 'W', 'E', 'N', 'S', 'B', 'M', 'L', 'G'];
@@ -159,8 +192,8 @@ const RadiusMap = () => {
     return `${prefix}${number} ${suffix}XX`;
   };
   
-  const searchPostcode = async () => {
-    if (!postcode.trim()) {
+  const searchPostcode = async (postcodeValue = postcode, targetPriceValue = targetPrice) => {
+    if (!postcodeValue.trim()) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -169,7 +202,7 @@ const RadiusMap = () => {
       return;
     }
     
-    if (!targetPrice.trim() || isNaN(parseFloat(targetPrice))) {
+    if (!targetPriceValue.trim() || isNaN(parseFloat(targetPriceValue))) {
       toast({
         variant: "destructive",
         title: "Error",
@@ -208,27 +241,27 @@ const RadiusMap = () => {
         markerEl.style.width = '20px';
         markerEl.style.height = '20px';
         markerEl.style.borderRadius = '50%';
-        markerEl.style.backgroundColor = '#3b82f6';
+        markerEl.style.backgroundColor = '#8B5CF6'; // Primary purple to match theme
         markerEl.style.border = '2px solid white';
         
         new mapboxgl.Marker(markerEl)
           .setLngLat([lng, lat])
-          .setPopup(new mapboxgl.Popup().setHTML(`<p><strong>Postcode:</strong> ${postcode}</p>`))
+          .setPopup(new mapboxgl.Popup().setHTML(`<p><strong>Postcode:</strong> ${postcodeValue}</p>`))
           .addTo(map.current);
           
         // Add radius circles
         // First, ensure the map has a source
         if (map.current.loaded()) {
-          addCircles(map.current, [lng, lat], parseFloat(targetPrice));
+          addCircles(map.current, [lng, lat], parseFloat(targetPriceValue));
         } else {
           map.current.once('load', () => {
-            addCircles(map.current!, [lng, lat], parseFloat(targetPrice));
+            addCircles(map.current!, [lng, lat], parseFloat(targetPriceValue));
           });
         }
         
         toast({
           title: "Map Updated",
-          description: `Showing price radius for postcode ${postcode}`
+          description: `Showing price radius for postcode ${postcodeValue}`
         });
       }
     } catch (error) {
@@ -250,7 +283,7 @@ const RadiusMap = () => {
       data: {
         type: 'FeatureCollection',
         features: [
-          // Best price radius (inner circle) - green
+          // Best price radius (inner circle) - primary color
           {
             type: 'Feature',
             properties: {},
@@ -259,7 +292,7 @@ const RadiusMap = () => {
               coordinates: center
             }
           },
-          // Competitive radius (outer circle) - orange
+          // Competitive radius (outer circle) - secondary color
           {
             type: 'Feature',
             properties: {},
@@ -285,10 +318,10 @@ const RadiusMap = () => {
           ],
           base: 2
         },
-        'circle-color': '#f97316',
+        'circle-color': '#7E69AB', // Secondary purple
         'circle-opacity': 0.2,
         'circle-stroke-width': 2,
-        'circle-stroke-color': '#f97316'
+        'circle-stroke-color': '#7E69AB'
       },
       filter: ['==', '$index', 1]
     });
@@ -306,10 +339,10 @@ const RadiusMap = () => {
           ],
           base: 2
         },
-        'circle-color': '#22c55e',
+        'circle-color': '#9b87f5', // Primary purple
         'circle-opacity': 0.2,
         'circle-stroke-width': 2,
-        'circle-stroke-color': '#22c55e'
+        'circle-stroke-color': '#9b87f5'
       },
       filter: ['==', '$index', 0]
     });
@@ -325,7 +358,7 @@ const RadiusMap = () => {
         markerEl.style.width = '30px';
         markerEl.style.height = '30px';
         markerEl.style.borderRadius = '50%';
-        markerEl.style.backgroundColor = isBestPrice ? '#22c55e' : isPriceCompetitive ? '#f97316' : '#ef4444';
+        markerEl.style.backgroundColor = isBestPrice ? '#9b87f5' : isPriceCompetitive ? '#7E69AB' : '#ef4444';
         markerEl.style.border = '2px solid white';
         markerEl.style.display = 'flex';
         markerEl.style.alignItems = 'center';
@@ -335,12 +368,21 @@ const RadiusMap = () => {
         markerEl.style.fontSize = '16px';
         markerEl.innerHTML = '🚗';
         
+        // Highlight the selected car with a special style
+        if (selectedCarId && car.id === selectedCarId) {
+          markerEl.style.border = '3px solid yellow';
+          markerEl.style.width = '36px';
+          markerEl.style.height = '36px';
+          markerEl.style.zIndex = '1000';
+        }
+        
         const popupHTML = `
           <div class="p-2">
             <h3 class="font-bold">${car.brand} ${car.model}</h3>
             <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
             <p><strong>Target:</strong> £${car.priceComparison?.targetPrice.toLocaleString() || 'N/A'}</p>
             <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
+            ${car.id === selectedCarId ? '<p class="text-yellow-500 font-bold">★ Selected Vehicle</p>' : ''}
           </div>
         `;
         
@@ -354,75 +396,85 @@ const RadiusMap = () => {
   
   return (
     <div className="min-h-screen flex flex-col">
-      <div className="bg-primary text-primary-foreground py-4 px-6 flex items-center">
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          className="mr-4 hover:bg-primary-foreground/10"
-          onClick={() => navigate('/dashboard')}
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-        </Button>
-        <h1 className="text-xl font-bold">Car Price Radius Map</h1>
+      <Navbar />
+      
+      <div className="container mx-auto px-4 py-8 flex-1">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center mb-6">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="mr-4"
+              onClick={() => navigate('/dashboard')}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+            </Button>
+            <h1 className="text-2xl font-bold">Car Price Radius Map</h1>
+          </div>
+          
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="w-full md:w-96">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Price Radius Search</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="postcode">Postcode</Label>
+                    <Input 
+                      id="postcode" 
+                      placeholder="e.g. SW1A 1AA" 
+                      value={postcode}
+                      onChange={(e) => setPostcode(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="targetPrice">Target Price (£)</Label>
+                    <Input 
+                      id="targetPrice" 
+                      type="number" 
+                      placeholder="e.g. 25000" 
+                      value={targetPrice}
+                      onChange={(e) => setTargetPrice(e.target.value)}
+                    />
+                  </div>
+                  
+                  <Button 
+                    className="w-full" 
+                    onClick={() => searchPostcode()}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? 'Searching...' : <><Search className="mr-2 h-4 w-4" /> Search</>}
+                  </Button>
+                  
+                  <div className="border rounded-md p-3 space-y-2 mt-6">
+                    <h3 className="font-medium">Map Legend</h3>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-[#9b87f5]"></div>
+                      <span className="text-sm">Best Price Zone (≤10% below target)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-[#7E69AB]"></div>
+                      <span className="text-sm">Competitive Zone (at or below target)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                      <span className="text-sm">Above Target Price</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="flex-1 rounded-lg overflow-hidden" style={{ height: "600px" }}>
+              <div ref={mapContainer} className="w-full h-full rounded-lg border border-border shadow-sm" />
+            </div>
+          </div>
+        </div>
       </div>
       
-      <div className="flex-1 flex flex-col md:flex-row p-4 gap-4">
-        <div className="w-full md:w-96">
-          <Card>
-            <CardHeader>
-              <CardTitle>Price Radius Search</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="postcode">Postcode</Label>
-                <Input 
-                  id="postcode" 
-                  placeholder="e.g. SW1A 1AA" 
-                  value={postcode}
-                  onChange={(e) => setPostcode(e.target.value)}
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="targetPrice">Target Price (£)</Label>
-                <Input 
-                  id="targetPrice" 
-                  type="number" 
-                  placeholder="e.g. 25000" 
-                  value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
-                />
-              </div>
-              
-              <Button 
-                className="w-full" 
-                onClick={searchPostcode}
-                disabled={isLoading}
-              >
-                {isLoading ? 'Searching...' : 'Search'}
-              </Button>
-              
-              <div className="border rounded-md p-3 space-y-2 mt-6">
-                <h3 className="font-medium">Map Legend</h3>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                  <span className="text-sm">Best Price Zone (≤10% below target)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                  <span className="text-sm">Competitive Zone (at or below target)</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                  <span className="text-sm">Above Target Price</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="flex-1 bg-muted rounded-lg overflow-hidden min-h-[500px]" ref={mapContainer} />
-      </div>
+      <Footer />
     </div>
   );
 };
