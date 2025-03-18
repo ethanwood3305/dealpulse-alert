@@ -21,7 +21,7 @@ export const SubscriptionCard = ({
 
   let planLabel = 'Standard Plan';
   let planDescription = 'Basic tracking features';
-  let planFeatures = ['Limited to 10 cars', 'Daily price checks', 'Basic notifications'];
+  let planFeatures = [`Limited to ${urls_limit} cars`, 'Daily price checks', 'Basic notifications'];
 
   if (plan === 'professional') {
     planLabel = 'Professional Plan';
