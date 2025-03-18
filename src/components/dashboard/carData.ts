@@ -218,22 +218,33 @@ export const carBrandsData = {
 export const defaultEngineTypesMap = {
   "Ford": {
     "Fiesta": [
-      "EcoBoost 1.0 100PS", 
-      "EcoBoost 1.0 125PS", 
-      "EcoBoost 1.0 155PS", 
-      "EcoBoost 1.5 200PS"
+      "1.0L EcoBoost 95PS",
+      "1.0L EcoBoost 100PS", 
+      "1.0L EcoBoost 125PS", 
+      "1.0L EcoBoost 155PS", 
+      "1.5L EcoBoost 200PS ST"
     ],
     "Focus": [
-      "EcoBoost 1.0 125PS", 
-      "EcoBoost 1.5 150PS", 
-      "EcoBoost 1.5 182PS", 
-      "EcoBlue 1.5 95PS", 
-      "EcoBlue 1.5 120PS"
+      "1.0L EcoBoost 100PS",
+      "1.0L EcoBoost 125PS", 
+      "1.5L EcoBoost 150PS", 
+      "1.5L EcoBoost 182PS", 
+      "2.3L EcoBoost 280PS ST",
+      "2.3L EcoBoost 350PS RS",
+      "1.5L EcoBlue 95PS", 
+      "1.5L EcoBlue 120PS",
+      "2.0L EcoBlue 150PS",
+      "2.0L EcoBlue 190PS"
     ],
     "Mustang": [
+      "2.3L EcoBoost 290HP",
       "2.3L EcoBoost 310HP",
-      "5.0L V8 460HP",
-      "5.2L V8 760HP Shelby GT500"
+      "5.0L V8 450HP GT",
+      "5.0L V8 460HP GT",
+      "5.0L V8 480HP Bullitt",
+      "5.2L V8 526HP GT350",
+      "5.2L V8 760HP Shelby GT500",
+      "5.0L V8 480HP Mach 1"
     ],
     "Mustang Mach-E": [
       "Standard Range RWD 269HP",
@@ -243,29 +254,36 @@ export const defaultEngineTypesMap = {
       "GT Performance 480HP"
     ],
     "Puma": [
-      "EcoBoost 1.0 125PS",
-      "EcoBoost 1.0 155PS",
-      "EcoBoost Hybrid 1.0 125PS",
-      "EcoBoost Hybrid 1.0 155PS"
+      "1.0L EcoBoost 125PS",
+      "1.0L EcoBoost 155PS",
+      "1.0L EcoBoost Hybrid 125PS",
+      "1.0L EcoBoost Hybrid 155PS",
+      "1.5L EcoBoost 200PS ST"
     ],
     "Kuga": [
-      "EcoBlue 1.5 120PS",
-      "EcoBlue 2.0 150PS",
-      "EcoBlue 2.0 190PS",
-      "EcoBlue Hybrid 2.0 150PS",
-      "Plug-in Hybrid 2.5 225PS"
+      "1.5L EcoBoost 120PS",
+      "1.5L EcoBoost 150PS",
+      "1.5L EcoBlue 120PS",
+      "2.0L EcoBlue 150PS",
+      "2.0L EcoBlue 190PS",
+      "2.5L PHEV 225PS"
     ],
     "Explorer": [
+      "3.0L EcoBoost V6 AWD 365HP",
+      "3.0L EcoBoost V6 AWD 400HP ST",
+      "3.3L Hybrid 318HP",
       "Plug-in Hybrid 3.0 V6 457HP"
     ],
     "Ranger": [
-      "EcoBlue 2.0 Single-Turbo 170PS",
-      "EcoBlue 2.0 Bi-Turbo 213PS",
-      "V6 3.0 Diesel 240PS",
+      "2.0L EcoBlue Single-Turbo 170PS",
+      "2.0L EcoBlue Bi-Turbo 213PS",
+      "3.0L V6 Diesel 240PS",
       "2.3L EcoBoost Petrol 270PS"
     ],
     "Ranger Raptor": [
-      "V6 3.0 Petrol EcoBoost 288PS"
+      "2.0L EcoBlue Bi-Turbo 213PS",
+      "3.0L V6 EcoBoost 288PS",
+      "3.0L V6 EcoBoost 392PS"
     ],
     "F-150": [
       "3.3L V6 290HP",
@@ -280,28 +298,44 @@ export const defaultEngineTypesMap = {
       "2.3L EcoBoost 270HP",
       "2.7L EcoBoost V6 310HP",
       "3.0L EcoBoost V6 418HP Raptor"
+    ],
+    "Mondeo": [
+      "1.0L EcoBoost 125PS",
+      "1.5L EcoBoost 160PS",
+      "2.0L EcoBoost 240PS",
+      "1.5L TDCi 120PS",
+      "2.0L TDCi 150PS",
+      "2.0L TDCi 180PS",
+      "2.0L TDCi 210PS",
+      "2.0L Hybrid 187PS"
     ]
   },
   "BMW": {
     "1 Series": [
+      "116i 1.5L 109HP",
       "118i 1.5L 136HP",
+      "118i 2.0L 136HP",
       "120i 2.0L 178HP",
-      "M135i 2.0L 306HP",
-      "116d 2.0L 116HP",
+      "128ti 2.0L 265HP",
+      "M135i xDrive 2.0L 306HP",
+      "116d 1.5L 116HP",
       "118d 2.0L 150HP",
-      "120d 2.0L 190HP"
+      "120d 2.0L 190HP",
+      "120d xDrive 2.0L 190HP"
     ],
     "3 Series": [
+      "318i 1.5L 156HP",
       "318i 2.0L 156HP", 
       "320i 2.0L 184HP", 
       "330i 2.0L 258HP",
-      "M340i 3.0L 374HP",
+      "M340i xDrive 3.0L 374HP",
       "316d 2.0L 122HP",
       "318d 2.0L 150HP", 
       "320d 2.0L 190HP", 
       "330d 3.0L 286HP",
       "M3 3.0L 480HP",
       "M3 Competition 3.0L 510HP",
+      "M3 Competition xDrive 3.0L 510HP",
       "330e Plug-in Hybrid 292HP"
     ],
     "5 Series": [
@@ -310,11 +344,13 @@ export const defaultEngineTypesMap = {
       "540i 3.0L 340HP",
       "520d 2.0L 190HP",
       "530d 3.0L 286HP",
-      "M550i 4.4L 530HP",
+      "540d xDrive 3.0L 340HP",
+      "M550i xDrive 4.4L 530HP",
       "M5 4.4L 600HP",
       "M5 Competition 4.4L 625HP",
+      "M5 CS 4.4L 635HP",
       "530e Plug-in Hybrid 292HP",
-      "545e Plug-in Hybrid 394HP",
+      "545e xDrive Plug-in Hybrid 394HP",
       "i5 eDrive40 340HP Electric",
       "i5 M60 xDrive 601HP Electric"
     ],
@@ -336,6 +372,29 @@ export const defaultEngineTypesMap = {
       "X5 M 4.4L 600HP",
       "X5 M Competition 4.4L 625HP",
       "xDrive45e Plug-in Hybrid 394HP"
+    ],
+    "M2": [
+      "M2 3.0L 410HP",
+      "M2 Competition 3.0L 410HP",
+      "M2 CS 3.0L 450HP",
+      "M2 (G87) 3.0L 460HP"
+    ],
+    "M3": [
+      "M3 3.0L 480HP",
+      "M3 Competition 3.0L 510HP",
+      "M3 Competition xDrive 3.0L 510HP",
+      "M3 CS 3.0L 550HP"
+    ],
+    "M4": [
+      "M4 3.0L 480HP",
+      "M4 Competition 3.0L 510HP",
+      "M4 Competition xDrive 3.0L 510HP",
+      "M4 CSL 3.0L 550HP"
+    ],
+    "M5": [
+      "M5 4.4L 600HP",
+      "M5 Competition 4.4L 625HP",
+      "M5 CS 4.4L 635HP"
     ]
   },
   "Audi": {
@@ -343,7 +402,8 @@ export const defaultEngineTypesMap = {
       "25 TFSI 1.0L 95HP",
       "30 TFSI 1.0L 110HP",
       "35 TFSI 1.5L 150HP",
-      "40 TFSI 2.0L 200HP"
+      "40 TFSI 2.0L 200HP",
+      "S1 2.0L 231HP"
     ],
     "A3": [
       "30 TFSI 1.0L 110HP",
@@ -352,7 +412,8 @@ export const defaultEngineTypesMap = {
       "S3 2.0L 310HP",
       "RS3 2.5L 400HP",
       "30 TDI 2.0L 116HP",
-      "35 TDI 2.0L 150HP"
+      "35 TDI 2.0L 150HP",
+      "40 TDI 2.0L 200HP"
     ],
     "A4": [
       "35 TFSI 2.0L 150HP",
@@ -374,6 +435,32 @@ export const defaultEngineTypesMap = {
       "40 e-tron 204HP",
       "45 e-tron quattro 265HP",
       "50 e-tron quattro 299HP"
+    ],
+    "RS3": [
+      "RS3 2.5L 400HP"
+    ],
+    "RS4": [
+      "RS4 Avant 2.9L 450HP"
+    ],
+    "RS5": [
+      "RS5 Coupe 2.9L 450HP",
+      "RS5 Sportback 2.9L 450HP"
+    ],
+    "RS6": [
+      "RS6 Avant 4.0L 600HP",
+      "RS6 Avant Performance 4.0L 630HP"
+    ],
+    "RS7": [
+      "RS7 Sportback 4.0L 600HP",
+      "RS7 Sportback Performance 4.0L 630HP"
+    ],
+    "RSQ8": [
+      "RSQ8 4.0L 600HP"
+    ],
+    "R8": [
+      "R8 V10 5.2L 570HP",
+      "R8 V10 Performance 5.2L 620HP",
+      "R8 GT 5.2L 620HP"
     ]
   },
   "Tesla": {
@@ -403,12 +490,17 @@ export const defaultEngineTypesMap = {
   },
   "Volkswagen": {
     "Golf": [
+      "1.0 TSI 90HP",
       "1.0 TSI 110HP",
       "1.5 TSI 130HP",
       "1.5 TSI 150HP",
       "1.5 eTSI Mild Hybrid 150HP",
       "2.0 TSI 245HP GTI",
+      "2.0 TSI 265HP GTI Clubsport",
+      "2.0 TSI 300HP GTI Clubsport 45",
       "2.0 TSI 320HP R",
+      "2.0 TSI 333HP R 20 Years",
+      "1.6 TDI 115HP",
       "2.0 TDI 115HP",
       "2.0 TDI 150HP",
       "2.0 TDI 200HP GTD",
@@ -416,15 +508,19 @@ export const defaultEngineTypesMap = {
       "1.4 GTE 245HP"
     ],
     "ID.3": [
-      "Pro 145HP",
+      "Pure 150HP",
       "Pro 204HP",
-      "Pro S 204HP"
+      "Pro S 204HP",
+      "GTX 340HP"
     ],
     "ID.4": [
-      "Pure 170HP",
+      "Pure 150HP",
+      "Pure Performance 170HP",
       "Pro 204HP",
+      "Pro Performance 204HP",
       "Pro 4MOTION 265HP",
-      "GTX 299HP"
+      "GTX 299HP",
+      "GTX Performance 340HP"
     ],
     "Tiguan": [
       "1.5 TSI 130HP",
@@ -436,54 +532,126 @@ export const defaultEngineTypesMap = {
       "2.0 TDI 150HP",
       "2.0 TDI 200HP",
       "eHybrid 245HP"
+    ],
+    "Polo": [
+      "1.0 MPI 80HP",
+      "1.0 TSI 95HP",
+      "1.0 TSI 110HP",
+      "1.0 TSI 115HP",
+      "2.0 TSI 200HP GTI",
+      "2.0 TSI 207HP GTI+"
+    ],
+    "Arteon": [
+      "1.5 TSI 150HP",
+      "2.0 TSI 190HP",
+      "2.0 TSI 280HP",
+      "2.0 TSI 320HP R",
+      "2.0 TDI 150HP",
+      "2.0 TDI 200HP",
+      "eHybrid 218HP"
     ]
   },
   "Mercedes-Benz": {
     "A-Class": [
+      "A160 1.3L 109HP",
       "A180 1.3L 136HP",
       "A200 1.3L 163HP",
+      "A220 2.0L 190HP",
       "A250 2.0L 224HP",
       "A35 AMG 2.0L 306HP",
       "A45 AMG 2.0L 387HP",
       "A45 S AMG 2.0L 421HP",
+      "A160d 1.5L 95HP",
       "A180d 2.0L 116HP",
       "A200d 2.0L 150HP",
       "A220d 2.0L 190HP"
     ],
     "C-Class": [
+      "C160 1.5L 129HP",
       "C180 1.5L 170HP",
       "C200 1.5L 204HP",
+      "C200 2.0L 204HP",
       "C300 2.0L 258HP",
+      "C300e Plug-in Hybrid 313HP",
       "C43 AMG 2.0L 402HP",
       "C63 AMG 2.0L Hybrid 671HP",
+      "C63 S AMG 2.0L Hybrid 680HP",
+      "C160d 1.6L 95HP",
+      "C180d 1.6L 116HP",
       "C200d 2.0L 163HP",
       "C220d 2.0L 200HP",
-      "C300d 2.0L 265HP",
-      "C300e Plug-in Hybrid 313HP"
+      "C300d 2.0L 265HP"
+    ],
+    "E-Class": [
+      "E200 2.0L 197HP",
+      "E300 2.0L 258HP",
+      "E350 2.0L 299HP",
+      "E450 3.0L 367HP",
+      "E53 AMG 3.0L 435HP",
+      "E63 AMG 4.0L 571HP",
+      "E63 S AMG 4.0L 612HP",
+      "E200d 2.0L 160HP",
+      "E220d 2.0L 194HP",
+      "E300d 2.0L 265HP",
+      "E400d 2.9L 330HP",
+      "E300e Plug-in Hybrid 320HP",
+      "E300de Plug-in Hybrid 306HP"
     ],
     "EQS": [
       "EQS 450+ 333HP",
       "EQS 500 4MATIC 443HP",
       "EQS 580 4MATIC 523HP",
       "AMG EQS 53 4MATIC+ 658HP"
+    ],
+    "AMG GT": [
+      "AMG GT 43 4MATIC+ 367HP",
+      "AMG GT 53 4MATIC+ 435HP",
+      "AMG GT 63 4MATIC+ 585HP",
+      "AMG GT 63 S 4MATIC+ 639HP",
+      "AMG GT 63 S E PERFORMANCE 843HP",
+      "AMG GT 4.0L 476HP",
+      "AMG GT S 4.0L 522HP",
+      "AMG GT C 4.0L 557HP",
+      "AMG GT R 4.0L 585HP",
+      "AMG GT R PRO 4.0L 585HP",
+      "AMG GT Black Series 4.0L 730HP"
     ]
   },
   "Honda": {
     "Civic": [
       "1.0 VTEC Turbo 126HP",
       "1.5 VTEC Turbo 182HP",
+      "2.0 VTEC Turbo 320HP Type R",
       "2.0 VTEC Turbo 329HP Type R",
-      "e:HEV Hybrid 143HP"
+      "e:HEV Hybrid 143HP",
+      "Type R Limited Edition 320HP"
     ],
     "CR-V": [
+      "1.5 VTEC Turbo 173HP",
+      "1.5 VTEC Turbo 193HP AWD",
       "2.0 i-MMD Hybrid e:HEV 184HP",
       "2.0 i-MMD PHEV e:PHEV 184HP"
     ],
     "HR-V": [
+      "1.5 i-VTEC 130HP",
+      "1.5 VTEC Turbo 182HP",
       "1.5 i-MMD Hybrid e:HEV 131HP"
     ],
     "ZR-V": [
       "2.0 i-MMD Hybrid e:HEV 184HP"
+    ],
+    "Accord": [
+      "1.5 VTEC Turbo 192HP",
+      "2.0 VTEC Turbo 252HP",
+      "2.0 i-MMD Hybrid 215HP"
+    ],
+    "Jazz": [
+      "1.5 i-MMD Hybrid e:HEV 109HP",
+      "1.5 i-VTEC 130HP"
+    ],
+    "NSX": [
+      "3.5 V6 Hybrid 581HP",
+      "3.5 V6 Hybrid 600HP Type S"
     ]
   },
   "Land Rover": {
@@ -492,19 +660,43 @@ export const defaultEngineTypesMap = {
       "P400 Ingenium Petrol 400HP",
       "P400e PHEV 404HP",
       "P525 V8 Petrol 525HP",
+      "P575 V8 Petrol 575HP",
       "D200 Ingenium Diesel 200HP",
       "D240 Ingenium Diesel 240HP",
+      "D250 Ingenium Diesel 250HP",
       "D300 Ingenium Diesel 300HP",
       "D350 Ingenium Diesel 350HP"
     ],
     "Range Rover": [
+      "P360 Ingenium Petrol 360HP",
       "P400 Ingenium Petrol 400HP",
       "P440e PHEV 440HP",
+      "P510e PHEV 510HP",
       "P530 V8 Petrol 530HP",
       "P615 V8 Petrol SV 615HP",
       "D250 Ingenium Diesel 250HP",
       "D300 Ingenium Diesel 300HP",
       "D350 Ingenium Diesel 350HP"
+    ],
+    "Range Rover Sport": [
+      "P360 Ingenium Petrol 360HP",
+      "P400 Ingenium Petrol 400HP",
+      "P440e PHEV 440HP",
+      "P510e PHEV 510HP",
+      "P530 V8 Petrol 530HP",
+      "P575 V8 Petrol SVR 575HP",
+      "P635 V8 Petrol SVR 635HP",
+      "D250 Ingenium Diesel 250HP",
+      "D300 Ingenium Diesel 300HP",
+      "D350 Ingenium Diesel 350HP"
+    ],
+    "Range Rover Velar": [
+      "P250 Ingenium Petrol 250HP",
+      "P340 Ingenium Petrol 340HP",
+      "P400 Ingenium Petrol 400HP",
+      "P400e PHEV 404HP",
+      "D200 Ingenium Diesel 200HP",
+      "D300 Ingenium Diesel 300HP"
     ]
   },
   "Toyota": {
@@ -514,23 +706,156 @@ export const defaultEngineTypesMap = {
       "1.5L Hybrid 116HP"
     ],
     "Corolla": [
+      "1.2L Turbo 116HP",
       "1.8L Hybrid 140HP",
       "2.0L Hybrid 196HP"
     ],
     "RAV4": [
+      "2.0L Petrol 175HP",
       "2.5L Hybrid 218HP",
+      "2.5L Hybrid AWD 222HP",
       "2.5L Plug-in Hybrid 306HP"
     ],
     "GR Yaris": [
       "1.6L Turbo 261HP",
-      "1.6L Turbo 300HP"
+      "1.6L Turbo 300HP",
+      "1.6L Turbo 280HP Circuit Pack"
     ],
     "GR86": [
       "2.4L Boxer 234HP"
     ],
     "Supra": [
       "2.0L Turbo 258HP",
-      "3.0L Turbo 340HP"
+      "3.0L Turbo 340HP",
+      "3.0L Turbo 387HP",
+      "3.0L Turbo 45th Anniversary Edition 387HP"
+    ],
+    "GR Corolla": [
+      "1.6L Turbo 304HP",
+      "1.6L Turbo Circuit Edition 304HP",
+      "1.6L Turbo Morizo Edition 304HP"
+    ],
+    "Land Cruiser": [
+      "2.8L Diesel 204HP",
+      "3.5L Twin-Turbo V6 415HP",
+      "3.3L Diesel 309HP",
+      "2.8L Diesel GR Sport 204HP"
+    ]
+  },
+  "Porsche": {
+    "911": [
+      "Carrera 3.0L 385HP",
+      "Carrera S 3.0L 450HP",
+      "Carrera GTS 3.0L 480HP",
+      "Carrera T 3.0L 385HP",
+      "Targa 4 3.0L 385HP",
+      "Targa 4S 3.0L 450HP",
+      "Targa 4 GTS 3.0L 480HP",
+      "Turbo 3.8L 580HP",
+      "Turbo S 3.8L 650HP",
+      "GT3 4.0L 510HP",
+      "GT3 Touring 4.0L 510HP",
+      "GT3 RS 4.0L 525HP",
+      "GT2 RS 3.8L 700HP",
+      "Sport Classic 3.7L 550HP",
+      "Dakar 3.0L 480HP"
+    ],
+    "718 Cayman": [
+      "2.0L 300HP",
+      "S 2.5L 350HP",
+      "GTS 4.0L 400HP",
+      "GT4 4.0L 420HP",
+      "GT4 RS 4.0L 500HP"
+    ],
+    "718 Boxster": [
+      "2.0L 300HP",
+      "S 2.5L 350HP",
+      "GTS 4.0L 400HP",
+      "Spyder 4.0L 420HP"
+    ],
+    "Taycan": [
+      "Taycan 408HP",
+      "Taycan 4S 530HP",
+      "Taycan GTS 598HP",
+      "Taycan Turbo 680HP",
+      "Taycan Turbo S 761HP"
+    ],
+    "Macan": [
+      "2.0L 265HP",
+      "S 2.9L 380HP",
+      "GTS 2.9L 440HP",
+      "Turbo 2.9L 440HP",
+      "Macan T 2.0L 265HP",
+      "Electric 402HP",
+      "Electric 4S 523HP",
+      "Electric Turbo 630HP"
+    ],
+    "Cayenne": [
+      "3.0L V6 340HP",
+      "E-Hybrid 3.0L 470HP",
+      "S 2.9L 440HP",
+      "S E-Hybrid 3.0L 519HP",
+      "GTS 4.0L 460HP",
+      "Turbo 4.0L 550HP",
+      "Turbo S E-Hybrid 4.0L 680HP",
+      "Turbo GT 4.0L 640HP"
+    ]
+  },
+  "Chevrolet": {
+    "Corvette": [
+      "Stingray 6.2L V8 495HP",
+      "Z06 5.5L V8 670HP",
+      "E-Ray 6.2L V8 Hybrid 655HP",
+      "ZR1 5.5L V8 Supercharged 850HP"
+    ],
+    "Camaro": [
+      "2.0L Turbo 275HP",
+      "3.6L V6 335HP",
+      "6.2L V8 455HP SS",
+      "6.2L V8 650HP ZL1"
+    ],
+    "Silverado": [
+      "2.7L Turbo 310HP",
+      "5.3L V8 355HP",
+      "6.2L V8 420HP",
+      "3.0L Duramax Diesel 277HP",
+      "Silverado ZR2 6.2L V8 420HP"
+    ],
+    "Silverado EV": [
+      "RST First Edition 754HP",
+      "Trail Boss 754HP",
+      "Work Truck 510HP"
+    ]
+  },
+  "Mazda": {
+    "3": [
+      "2.0L Skyactiv-G 122HP",
+      "2.0L Skyactiv-G 150HP",
+      "2.0L Skyactiv-X 180HP",
+      "2.5L Turbo 250HP",
+      "1.8L Skyactiv-D 116HP"
+    ],
+    "MX-5": [
+      "1.5L Skyactiv-G 132HP",
+      "2.0L Skyactiv-G 184HP"
+    ],
+    "CX-5": [
+      "2.0L Skyactiv-G 165HP",
+      "2.5L Skyactiv-G 194HP",
+      "2.5L Turbo Skyactiv-G 256HP",
+      "2.2L Skyactiv-D 150HP",
+      "2.2L Skyactiv-D 184HP"
+    ],
+    "CX-60": [
+      "3.3L e-Skyactiv D 200HP",
+      "3.3L e-Skyactiv D 254HP",
+      "2.5L e-Skyactiv PHEV 327HP"
+    ],
+    "CX-90": [
+      "3.3L e-Skyactiv Turbo 280HP",
+      "3.3L e-Skyactiv Turbo 340HP",
+      "2.5L e-Skyactiv PHEV 323HP",
+      "3.3L e-Skyactiv D 254HP"
     ]
   }
 };
@@ -544,3 +869,4 @@ export const defaultCommonEngineTypes = [
   "Plug-in Hybrid",
   "Electric"
 ];
+

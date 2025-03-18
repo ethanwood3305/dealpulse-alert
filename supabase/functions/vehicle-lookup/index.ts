@@ -94,12 +94,12 @@ serve(async (req) => {
       color: 'Unknown'
     }
     
-    // Simulate different car data based on registration prefix
+    // Expanded mock data with more detailed variants and specifications
     if (formattedReg.startsWith('A')) {
       mockData = {
         brand: 'Audi',
         model: 'A4',
-        engine_type: '2.0 TDI',
+        engine_type: '2.0 TDI quattro 204HP',
         mileage: '45000',
         registration: formattedReg,
         year: '2019',
@@ -109,71 +109,121 @@ serve(async (req) => {
       mockData = {
         brand: 'BMW',
         model: '3 Series',
-        engine_type: '320d 2.0L',
+        engine_type: '320d xDrive M Sport 190HP',
         mileage: '32000',
         registration: formattedReg,
         year: '2020',
-        color: 'White'
+        color: 'Alpine White'
       }
     } else if (formattedReg.startsWith('F')) {
       mockData = {
         brand: 'Ford',
-        model: 'Fiesta',
-        engine_type: 'EcoBoost 1.0',
+        model: 'Focus',
+        engine_type: '2.3 EcoBoost ST 280HP',
         mileage: '28500',
         registration: formattedReg,
         year: '2018',
-        color: 'Blue'
+        color: 'Ford Performance Blue'
       }
     } else if (formattedReg.startsWith('T')) {
       mockData = {
         brand: 'Tesla',
         model: 'Model 3',
-        engine_type: 'Electric Standard Range',
+        engine_type: 'Performance Dual Motor AWD 455HP',
         mileage: '15000',
         registration: formattedReg,
         year: '2021',
-        color: 'Red'
+        color: 'Red Multi-Coat'
       }
     } else if (formattedReg.startsWith('V')) {
       mockData = {
         brand: 'Volkswagen',
         model: 'Golf',
-        engine_type: '1.5 TSI',
-        mileage: '50000',
+        engine_type: '2.0 TSI GTI Clubsport 300HP',
+        mileage: '22000',
         registration: formattedReg,
-        year: '2017',
-        color: 'Silver'
+        year: '2020',
+        color: 'Oryx White Pearl'
       }
     } else if (formattedReg.startsWith('M')) {
       mockData = {
         brand: 'Mercedes-Benz',
         model: 'C-Class',
-        engine_type: 'C220d 2.0L',
+        engine_type: 'C43 AMG 4MATIC 390HP',
         mileage: '35000',
         registration: formattedReg,
         year: '2020',
-        color: 'Grey'
+        color: 'Designo Selenite Grey Magno'
       }
     } else if (formattedReg.startsWith('H')) {
       mockData = {
         brand: 'Honda',
         model: 'Civic',
-        engine_type: '1.5 VTEC Turbo',
+        engine_type: '2.0 VTEC Turbo Type R 320HP',
         mileage: '22000',
         registration: formattedReg,
         year: '2019',
-        color: 'Blue'
+        color: 'Championship White'
       }
     } else if (formattedReg.startsWith('L')) {
       mockData = {
         brand: 'Land Rover',
-        model: 'Discovery',
-        engine_type: '3.0 SDV6',
-        mileage: '40000',
+        model: 'Defender',
+        engine_type: 'P400e Plug-in Hybrid 404HP',
+        mileage: '18000',
         registration: formattedReg,
-        year: '2018',
-        color: 'Green'
+        year: '2021',
+        color: 'Pangea Green'
+      }
+    } else if (formattedReg.startsWith('P')) {
+      mockData = {
+        brand: 'Porsche',
+        model: '911',
+        engine_type: 'Carrera S 3.0L 450HP',
+        mileage: '12500',
+        registration: formattedReg,
+        year: '2022',
+        color: 'Gentian Blue Metallic'
+      }
+    } else if (formattedReg.startsWith('S')) {
+      mockData = {
+        brand: 'Subaru',
+        model: 'WRX',
+        engine_type: 'STI 2.5L Turbo 310HP',
+        mileage: '30200',
+        registration: formattedReg,
+        year: '2019',
+        color: 'WR Blue Pearl'
+      }
+    } else if (formattedReg.startsWith('K')) {
+      mockData = {
+        brand: 'Kia',
+        model: 'Stinger',
+        engine_type: 'GT S 3.3 T-GDi 365HP',
+        mileage: '25800',
+        registration: formattedReg,
+        year: '2020',
+        color: 'Ceramic Grey'
+      }
+    } else if (formattedReg.startsWith('G')) {
+      mockData = {
+        brand: 'Mazda',
+        model: 'MX-5',
+        engine_type: '2.0L Skyactiv-G 184HP',
+        mileage: '15600',
+        registration: formattedReg,
+        year: '2021',
+        color: 'Soul Red Crystal'
+      }
+    } else if (formattedReg.startsWith('J')) {
+      mockData = {
+        brand: 'Jaguar',
+        model: 'F-TYPE',
+        engine_type: 'R 5.0 V8 Supercharged 575HP',
+        mileage: '20400',
+        registration: formattedReg,
+        year: '2020',
+        color: 'British Racing Green'
       }
     }
 
