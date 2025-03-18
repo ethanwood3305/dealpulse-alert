@@ -7,20 +7,39 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('Vehicle lookup function called');
+  console.log('Vehicle lookup function called with method:', req.method);
+  console.log('Request headers:', Object.fromEntries(req.headers.entries()));
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight request');
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 200
+    });
   }
 
   try {
-    // Get the request data
-    const body = await req.text();
-    console.log('Request body:', body);
-    
-    const { registration } = JSON.parse(body);
+    // Parse the request body
+    const contentType = req.headers.get('content-type');
+    console.log('Content-Type:', contentType);
+
+    let registration;
+    if (contentType?.includes('application/json')) {
+      const jsonData = await req.json();
+      registration = jsonData.registration;
+    } else {
+      const textData = await req.text();
+      console.log('Raw request body:', textData);
+      try {
+        const jsonData = JSON.parse(textData);
+        registration = jsonData.registration;
+      } catch (e) {
+        console.error('Error parsing request body:', e);
+        registration = null;
+      }
+    }
+
     console.log('Parsed registration:', registration);
     
     if (!registration) {
@@ -31,11 +50,11 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400 
         }
-      )
+      );
     }
 
     // Parse the registration number to standard format
-    const formattedReg = registration.trim().toUpperCase().replace(/\s/g, '')
+    const formattedReg = registration.trim().toUpperCase().replace(/\s/g, '');
     console.log('Formatted registration:', formattedReg);
     
     // Create a Supabase client
@@ -47,7 +66,7 @@ serve(async (req) => {
     const supabaseAdmin = createClient(
       supabaseUrl ?? '',
       supabaseKey ?? ''
-    )
+    );
 
     // Check if DVLA API key is available
     const dvlaApiKey = Deno.env.get('DVLA_API_KEY');
@@ -68,32 +87,31 @@ serve(async (req) => {
         });
 
         console.log('DVLA API response status:', dvlaResponse.status);
+        const responseText = await dvlaResponse.text();
+        console.log('DVLA API raw response:', responseText);
         
         if (dvlaResponse.ok) {
-          const responseData = await dvlaResponse.json();
-          console.log('DVLA API response data:', responseData);
+          const responseData = JSON.parse(responseText);
+          console.log('DVLA API parsed response:', responseData);
           
           // Transform DVLA data to our format
           dvlaData = {
             brand: responseData.make || 'Unknown',
             model: responseData.model || 'Unknown',
             engine_type: `${responseData.engineCapacity || ''} ${responseData.fuelType || ''}`.trim() || 'Unknown',
-            mileage: 'N/A', // DVLA doesn't provide mileage
+            mileage: 'N/A',
             registration: formattedReg,
             year: responseData.yearOfManufacture || 'Unknown',
             color: responseData.colour || 'Unknown'
           };
           console.log('Transformed DVLA data:', dvlaData);
         } else {
-          const errorText = await dvlaResponse.text();
-          console.error('DVLA API error response:', errorText);
-          throw new Error(`DVLA API error: ${dvlaResponse.status} - ${errorText}`);
+          console.error('DVLA API error response:', responseText);
+          throw new Error(`DVLA API error: ${dvlaResponse.status} - ${responseText}`);
         }
       } catch (dvlaError) {
         console.error('Error calling DVLA API:', dvlaError);
       }
-    } else {
-      console.log('No DVLA API key available, will use mock data');
     }
     
     // If we got data from DVLA API, use it
