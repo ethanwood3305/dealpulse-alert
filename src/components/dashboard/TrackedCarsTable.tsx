@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -23,7 +22,7 @@ import { toast } from "@/components/ui/use-toast";
 
 interface TrackedCarsTableProps {
   trackedCars: TrackedCar[];
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string) => Promise<boolean>;
   onAddTag: (carId: string, tag: string) => Promise<void>;
   onRemoveTag: (carId: string, tag: string) => Promise<void>;
   carsLimit: number | undefined;
@@ -54,14 +53,20 @@ export const TrackedCarsTable = ({
     );
   }
 
-  // Sort cars by creation date (newest first)
   const sortedCars = [...trackedCars].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
   const handleDelete = async (id: string) => {
     try {
-      await onDelete(id);
+      const success = await onDelete(id);
+      if (!success) {
+        toast({
+          title: "Error",
+          description: "Failed to delete vehicle. Please try again.",
+          variant: "destructive"
+        });
+      }
     } catch (error) {
       console.error("Error deleting vehicle:", error);
       toast({
@@ -73,12 +78,10 @@ export const TrackedCarsTable = ({
   };
 
   const handleViewOnMap = (car: TrackedCar) => {
-    // Calculate an estimated target price based on car details
     const basePrice = car.year ? parseInt(car.year) * 100 : 10000;
     const mileageAdjustment = car.mileage ? -parseInt(car.mileage) * 0.05 : 0;
     const estimatedTargetPrice = Math.max(5000, basePrice + mileageAdjustment);
     
-    // Navigate to radius map with car details as URL params
     navigate(`/radius-map?car=${encodeURIComponent(car.id)}&targetPrice=${estimatedTargetPrice}`);
   };
 
