@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -68,66 +69,7 @@ serve(async (req) => {
       supabaseKey ?? ''
     );
 
-    // Check if DVLA API key is available
-    const dvlaApiKey = Deno.env.get('DVLA_API_KEY');
-    console.log('DVLA API key available:', !!dvlaApiKey);
-    let dvlaData = null;
-
-    // If we have a DVLA API key, try to use the actual DVLA API
-    if (dvlaApiKey) {
-      try {
-        console.log('Attempting DVLA API call for registration:', formattedReg);
-        const dvlaResponse = await fetch('https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles', {
-          method: 'POST',
-          headers: {
-            'x-api-key': dvlaApiKey,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ registrationNumber: formattedReg })
-        });
-
-        console.log('DVLA API response status:', dvlaResponse.status);
-        const responseText = await dvlaResponse.text();
-        console.log('DVLA API raw response:', responseText);
-        
-        if (dvlaResponse.ok) {
-          const responseData = JSON.parse(responseText);
-          console.log('DVLA API parsed response:', responseData);
-          
-          // Transform DVLA data to our format
-          dvlaData = {
-            brand: responseData.make || 'Unknown',
-            model: responseData.model || 'Unknown',
-            engine_type: `${responseData.engineCapacity || ''} ${responseData.fuelType || ''}`.trim() || 'Unknown',
-            mileage: 'N/A',
-            registration: formattedReg,
-            year: responseData.yearOfManufacture || 'Unknown',
-            color: responseData.colour || 'Unknown'
-          };
-          console.log('Transformed DVLA data:', dvlaData);
-        } else {
-          console.error('DVLA API error response:', responseText);
-          throw new Error(`DVLA API error: ${dvlaResponse.status} - ${responseText}`);
-        }
-      } catch (dvlaError) {
-        console.error('Error calling DVLA API:', dvlaError);
-      }
-    }
-    
-    // If we got data from DVLA API, use it
-    if (dvlaData) {
-      console.log('Returning real DVLA data');
-      return new Response(
-        JSON.stringify(dvlaData),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      );
-    }
-    
-    // Otherwise fall back to mock data
-    console.log('Falling back to mock data');
+    console.log('Using mock data instead of DVLA API');
     
     // Try database first
     const { data, error } = await supabaseAdmin.rpc(
