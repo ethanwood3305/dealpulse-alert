@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { toast } from "@/components/ui/use-toast";
 
 interface TrackedCarsTableProps {
   trackedCars: TrackedCar[];
@@ -55,6 +56,19 @@ export const TrackedCarsTable = ({
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
+  const handleDelete = async (id: string) => {
+    try {
+      await onDelete(id);
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete vehicle. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -81,13 +95,13 @@ export const TrackedCarsTable = ({
             </TableHeader>
             <TableBody>
               {sortedCars.map((car, index) => {
-                const isActive = index < carsLimit;
+                const isActive = index < (carsLimit || 0);
                 
                 return (
                   <TableRow key={car.id} className={!isActive ? "opacity-70" : ""}>
-                    <TableCell className="font-medium">{car.brand}</TableCell>
-                    <TableCell>{car.model}</TableCell>
-                    <TableCell>{car.engineType}</TableCell>
+                    <TableCell className="font-medium">{car.brand || 'N/A'}</TableCell>
+                    <TableCell>{car.model || 'N/A'}</TableCell>
+                    <TableCell>{car.engineType || 'N/A'}</TableCell>
                     <TableCell>{car.year || 'N/A'}</TableCell>
                     <TableCell>{car.color || 'N/A'}</TableCell>
                     <TableCell>{car.mileage || 'N/A'}</TableCell>
@@ -148,7 +162,7 @@ export const TrackedCarsTable = ({
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDelete(car.id)}>
+                            <AlertDialogAction onClick={() => handleDelete(car.id)}>
                               Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
