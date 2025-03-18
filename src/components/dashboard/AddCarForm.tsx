@@ -14,7 +14,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Define the car schema that ensures brand, model, and engineType are required
 const carSchema = z.object({
-  registrationNumber: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
   engineType: z.string().min(1, "Engine type is required"),
@@ -168,19 +167,16 @@ const defaultCommonEngineTypes = [
 ];
 
 export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarFormProps) => {
-  const [isLookingUp, setIsLookingUp] = useState(false);
   const [brands, setBrands] = useState<{id: string, name: string}[]>([]);
   const [models, setModels] = useState<{id: string, name: string}[]>([]);
   const [engineTypes, setEngineTypes] = useState<{id: string, name: string, fuel_type: string, capacity?: string, power?: string}[]>([]);
   const [isLoadingBrands, setIsLoadingBrands] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isLoadingEngineTypes, setIsLoadingEngineTypes] = useState(false);
-  const [lookupAttempted, setLookupAttempted] = useState(false);
   
   const form = useForm<z.infer<typeof carSchema>>({
     resolver: zodResolver(carSchema),
     defaultValues: {
-      registrationNumber: "",
       brand: "",
       model: "",
       engineType: "",
@@ -398,139 +394,18 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     return 'Petrol';
   };
 
-  // Function to look up car details from registration number
-  const lookupCarDetails = async (regNumber: string) => {
-    if (!regNumber.trim()) {
-      toast({
-        title: "Registration required",
-        description: "Please enter a valid registration number",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    setIsLookingUp(true);
-    setLookupAttempted(true);
-    
-    try {
-      console.log(`Looking up vehicle with registration: ${regNumber}`);
-      // Call our Supabase Edge Function for DVLA lookup
-      const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
-        body: { registration: regNumber }
-      });
-      
-      if (error) {
-        console.error('Error from edge function:', error);
-        throw error;
-      }
-      
-      if (data) {
-        console.log('Vehicle lookup response:', data);
-        const { brand, model, engine_type, mileage, year, color } = data;
-        
-        // Check if we found valid data (our mock function will return "Not Found" for brand when no match)
-        if (brand === 'Not Found') {
-          toast({
-            title: "Vehicle not found",
-            description: "Could not find vehicle with that registration. Please enter details manually.",
-            variant: "destructive"
-          });
-          return false;
-        }
-        
-        // Set form values using the retrieved data
-        form.setValue("brand", brand);
-        
-        // Wait for models to load based on brand selection
-        setTimeout(() => {
-          form.setValue("model", model);
-          
-          // Wait for engine types to load based on model selection
-          setTimeout(() => {
-            form.setValue("engineType", engine_type);
-            form.setValue("mileage", mileage);
-            if (year) form.setValue("year", year);
-            if (color) form.setValue("color", color);
-            
-            toast({
-              title: "Vehicle found",
-              description: "Registration details have been loaded"
-            });
-          }, 500);
-        }, 500);
-        
-        return true;
-      } else {
-        toast({
-          title: "Vehicle not found",
-          description: "Could not find vehicle with that registration. Please enter details manually.",
-          variant: "destructive"
-        });
-        return false;
-      }
-    } catch (error: any) {
-      console.error("Error looking up car details:", error);
-      toast({
-        title: "Lookup failed",
-        description: "Could not retrieve vehicle information. Please enter details manually.",
-        variant: "destructive"
-      });
-      return false;
-    } finally {
-      setIsLookingUp(false);
-    }
-  };
-
   return (
     <Card className="mb-10">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle>Add a Vehicle to Track</CardTitle>
-          <CardDescription>Enter vehicle details or registration number to monitor</CardDescription>
+          <CardDescription>Enter vehicle details to monitor</CardDescription>
         </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form id="add-car-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField 
-              control={form.control} 
-              name="registrationNumber" 
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Registration Number (Optional)</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter registration number" 
-                        {...field} 
-                        disabled={isAddingCar || !canAddMoreCars || isLookingUp} 
-                      />
-                    </FormControl>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => lookupCarDetails(field.value || "")}
-                      disabled={!field.value || isAddingCar || !canAddMoreCars || isLookingUp}
-                    >
-                      {isLookingUp ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Looking up...
-                        </>
-                      ) : (
-                        "Lookup"
-                      )}
-                    </Button>
-                  </div>
-                  <FormDescription>
-                    Enter the vehicle's registration number to automatically fetch details (try numbers starting with A, B, F, T, V, H, M, or L)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )} 
-            />
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField 
                 control={form.control} 
                 name="brand" 
@@ -538,7 +413,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                   <FormItem>
                     <FormLabel>Brand</FormLabel>
                     <Select 
-                      disabled={isAddingCar || !canAddMoreCars || isLookingUp || isLoadingBrands}
+                      disabled={isAddingCar || !canAddMoreCars || isLoadingBrands}
                       onValueChange={(value) => {
                         field.onChange(value);
                         // Reset model and engine type when brand changes
@@ -577,7 +452,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                   <FormItem>
                     <FormLabel>Model</FormLabel>
                     <Select 
-                      disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLookingUp || isLoadingModels}
+                      disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLoadingModels}
                       onValueChange={(value) => {
                         field.onChange(value);
                         // Reset engine type when model changes
@@ -615,7 +490,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                   <FormItem>
                     <FormLabel>Engine Type</FormLabel>
                     <Select 
-                      disabled={!selectedModel || isAddingCar || !canAddMoreCars || isLookingUp || isLoadingEngineTypes}
+                      disabled={!selectedModel || isAddingCar || !canAddMoreCars || isLoadingEngineTypes}
                       onValueChange={field.onChange} 
                       value={field.value}
                     >
@@ -647,7 +522,9 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                   </FormItem>
                 )} 
               />
-
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField 
                 control={form.control} 
                 name="mileage" 
@@ -659,16 +536,14 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                         type="number" 
                         placeholder="e.g. 45000" 
                         {...field} 
-                        disabled={isAddingCar || !canAddMoreCars || isLookingUp} 
+                        disabled={isAddingCar || !canAddMoreCars} 
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )} 
               />
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
               <FormField 
                 control={form.control} 
                 name="year" 
@@ -679,7 +554,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                       <Input 
                         placeholder="e.g. 2022" 
                         {...field} 
-                        disabled={isAddingCar || !canAddMoreCars || isLookingUp} 
+                        disabled={isAddingCar || !canAddMoreCars} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -697,7 +572,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                       <Input 
                         placeholder="e.g. Silver" 
                         {...field} 
-                        disabled={isAddingCar || !canAddMoreCars || isLookingUp} 
+                        disabled={isAddingCar || !canAddMoreCars} 
                       />
                     </FormControl>
                     <FormMessage />
@@ -706,7 +581,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
               />
             </div>
 
-            <Button type="submit" className="w-full mt-4" disabled={isAddingCar || !canAddMoreCars || isLookingUp}>
+            <Button type="submit" className="w-full mt-4" disabled={isAddingCar || !canAddMoreCars}>
               {isAddingCar ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -718,13 +593,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
             </Button>
           </form>
         </Form>
-        {lookupAttempted && engineTypes.length === 0 && selectedModel && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400">
-            <p className="text-sm">
-              No specific engine types found for {selectedBrand} {selectedModel}. Please select "Standard" or manually enter engine details.
-            </p>
-          </div>
-        )}
+        
         {!canAddMoreCars && (
           <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-800 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400">
             <p className="text-sm">

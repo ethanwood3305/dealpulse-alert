@@ -69,10 +69,9 @@ export const TrackedCarsTable = ({
                 <TableHead>Brand</TableHead>
                 <TableHead>Model</TableHead>
                 <TableHead>Engine Type</TableHead>
-                <TableHead>Registration</TableHead>
-                <TableHead>Mileage</TableHead>
                 <TableHead>Year</TableHead>
                 <TableHead>Color</TableHead>
+                <TableHead>Mileage</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Price</TableHead>
                 <TableHead>Last Checked</TableHead>
@@ -89,10 +88,9 @@ export const TrackedCarsTable = ({
                     <TableCell className="font-medium">{car.brand}</TableCell>
                     <TableCell>{car.model}</TableCell>
                     <TableCell>{car.engineType}</TableCell>
-                    <TableCell>{car.registrationNumber || 'N/A'}</TableCell>
-                    <TableCell>{car.mileage || 'N/A'}</TableCell>
                     <TableCell>{car.year || 'N/A'}</TableCell>
                     <TableCell>{car.color || 'N/A'}</TableCell>
+                    <TableCell>{car.mileage || 'N/A'}</TableCell>
                     <TableCell>
                       {isActive ? (
                         <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300">

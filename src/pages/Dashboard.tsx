@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -17,11 +18,12 @@ import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import * as z from "zod";
 
 const carSchema = z.object({
-  registrationNumber: z.string().optional(),
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
   engineType: z.string().min(1, "Engine type is required"),
   mileage: z.string().optional(),
+  year: z.string().optional(),
+  color: z.string().optional(),
 });
 
 const Dashboard = () => {
@@ -192,8 +194,9 @@ const Dashboard = () => {
         brand: values.brand,
         model: values.model,
         engineType: values.engineType,
-        registrationNumber: values.registrationNumber,
-        mileage: values.mileage
+        mileage: values.mileage,
+        year: values.year,
+        color: values.color
       });
       
       if (success) {
