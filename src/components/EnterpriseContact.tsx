@@ -22,7 +22,7 @@ const formSchema = z.object({
     message: "Company name is required.",
   }),
   urlCount: z.string().min(1, {
-    message: "Please enter the number of URLs you need to track.",
+    message: "Please enter the number of vehicles you need to track.",
   }),
   message: z.string().min(10, {
     message: "Message must be at least 10 characters.",
@@ -39,7 +39,7 @@ const EnterpriseContact = () => {
       email: "",
       company: "",
       urlCount: "",
-      message: "I'm interested in tracking more than 250 URLs. Please contact me with enterprise pricing options.",
+      message: "I'm interested in tracking more than 250 vehicles. Please contact me with enterprise pricing options.",
     },
   });
 
@@ -74,7 +74,7 @@ const EnterpriseContact = () => {
       <CardHeader>
         <CardTitle>Enterprise Solutions</CardTitle>
         <CardDescription>
-          Need to track more than 250 URLs? Contact us for custom enterprise pricing.
+          Need to track more than 250 vehicles? Contact us for custom enterprise pricing.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -127,12 +127,12 @@ const EnterpriseContact = () => {
               name="urlCount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>URLs to Track</FormLabel>
+                  <FormLabel>Vehicles to Track</FormLabel>
                   <FormControl>
                     <Input placeholder="500" type="number" min="250" {...field} />
                   </FormControl>
                   <FormDescription>
-                    How many URLs do you need to monitor?
+                    How many vehicles do you need to monitor?
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

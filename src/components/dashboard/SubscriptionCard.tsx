@@ -21,13 +21,13 @@ export const SubscriptionCard = ({
 
   let planLabel = 'Standard Plan';
   let planDescription = 'Basic tracking features';
-  let planFeatures = [`Limited to ${urls_limit} cars`, 'Daily price checks', 'Basic notifications'];
+  let planFeatures = [`Limited to ${urls_limit} vehicles`, 'Daily price checks', 'Basic notifications'];
 
   if (plan === 'professional') {
     planLabel = 'Professional Plan';
     planDescription = 'Advanced tracking features';
     planFeatures = [
-      `Up to ${urls_limit} cars`, 
+      `Up to ${urls_limit} vehicles`, 
       'Hourly price checks', 
       'Advanced notifications',
       'API access',
@@ -37,7 +37,7 @@ export const SubscriptionCard = ({
     planLabel = 'Enterprise Plan';
     planDescription = 'Enterprise-grade tracking';
     planFeatures = [
-      `Up to ${urls_limit} cars`, 
+      `Up to ${urls_limit} vehicles`, 
       'Real-time price monitoring', 
       'Advanced analytics',
       'API access',
@@ -77,7 +77,7 @@ export const SubscriptionCard = ({
         
         <div className="mt-4 p-3 bg-muted rounded-md">
           <div className="flex items-center justify-between text-sm">
-            <span>Cars used</span>
+            <span>Vehicles used</span>
             <span className="font-medium">{trackedUrlsCount} / {urls_limit}</span>
           </div>
           <div className="mt-2 h-2 bg-muted-foreground/20 rounded-full overflow-hidden">

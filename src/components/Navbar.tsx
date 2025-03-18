@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -100,7 +99,7 @@ const Navbar = () => {
               Features
             </a>
             <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">
-              Enterprise
+              Purchase
             </Link>
             <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">
               About
@@ -203,7 +202,7 @@ const Navbar = () => {
               className="block text-lg font-medium hover:text-primary"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Enterprise
+              Purchase
             </Link>
             <Link
               to="/about"
