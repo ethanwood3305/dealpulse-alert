@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, SearchIcon, AlertCircleIcon } from "lucide-react";
+import { Loader2, SearchIcon, AlertCircleIcon, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrackedCars, AddCarParams } from "@/hooks/use-tracked-cars";
 
@@ -32,6 +32,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [vehicleDetails, setVehicleDetails] = useState<VehicleDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isUsingMockData, setIsUsingMockData] = useState(false);
   const { addCar } = useTrackedCars(userId);
 
   const handleLookup = async () => {
@@ -47,13 +48,20 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     setIsLoading(true);
     setError(null);
     setVehicleDetails(null);
+    setIsUsingMockData(false);
 
     try {
+      console.log("Calling vehicle-lookup function with registration:", registration.trim());
+      
       const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
+        method: 'POST',
         body: { registration: registration.trim() }
       });
 
+      console.log("Vehicle lookup response:", data);
+      
       if (error) {
+        console.error("Supabase function error:", error);
         throw new Error(error.message || 'Failed to lookup vehicle');
       }
 
@@ -64,6 +72,16 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
       if (data.vehicle) {
         setVehicleDetails(data.vehicle);
+        
+        // Check if we're using mock data
+        if (data.warning || data.source === 'mock_data') {
+          setIsUsingMockData(true);
+          toast({
+            title: "Using Mock Data",
+            description: "We couldn't connect to the DVLA API, so we're showing sample data instead.",
+            variant: "warning"
+          });
+        }
       } else {
         setError('No vehicle data returned');
       }
@@ -157,6 +175,18 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               <div>
                 <p className="font-medium text-destructive">Lookup failed</p>
                 <p className="text-sm text-muted-foreground">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {isUsingMockData && vehicleDetails && (
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start space-x-2 dark:bg-amber-900/30 dark:border-amber-800">
+              <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 dark:text-amber-400" />
+              <div>
+                <p className="font-medium text-amber-800 dark:text-amber-400">Using demonstration data</p>
+                <p className="text-sm text-amber-700 dark:text-amber-500">
+                  The actual DVLA API couldn't be reached. Mock data is being shown instead.
+                </p>
               </div>
             </div>
           )}

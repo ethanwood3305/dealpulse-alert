@@ -80,6 +80,9 @@ serve(async (req) => {
         const registrationClean = registration.replace(/\s+/g, '').toUpperCase()
         
         try {
+          console.log(`Calling DVLA API for registration: ${registrationClean}`)
+          console.log(`Using API key: ${dvlaApiKey.substring(0, 3)}...${dvlaApiKey.substring(dvlaApiKey.length - 3)}`)
+          
           // Call the real DVLA API
           // DVLA Vehicle Enquiry Service API: https://developer-portal.driver-vehicle-licensing.api.gov.uk/
           const response = await fetch('https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles', {
@@ -91,9 +94,20 @@ serve(async (req) => {
             body: JSON.stringify({ registrationNumber: registrationClean })
           });
           
+          console.log(`DVLA API response status: ${response.status}`);
+          
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.error('DVLA API error:', response.status, errorData);
+            // Try to parse error response
+            const errorText = await response.text();
+            console.error('DVLA API error response text:', errorText);
+            
+            let errorData = {};
+            try {
+              errorData = JSON.parse(errorText);
+              console.error('DVLA API error data:', errorData);
+            } catch (parseError) {
+              console.error('Could not parse DVLA error response:', parseError);
+            }
             
             if (response.status === 404) {
               return new Response(
@@ -103,11 +117,22 @@ serve(async (req) => {
             }
             
             // For other errors, throw to be caught by the catch block
-            throw new Error(errorData.message || `DVLA API responded with status ${response.status}`);
+            throw new Error(errorData.message || errorData.errors?.[0]?.message || `DVLA API responded with status ${response.status}`);
           }
           
-          const dvlaData = await response.json();
-          console.log('Successfully retrieved DVLA data');
+          // Try to parse response body
+          const responseText = await response.text();
+          console.log('DVLA API response text:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+          
+          let dvlaData;
+          try {
+            dvlaData = JSON.parse(responseText);
+          } catch (parseError) {
+            console.error('Failed to parse DVLA API response:', parseError);
+            throw new Error('Invalid response format from DVLA API');
+          }
+          
+          console.log('Successfully retrieved DVLA data:', JSON.stringify(dvlaData).substring(0, 200));
           
           // Map DVLA API response to our expected format
           const vehicleData = {
@@ -117,15 +142,20 @@ serve(async (req) => {
             color: dvlaData.colour || 'Unknown',
             fuelType: dvlaData.fuelType || 'Unknown',
             year: dvlaData.yearOfManufacture?.toString() || 'Unknown',
-            engineSize: `${(dvlaData.engineCapacity / 1000).toFixed(1)}L` || 'Unknown',
+            engineSize: dvlaData.engineCapacity ? `${(dvlaData.engineCapacity / 1000).toFixed(1)}L` : 'Unknown',
             motStatus: dvlaData.motStatus || 'Unknown',
             motExpiryDate: dvlaData.motExpiryDate || null,
             taxStatus: dvlaData.taxStatus || 'Unknown',
             taxDueDate: dvlaData.taxDueDate || null,
           };
           
+          console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
+          
           return new Response(
-            JSON.stringify({ vehicle: vehicleData }),
+            JSON.stringify({ 
+              vehicle: vehicleData,
+              source: 'dvla_api'
+            }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         } catch (dvlaError) {
@@ -152,7 +182,9 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               vehicle: mockVehicleData, 
-              warning: 'Using mock data due to API error' 
+              warning: 'Using mock data due to API error',
+              error: dvlaError.message,
+              source: 'mock_data'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
