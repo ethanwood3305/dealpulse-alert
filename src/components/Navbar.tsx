@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
-import { Menu, X, Sun, Moon } from 'lucide-react';
+import { Menu, X, ChevronDown, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
 import { supabase } from "@/integrations/supabase/client";
 
@@ -71,7 +71,6 @@ const Navbar = () => {
     } else {
       // Navigate to home page with hash
       navigate('/#features');
-      setIsMobileMenuOpen(false);
     }
   };
 
