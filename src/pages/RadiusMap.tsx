@@ -19,11 +19,18 @@ const DEFAULT_ZOOM = 6;
 
 // Ensure the Mapbox token is set
 if (!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') {
-  console.error('MAPBOX_TOKEN is missing or invalid. Please make sure it is correctly defined in src/integrations/supabase/client.ts');
+  console.error('MAPBOX_TOKEN is missing or invalid. Please make sure it is correctly defined in Supabase secrets');
 }
 
-// Make sure token is available before setting it
-if (MAPBOX_TOKEN && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN') {
+// Make sure token is available before setting it and logging it
+const mapboxTokenStatus = typeof MAPBOX_TOKEN === 'string' && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN'
+  ? 'Available'
+  : 'Missing or Invalid';
+
+console.log('Mapbox token status:', mapboxTokenStatus);
+
+// Only set the token if it's valid
+if (typeof MAPBOX_TOKEN === 'string' && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN') {
   console.log('Setting Mapbox token:', MAPBOX_TOKEN.substring(0, 8) + '...');
   mapboxgl.accessToken = MAPBOX_TOKEN;
 }
