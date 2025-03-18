@@ -56,18 +56,17 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       setIsLoadingBrands(true);
       try {
         console.log("Fetching car brands from database...");
-        const { data, error } = await supabase
-          .from('car_brands')
-          .select('id, name')
-          .order('name');
+        const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
+          method: 'GET',
+        });
         
         if (error) throw error;
         
-        if (data && data.length > 0) {
-          console.log("Found brands from database:", data.length);
-          setBrands(data);
+        if (data?.brands && data.brands.length > 0) {
+          console.log("Found brands from database:", data.brands.length);
+          setBrands(data.brands);
         } else {
-          console.log("No brands in database, using hardcoded list");
+          console.log("No brands returned from API, using hardcoded list");
           const defaultBrands = Object.keys(carBrandsData);
           setBrands(defaultBrands.map(name => ({ id: name, name })));
         }
@@ -102,24 +101,25 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         
         const selectedBrandObj = brands.find(b => b.name === selectedBrand);
         
-        if (selectedBrandObj?.id && selectedBrandObj.id !== selectedBrandObj.name) {
-          const { data, error } = await supabase
-            .from('car_models')
-            .select('id, name')
-            .eq('brand_id', selectedBrandObj.id)
-            .order('name');
-          
-          if (error) {
-            console.error("Database error fetching models:", error);
-            throw error;
-          }
-          
-          if (data && data.length > 0) {
-            console.log(`Found ${data.length} models for ${selectedBrand} in database`);
-            setModels(data);
-            setIsLoadingModels(false);
-            return;
-          }
+        if (!selectedBrandObj) {
+          throw new Error("Selected brand not found in brands list");
+        }
+        
+        const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
+          method: 'GET',
+          queryParams: { brandId: selectedBrandObj.id }
+        });
+        
+        if (error) {
+          console.error("API error fetching models:", error);
+          throw error;
+        }
+        
+        if (data?.models && data.models.length > 0) {
+          console.log(`Found ${data.models.length} models for ${selectedBrand} from API`);
+          setModels(data.models);
+          setIsLoadingModels(false);
+          return;
         }
         
         const brandModels = carBrandsData[selectedBrand as keyof typeof carBrandsData] || [];
@@ -169,24 +169,25 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         
         const selectedModelObj = models.find(m => m.name === selectedModel);
         
-        if (selectedModelObj?.id && selectedModelObj.id !== selectedModelObj.name) {
-          const { data, error } = await supabase
-            .from('engine_types')
-            .select('id, name, fuel_type, capacity, power')
-            .eq('model_id', selectedModelObj.id)
-            .order('name');
-          
-          if (error) {
-            console.error('Database error fetching engine types:', error);
-            throw error;
-          }
-          
-          if (data && data.length > 0) {
-            console.log(`Found ${data.length} engine types in database`);
-            setEngineTypes(data);
-            setIsLoadingEngineTypes(false);
-            return;
-          }
+        if (!selectedModelObj) {
+          throw new Error("Selected model not found in models list");
+        }
+        
+        const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
+          method: 'GET',
+          queryParams: { modelId: selectedModelObj.id }
+        });
+        
+        if (error) {
+          console.error('API error fetching engine types:', error);
+          throw error;
+        }
+        
+        if (data?.engineTypes && data.engineTypes.length > 0) {
+          console.log(`Found ${data.engineTypes.length} engine types from API`);
+          setEngineTypes(data.engineTypes);
+          setIsLoadingEngineTypes(false);
+          return;
         }
         
         if (defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap] && 

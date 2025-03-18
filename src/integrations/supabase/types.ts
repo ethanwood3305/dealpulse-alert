@@ -197,24 +197,6 @@ export type Database = {
           trial_end: string
         }[]
       }
-      get_vehicle_by_registration: {
-        Args: {
-          reg_number: string
-        }
-        Returns: {
-          brand: string
-          model: string
-          engine_type: string
-          mileage: string
-          registration: string
-          year: string
-          color: string
-        }[]
-      }
-      populate_car_data: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
     }
     Enums: {
       [_ in never]: never

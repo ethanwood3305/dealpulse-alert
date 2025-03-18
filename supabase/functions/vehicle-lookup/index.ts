@@ -31,30 +31,97 @@ serve(async (req) => {
       supabaseKey ?? ''
     );
 
-    // Get all brands
-    const { data: brands, error: brandsError } = await supabaseAdmin
-      .from('car_brands')
-      .select('id, name')
-      .order('name');
+    // Parse the request URL to get query parameters
+    const url = new URL(req.url);
+    const brandId = url.searchParams.get('brandId');
+    const modelId = url.searchParams.get('modelId');
 
-    if (brandsError) {
-      console.error('Error fetching brands:', brandsError);
+    // If modelId is provided, fetch engine types for that model
+    if (modelId) {
+      console.log(`Fetching engine types for model ID: ${modelId}`);
+      
+      const { data: engineTypes, error: engineTypesError } = await supabaseAdmin
+        .from('engine_types')
+        .select('id, name, fuel_type, capacity, power')
+        .eq('model_id', modelId)
+        .order('name');
+
+      if (engineTypesError) {
+        console.error('Error fetching engine types:', engineTypesError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch engine types', details: engineTypesError.message }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        );
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch car brands', details: brandsError.message }),
+        JSON.stringify({ engineTypes }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
+          status: 200 
         }
       );
     }
+    
+    // If brandId is provided, fetch models for that brand
+    else if (brandId) {
+      console.log(`Fetching models for brand ID: ${brandId}`);
+      
+      const { data: models, error: modelsError } = await supabaseAdmin
+        .from('car_models')
+        .select('id, name')
+        .eq('brand_id', brandId)
+        .order('name');
 
-    return new Response(
-      JSON.stringify({ brands }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+      if (modelsError) {
+        console.error('Error fetching models:', modelsError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch car models', details: modelsError.message }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        );
       }
-    )
+
+      return new Response(
+        JSON.stringify({ models }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
+    
+    // By default, fetch all brands
+    else {
+      const { data: brands, error: brandsError } = await supabaseAdmin
+        .from('car_brands')
+        .select('id, name')
+        .order('name');
+
+      if (brandsError) {
+        console.error('Error fetching brands:', brandsError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to fetch car brands', details: brandsError.message }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ brands }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
   } catch (error) {
     console.error('Error in vehicle lookup:', error);
     
@@ -64,6 +131,6 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
       }
-    )
+    );
   }
 })
