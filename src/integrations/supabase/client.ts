@@ -13,5 +13,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 
 // Set your MapBox public token here
 // This will be replaced with the value from Supabase secrets
-export const MAPBOX_TOKEN = process.env.MAPBOX_TOKEN || Deno.env?.get?.('MAPBOX_TOKEN') || 'YOUR_MAPBOX_TOKEN';
-
+export const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'YOUR_MAPBOX_TOKEN';

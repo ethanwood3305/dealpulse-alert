@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Check, Copy, Eye, EyeOff, KeyRound, RefreshCw, Globe, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -440,4 +441,34 @@ task.resume()`;
                             </SelectTrigger>
                             <SelectContent>
                               {(['curl', 'javascript', 'python', 'ruby', 'go', 'php',
-
+                                'csharp', 'cpp', 'java', 'rust', 'swift'] as CodeLanguage[]).map((lang) => (
+                                <SelectItem key={lang} value={lang}>
+                                  <div className="flex items-center">
+                                    <span className="mr-2">{getLanguageIcon(lang)}</span>
+                                    <span>{getLanguageLabel(lang)}</span>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                        <pre>{getCodeExample(selectedLanguage)}</pre>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 border border-muted rounded flex flex-col items-center justify-center">
+                  <KeyRound className="h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-center mb-4">You need a paid subscription to access the API</p>
+                </div>
+              )}
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      </CardContent>
+    </Card>
+  );
+};
