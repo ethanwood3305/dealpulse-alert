@@ -211,6 +211,10 @@ export type Database = {
           color: string
         }[]
       }
+      populate_car_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

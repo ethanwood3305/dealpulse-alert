@@ -8,11 +8,10 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log('Vehicle lookup function called with method:', req.method);
+  console.log('Populate car data function called');
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling CORS preflight request');
     return new Response(null, { 
       headers: corsHeaders,
       status: 200
@@ -23,47 +22,39 @@ serve(async (req) => {
     // Create a Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    console.log('Supabase URL available:', !!supabaseUrl);
-    console.log('Supabase key available:', !!supabaseKey);
+    
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase credentials');
+    }
 
     const supabaseAdmin = createClient(
-      supabaseUrl ?? '',
-      supabaseKey ?? ''
+      supabaseUrl,
+      supabaseKey
     );
 
-    // Get all brands
-    const { data: brands, error: brandsError } = await supabaseAdmin
-      .from('car_brands')
-      .select('id, name')
-      .order('name');
+    // Call the database function to populate car data
+    const { data, error } = await supabaseAdmin.rpc('populate_car_data');
 
-    if (brandsError) {
-      console.error('Error fetching brands:', brandsError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch car brands', details: brandsError.message }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
-        }
-      );
+    if (error) {
+      throw error;
     }
 
     return new Response(
-      JSON.stringify({ brands }),
+      JSON.stringify({ success: true, message: 'Car data populated successfully' }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200 
       }
-    )
+    );
   } catch (error) {
-    console.error('Error in vehicle lookup:', error);
+    console.error('Error populating car data:', error);
     
     return new Response(
-      JSON.stringify({ error: 'Failed to lookup vehicle details', details: error.message }),
+      JSON.stringify({ error: 'Failed to populate car data', details: error.message }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 
       }
-    )
+    );
   }
-})
+});

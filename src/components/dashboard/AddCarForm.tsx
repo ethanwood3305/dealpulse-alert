@@ -11,6 +11,8 @@ import * as z from "zod";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+import { carBrandsData, defaultEngineTypesMap, defaultCommonEngineTypes } from "./carData";
+
 const carSchema = z.object({
   brand: z.string().min(1, "Brand is required"),
   model: z.string().min(1, "Model is required"),
@@ -25,8 +27,6 @@ interface AddCarFormProps {
   isAddingCar: boolean;
   canAddMoreCars: boolean;
 }
-
-import { carBrandsData, defaultEngineTypesMap, defaultCommonEngineTypes } from "./carData";
 
 export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarFormProps) => {
   const [brands, setBrands] = useState<{id: string, name: string}[]>([]);
@@ -55,7 +55,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     const fetchBrands = async () => {
       setIsLoadingBrands(true);
       try {
-        console.log("Fetching car brands...");
+        console.log("Fetching car brands from database...");
         const { data, error } = await supabase
           .from('car_brands')
           .select('id, name')
@@ -100,14 +100,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       try {
         console.log(`Fetching models for brand: ${selectedBrand}`);
         
-        const brandModels = carBrandsData[selectedBrand as keyof typeof carBrandsData] || [];
-        if (brandModels && brandModels.length > 0) {
-          console.log(`Found ${brandModels.length} models for ${selectedBrand} in hardcoded data`);
-          setModels(brandModels.map(name => ({ id: name, name })));
-          setIsLoadingModels(false);
-          return;
-        }
-        
         const selectedBrandObj = brands.find(b => b.name === selectedBrand);
         
         if (selectedBrandObj?.id && selectedBrandObj.id !== selectedBrandObj.name) {
@@ -125,11 +117,16 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           if (data && data.length > 0) {
             console.log(`Found ${data.length} models for ${selectedBrand} in database`);
             setModels(data);
+            setIsLoadingModels(false);
             return;
           }
         }
         
-        if (brandModels.length === 0) {
+        const brandModels = carBrandsData[selectedBrand as keyof typeof carBrandsData] || [];
+        if (brandModels && brandModels.length > 0) {
+          console.log(`Found ${brandModels.length} models for ${selectedBrand} in hardcoded data`);
+          setModels(brandModels.map(name => ({ id: name, name })));
+        } else {
           console.log(`No models found for ${selectedBrand}, using fallback models`);
           const defaultModels = ["Standard", "Deluxe", "Sport", "Limited", "Other"];
           setModels(defaultModels.map(name => ({ id: name, name })));
@@ -170,20 +167,6 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       try {
         console.log(`Fetching engine types for ${selectedBrand} ${selectedModel}`);
         
-        if (defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap] && 
-            defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap][selectedModel]) {
-          const specificEngineTypes = defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap][selectedModel];
-          console.log(`Using specific engine types for ${selectedBrand} ${selectedModel}, found ${specificEngineTypes.length}`);
-          
-          setEngineTypes(specificEngineTypes.map(name => ({
-            id: name,
-            name,
-            fuel_type: determineFuelType(name)
-          })));
-          setIsLoadingEngineTypes(false);
-          return;
-        }
-        
         const selectedModelObj = models.find(m => m.name === selectedModel);
         
         if (selectedModelObj?.id && selectedModelObj.id !== selectedModelObj.name) {
@@ -201,16 +184,29 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           if (data && data.length > 0) {
             console.log(`Found ${data.length} engine types in database`);
             setEngineTypes(data);
+            setIsLoadingEngineTypes(false);
             return;
           }
         }
         
-        console.log(`Using generic engine types for ${selectedBrand} ${selectedModel}`);
-        setEngineTypes(defaultCommonEngineTypes.map(name => ({
-          id: name,
-          name,
-          fuel_type: determineFuelType(name)
-        })));
+        if (defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap] && 
+            defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap][selectedModel]) {
+          const specificEngineTypes = defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap][selectedModel];
+          console.log(`Using specific engine types for ${selectedBrand} ${selectedModel}, found ${specificEngineTypes.length}`);
+          
+          setEngineTypes(specificEngineTypes.map(name => ({
+            id: name,
+            name,
+            fuel_type: determineFuelType(name)
+          })));
+        } else {
+          console.log(`Using generic engine types for ${selectedBrand} ${selectedModel}`);
+          setEngineTypes(defaultCommonEngineTypes.map(name => ({
+            id: name,
+            name,
+            fuel_type: determineFuelType(name)
+          })));
+        }
       } catch (error) {
         console.error('Error fetching engine types:', error);
         toast({

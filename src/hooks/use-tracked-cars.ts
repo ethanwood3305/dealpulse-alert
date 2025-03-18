@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -8,7 +7,6 @@ export interface TrackedCar {
   brand: string;
   model: string;
   engineType: string;
-  registrationNumber?: string;
   mileage?: string;
   year?: string;
   color?: string;
@@ -23,7 +21,6 @@ export interface AddCarParams {
   brand: string;
   model: string;
   engineType: string;
-  registrationNumber?: string;
   mileage?: string;
   year?: string;
   color?: string;
@@ -55,7 +52,6 @@ export const useTrackedCars = (userId: string | undefined) => {
         const brand = urlParts[0] || 'Unknown Brand';
         const model = urlParts[1] || 'Unknown Model';
         const engineType = urlParts[2] || 'Unknown Engine';
-        let registrationNumber;
         let mileage;
         let year;
         let color;
@@ -64,9 +60,6 @@ export const useTrackedCars = (userId: string | undefined) => {
         if (urlParts[3]) {
           const params = urlParts[3].split('&');
           params.forEach(param => {
-            if (param.includes('reg=')) {
-              registrationNumber = param.split('reg=')[1];
-            }
             if (param.includes('mil=')) {
               mileage = param.split('mil=')[1];
             }
@@ -84,7 +77,6 @@ export const useTrackedCars = (userId: string | undefined) => {
           brand,
           model, 
           engineType,
-          registrationNumber,
           mileage,
           year,
           color,
@@ -112,12 +104,11 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       // Format car data as a URL for storage in existing table
       // In a real implementation, we'd create a proper cars table
-      const registrationParam = car.registrationNumber ? `reg=${car.registrationNumber}` : '';
       const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
       const yearParam = car.year ? `year=${car.year}` : '';
       const colorParam = car.color ? `color=${car.color}` : '';
       
-      const params = [registrationParam, mileageParam, yearParam, colorParam]
+      const params = [mileageParam, yearParam, colorParam]
         .filter(Boolean)
         .join('&');
       
