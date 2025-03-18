@@ -134,7 +134,7 @@ const RadiusMap = () => {
               difference,
               percentageDifference
             }
-          } as TrackedCarWithLocation;
+          };
         });
         
         setTrackedCars(carsWithLocations);
