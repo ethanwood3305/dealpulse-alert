@@ -1,96 +1,44 @@
 
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, MapPin, Car, X, ChevronDown, ChevronUp, Info } from "lucide-react";
-import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import { Button } from '@/components/ui/button';
+import { useEffect, useRef, useState } from 'react';
+import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { toast } from '@/components/ui/use-toast';
+import { ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { TrackedCarWithLocation } from '@/types/car-types';
-import { useTrackedCars } from '@/hooks/use-tracked-cars';
-import { useTheme } from '@/hooks/use-theme';
+import { supabase } from '@/integrations/supabase/client';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-// You'll need to add mapbox-gl as a dependency
-// <lov-add-dependency>mapbox-gl@latest</lov-add-dependency>
-// <lov-add-dependency>framer-motion@latest</lov-add-dependency>
+// Replace with your Mapbox access token
+const MAPBOX_TOKEN = 'pk.eyJ1IjoiZGVhbHB1bHNlIiwiYSI6ImNsbXg1cHdrOTAxZWwycW50bmNjNnF0aW4ifQ.GSIBL15yI1TQ_ElD3Ll0YQ';
+mapboxgl.accessToken = MAPBOX_TOKEN;
+
+// Set the center of the UK as the default map center
+const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
+const DEFAULT_ZOOM = 6;
 
 const RadiusMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapboxToken, setMapboxToken] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [selectedCar, setSelectedCar] = useState<string | null>(null);
-  const [postcode, setPostcode] = useState<string>('');
-  const [targetPrice, setTargetPrice] = useState<string>('');
-  const [showMapTokenInput, setShowMapTokenInput] = useState(true);
-  const [carsWithLocation, setCarsWithLocation] = useState<TrackedCarWithLocation[]>([]);
+  const map = useRef<Map | null>(null);
   const navigate = useNavigate();
-  const { theme } = useTheme();
+  const [postcode, setPostcode] = useState('');
+  const [targetPrice, setTargetPrice] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [trackedCars, setTrackedCars] = useState<TrackedCarWithLocation[]>([]);
   
-  const { trackedCars, isLoading: isLoadingCars } = useTrackedCars(user?.id);
-
-  // Check authentication
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data?.user) {
-        navigate('/login');
-        return;
-      }
-      setUser(data.user);
-    };
-    
-    checkAuth();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate('/login');
-      }
-    });
-    
-    return () => {
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, [navigate]);
-
-  // Initialize map when token is set
-  useEffect(() => {
-    if (mapboxToken && mapContainer.current && !map.current) {
-      const initializeMap = async () => {
-        const mapboxgl = await import('mapbox-gl');
-        mapboxgl.default.accessToken = mapboxToken;
-        
-        map.current = new mapboxgl.Map({
-          container: mapContainer.current!,
-          style: theme === 'dark' 
-            ? 'mapbox://styles/mapbox/dark-v11' 
-            : 'mapbox://styles/mapbox/light-v11',
-          center: [-0.118092, 51.509865], // London center by default
-          zoom: 9
-        });
-
-        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-        
-        // Initialize map controls and handlers
-        map.current.on('load', () => {
-          setShowMapTokenInput(false);
-          toast({
-            title: "Map initialized",
-            description: "The map has been successfully loaded."
-          });
-        });
-      };
-
-      initializeMap();
+    if (mapContainer.current && !map.current) {
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: DEFAULT_CENTER,
+        zoom: DEFAULT_ZOOM,
+      });
+      
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
     }
     
     return () => {
@@ -99,143 +47,86 @@ const RadiusMap = () => {
         map.current = null;
       }
     };
-  }, [mapboxToken, theme]);
-
-  // Update car locations on the map
+  }, []);
+  
   useEffect(() => {
-    const updateMap = async () => {
-      if (!map.current || carsWithLocation.length === 0) return;
-      
-      // Clear existing markers
-      const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
-      existingMarkers.forEach(marker => marker.remove());
-      
-      // Remove existing layers
-      if (map.current.getLayer('green-radius')) map.current.removeLayer('green-radius');
-      if (map.current.getLayer('orange-radius')) map.current.removeLayer('orange-radius');
-      if (map.current.getSource('green-radius')) map.current.removeSource('green-radius');
-      if (map.current.getSource('orange-radius')) map.current.removeSource('orange-radius');
-      
-      const selectedCarData = carsWithLocation.find(car => car.id === selectedCar);
-      
-      if (selectedCarData?.location) {
-        // Center map on selected car
-        map.current.flyTo({
-          center: [selectedCarData.location.lng, selectedCarData.location.lat],
-          zoom: 10,
-          speed: 0.8
+    const fetchTrackedCars = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/login');
+          return;
+        }
+        
+        const { data, error } = await supabase
+          .from('tracked_urls')
+          .select('*')
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+        
+        // Simulate cars with locations and price data
+        const carsWithLocations = data.map((car) => ({
+          ...car,
+          location: {
+            postcode: car.postcode || generateRandomPostcode(),
+            lat: car.lat || (51.5 + Math.random() * 2),
+            lng: car.lng || (-1.9 + Math.random() * 3)
+          },
+          priceComparison: {
+            targetPrice: car.target_price || parseInt(car.mileage || '10000'), // Use mileage as a proxy for price
+            marketPrice: car.last_price || parseInt(car.mileage || '10000') * (0.9 + Math.random() * 0.3), // Random variation
+            difference: 0, // Will be calculated
+            percentageDifference: 0 // Will be calculated
+          }
+        }));
+        
+        // Calculate price differences
+        const processedCars = carsWithLocations.map(car => {
+          if (car.priceComparison) {
+            car.priceComparison.difference = car.priceComparison.targetPrice - car.priceComparison.marketPrice;
+            car.priceComparison.percentageDifference = (car.priceComparison.difference / car.priceComparison.targetPrice) * 100;
+          }
+          return car;
         });
         
-        // Add car marker
-        const mapboxgl = await import('mapbox-gl');
-        const el = document.createElement('div');
-        el.className = 'car-marker';
-        el.innerHTML = `<div class="p-2 bg-primary text-white rounded-full"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-car"><path d="M14 16H9m10 0h3v-3.15a1 1 0 0 0-.84-.99L16 11l-2.7-3.6a1 1 0 0 0-.8-.4H5.24a2 2 0 0 0-1.8 1.1l-.8 1.63A6 6 0 0 0 2 12.42V16h2"/><circle cx="6.5" cy="16.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></div>`;
-        
-        new mapboxgl.Marker(el)
-          .setLngLat([selectedCarData.location.lng, selectedCarData.location.lat])
-          .setPopup(new mapboxgl.Popup({ offset: 25 })
-            .setHTML(`
-              <div class="p-2">
-                <h3 class="font-bold">${selectedCarData.brand} ${selectedCarData.model}</h3>
-                <p>${selectedCarData.engineType}</p>
-                ${selectedCarData.priceComparison ? 
-                  `<p class="mt-2">Your price: £${selectedCarData.priceComparison.targetPrice.toLocaleString()}</p>
-                   <p>Market price: £${selectedCarData.priceComparison.marketPrice.toLocaleString()}</p>
-                   <p class="${selectedCarData.priceComparison.difference > 0 ? 'text-green-500' : 'text-red-500'}">
-                     Difference: £${Math.abs(selectedCarData.priceComparison.difference).toLocaleString()} 
-                     (${selectedCarData.priceComparison.difference > 0 ? '+' : '-'}${Math.abs(selectedCarData.priceComparison.percentageDifference).toFixed(1)}%)
-                   </p>` 
-                : ''}
-              </div>
-            `))
-          .addTo(map.current);
-        
-        // If we have price comparison data, add radius circles
-        if (selectedCarData.priceComparison) {
-          // Green circle - Where you're the cheapest (5km radius as an example)
-          const greenRadius = {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'Point',
-              'coordinates': [selectedCarData.location.lng, selectedCarData.location.lat]
-            }
-          };
-          
-          map.current.addSource('green-radius', {
-            'type': 'geojson',
-            'data': greenRadius
-          });
-          
-          map.current.addLayer({
-            'id': 'green-radius',
-            'type': 'circle',
-            'source': 'green-radius',
-            'paint': {
-              'circle-radius': {
-                'stops': [
-                  [0, 0],
-                  [10, 5000 / (map.current.getZoom() * 50)] // 5km radius at zoom level 10
-                ],
-                'base': 2
-              },
-              'circle-color': 'green',
-              'circle-opacity': 0.2,
-              'circle-stroke-width': 2,
-              'circle-stroke-color': 'green',
-              'circle-stroke-opacity': 0.5
-            }
-          });
-          
-          // Orange circle - Where you're competitive (10km radius as an example)
-          const orangeRadius = {
-            'type': 'Feature',
-            'geometry': {
-              'type': 'Point',
-              'coordinates': [selectedCarData.location.lng, selectedCarData.location.lat]
-            }
-          };
-          
-          map.current.addSource('orange-radius', {
-            'type': 'geojson',
-            'data': orangeRadius
-          });
-          
-          map.current.addLayer({
-            'id': 'orange-radius',
-            'type': 'circle',
-            'source': 'orange-radius',
-            'paint': {
-              'circle-radius': {
-                'stops': [
-                  [0, 0],
-                  [10, 10000 / (map.current.getZoom() * 50)] // 10km radius at zoom level 10
-                ],
-                'base': 2
-              },
-              'circle-color': 'orange',
-              'circle-opacity': 0.2,
-              'circle-stroke-width': 2,
-              'circle-stroke-color': 'orange',
-              'circle-stroke-opacity': 0.5
-            }
-          });
-        }
+        setTrackedCars(processedCars);
+      } catch (error) {
+        console.error('Error fetching tracked cars:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load your tracked cars."
+        });
       }
     };
     
-    updateMap();
-  }, [carsWithLocation, selectedCar]);
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!selectedCar || !postcode) {
+    fetchTrackedCars();
+  }, [navigate]);
+  
+  const generateRandomPostcode = () => {
+    const prefixes = ['SW', 'NW', 'SE', 'NE', 'W', 'E', 'N', 'S', 'B', 'M', 'L', 'G'];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const number = Math.floor(Math.random() * 20) + 1;
+    const suffix = Math.floor(Math.random() * 9) + 1;
+    return `${prefix}${number} ${suffix}XX`;
+  };
+  
+  const searchPostcode = async () => {
+    if (!postcode.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please select a car and enter a postcode.",
-        variant: "destructive"
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a postcode."
+      });
+      return;
+    }
+    
+    if (!targetPrice.trim() || isNaN(parseFloat(targetPrice))) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please enter a valid target price."
       });
       return;
     }
@@ -243,299 +134,248 @@ const RadiusMap = () => {
     setIsLoading(true);
     
     try {
-      // In a real app, you would use a geocoding API to convert the postcode to coordinates
-      // For this example, we'll use a mock API response
-      const response = await fetch(`https://api.postcodes.io/postcodes/${postcode}`);
-      const data = await response.json();
+      // Geocode the postcode (in a real app this would call an API)
+      // For demo, we'll use a random UK location
+      const lat = 51.5 + Math.random() * 2;
+      const lng = -1.9 + Math.random() * 3;
       
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to geocode postcode");
-      }
-      
-      const { latitude, longitude } = data.result;
-      
-      // Update the car with location and price comparison data
-      const selectedCarData = trackedCars.find(car => car.id === selectedCar);
-      
-      if (selectedCarData) {
-        const marketPrice = selectedCarData.last_price || 25000; // Example value if none exists
-        const userTargetPrice = parseInt(targetPrice) || marketPrice;
+      if (map.current) {
+        map.current.flyTo({
+          center: [lng, lat],
+          zoom: 10,
+          essential: true
+        });
         
-        const priceDifference = userTargetPrice - marketPrice;
-        const percentageDiff = (priceDifference / marketPrice) * 100;
+        // Clear existing markers
+        const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
+        existingMarkers.forEach(marker => marker.remove());
         
-        const updatedCar: TrackedCarWithLocation = {
-          ...selectedCarData,
-          location: {
-            postcode,
-            lat: latitude,
-            lng: longitude
-          },
-          priceComparison: {
-            targetPrice: userTargetPrice,
-            marketPrice: marketPrice,
-            difference: priceDifference,
-            percentageDifference: percentageDiff
-          }
-        };
+        // Remove existing circles if any
+        if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
+        if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
+        if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
         
-        // Update the cars array
-        const updatedCars = carsWithLocation.filter(car => car.id !== selectedCar);
-        setCarsWithLocation([...updatedCars, updatedCar]);
+        // Add a marker for the searched postcode
+        const markerEl = document.createElement('div');
+        markerEl.className = 'marker';
+        markerEl.style.width = '20px';
+        markerEl.style.height = '20px';
+        markerEl.style.borderRadius = '50%';
+        markerEl.style.backgroundColor = '#3b82f6';
+        markerEl.style.border = '2px solid white';
+        
+        new mapboxgl.Marker(markerEl)
+          .setLngLat([lng, lat])
+          .setPopup(new mapboxgl.Popup().setHTML(`<p><strong>Postcode:</strong> ${postcode}</p>`))
+          .addTo(map.current);
+          
+        // Add radius circles
+        // First, ensure the map has a source
+        if (map.current.loaded()) {
+          addCircles(map.current, [lng, lat], parseFloat(targetPrice));
+        } else {
+          map.current.once('load', () => {
+            addCircles(map.current!, [lng, lat], parseFloat(targetPrice));
+          });
+        }
         
         toast({
-          title: "Location updated",
-          description: `The location for ${selectedCarData.brand} ${selectedCarData.model} has been set.`
+          title: "Map Updated",
+          description: `Showing price radius for postcode ${postcode}`
         });
       }
     } catch (error) {
-      console.error("Error geocoding postcode:", error);
+      console.error('Error searching postcode:', error);
       toast({
+        variant: "destructive",
         title: "Error",
-        description: "Failed to geocode the postcode. Please check it and try again.",
-        variant: "destructive"
+        description: "Failed to search for the postcode."
       });
     } finally {
       setIsLoading(false);
     }
   };
   
-  // Handle map token submission
-  const handleMapTokenSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!mapboxToken) {
-      toast({
-        title: "Token required",
-        description: "Please enter your Mapbox access token.",
-        variant: "destructive"
-      });
-      return;
-    }
+  const addCircles = (map: Map, center: [number, number], price: number) => {
+    // Add a source for the circles
+    map.addSource('radius-source', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [
+          // Best price radius (inner circle) - green
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Point',
+              coordinates: center
+            }
+          },
+          // Competitive radius (outer circle) - orange
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Point',
+              coordinates: center
+            }
+          }
+        ]
+      }
+    });
     
-    // Token is already set in state and will trigger map initialization
-    toast({
-      title: "Initializing map",
-      description: "Please wait while we set up the map..."
+    // Add a transparent fill layer for the competitive radius
+    map.addLayer({
+      id: 'competitive-radius',
+      type: 'circle',
+      source: 'radius-source',
+      paint: {
+        'circle-radius': {
+          stops: [
+            [0, 0],
+            [20, 3000000] // Scaled for zoom level
+          ],
+          base: 2
+        },
+        'circle-color': '#f97316',
+        'circle-opacity': 0.2,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#f97316'
+      },
+      filter: ['==', '$index', 1]
+    });
+    
+    // Add a transparent fill layer for the best price radius
+    map.addLayer({
+      id: 'best-price-radius',
+      type: 'circle',
+      source: 'radius-source',
+      paint: {
+        'circle-radius': {
+          stops: [
+            [0, 0],
+            [20, 1500000] // Scaled for zoom level, smaller than competitive radius
+          ],
+          base: 2
+        },
+        'circle-color': '#22c55e',
+        'circle-opacity': 0.2,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#22c55e'
+      },
+      filter: ['==', '$index', 0]
+    });
+    
+    // Add car markers
+    trackedCars.forEach(car => {
+      if (car.location) {
+        const isPriceCompetitive = car.priceComparison && car.priceComparison.marketPrice <= price;
+        const isBestPrice = car.priceComparison && car.priceComparison.marketPrice <= price * 0.9;
+        
+        const markerEl = document.createElement('div');
+        markerEl.className = 'car-marker';
+        markerEl.style.width = '30px';
+        markerEl.style.height = '30px';
+        markerEl.style.borderRadius = '50%';
+        markerEl.style.backgroundColor = isBestPrice ? '#22c55e' : isPriceCompetitive ? '#f97316' : '#ef4444';
+        markerEl.style.border = '2px solid white';
+        markerEl.style.display = 'flex';
+        markerEl.style.alignItems = 'center';
+        markerEl.style.justifyContent = 'center';
+        markerEl.style.color = 'white';
+        markerEl.style.fontWeight = 'bold';
+        markerEl.style.fontSize = '16px';
+        markerEl.innerHTML = '🚗';
+        
+        const popupHTML = `
+          <div class="p-2">
+            <h3 class="font-bold">${car.brand} ${car.model}</h3>
+            <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
+            <p><strong>Target:</strong> £${car.priceComparison?.targetPrice.toLocaleString() || 'N/A'}</p>
+            <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
+          </div>
+        `;
+        
+        new mapboxgl.Marker(markerEl)
+          .setLngLat([car.location.lng, car.location.lat])
+          .setPopup(new mapboxgl.Popup().setHTML(popupHTML))
+          .addTo(map);
+      }
     });
   };
-
-  if (isLoadingCars) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Navbar />
-        <div className="flex-grow flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <span className="ml-2">Loading your data...</span>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-
+  
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      <div className="bg-primary text-primary-foreground py-4 px-6 flex items-center">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="mr-4 hover:bg-primary-foreground/10"
+          onClick={() => navigate('/dashboard')}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
+        </Button>
+        <h1 className="text-xl font-bold">Car Price Radius Map</h1>
+      </div>
       
-      <main className="flex-grow py-16 container mx-auto px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">Radius Price Map</h1>
-            <p className="text-muted-foreground">
-              Visualize your competitive pricing radius based on location and price comparison.
-            </p>
-          </div>
-          
-          {showMapTokenInput ? (
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle>Mapbox Access Token Required</CardTitle>
-                <CardDescription>
-                  To use the map feature, please enter your Mapbox access token. 
-                  You can get one by signing up at <a href="https://mapbox.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">mapbox.com</a>.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleMapTokenSubmit} className="space-y-4">
-                  <div>
-                    <Input
-                      type="text"
-                      placeholder="Enter your Mapbox access token"
-                      value={mapboxToken}
-                      onChange={(e) => setMapboxToken(e.target.value)}
-                      className="w-full"
-                    />
-                  </div>
-                  <Button type="submit">Initialize Map</Button>
-                </form>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-6">
-              <Card className="md:col-span-1">
-                <CardHeader>
-                  <CardTitle>Car Location</CardTitle>
-                  <CardDescription>
-                    Set the location and target price for your vehicle.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Select Car</label>
-                      <Select 
-                        value={selectedCar || ""} 
-                        onValueChange={setSelectedCar}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a car" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {trackedCars.map(car => (
-                            <SelectItem key={car.id} value={car.id}>
-                              {car.brand} {car.model} ({car.year || 'N/A'})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium">Postcode</label>
-                      <Input
-                        type="text"
-                        placeholder="e.g. SW1A 1AA"
-                        value={postcode}
-                        onChange={(e) => setPostcode(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-sm font-medium">Your Target Price (£)</label>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <Info className="h-4 w-4" />
-                              <span className="sr-only">Info</span>
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80">
-                            <div className="space-y-2">
-                              <h4 className="font-medium">About Target Price</h4>
-                              <p className="text-sm text-muted-foreground">
-                                This is the price you want to sell the car for. We'll compare it with the estimated market price to show you your competitive positioning.
-                              </p>
-                            </div>
-                          </PopoverContent>
-                        </Popover>
-                      </div>
-                      <Input
-                        type="number"
-                        placeholder="e.g. 25000"
-                        value={targetPrice}
-                        onChange={(e) => setTargetPrice(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Leave blank to use the current market price.
-                      </p>
-                    </div>
-                    
-                    <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Updating...
-                        </>
-                      ) : (
-                        <>
-                          <MapPin className="mr-2 h-4 w-4" />
-                          Update Location
-                        </>
-                      )}
-                    </Button>
-                  </form>
-                  
-                  {carsWithLocation.length > 0 && (
-                    <div className="mt-6 pt-6 border-t">
-                      <h3 className="text-lg font-medium mb-3">Tracked Locations</h3>
-                      <div className="space-y-3 max-h-60 overflow-y-auto">
-                        {carsWithLocation.map(car => (
-                          <div 
-                            key={car.id}
-                            className={`p-3 rounded-md cursor-pointer ${
-                              selectedCar === car.id ? 'bg-primary/10 border border-primary/30' : 'bg-muted'
-                            }`}
-                            onClick={() => setSelectedCar(car.id)}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center">
-                                <Car className="h-4 w-4 mr-2 text-primary" />
-                                <span className="font-medium">{car.brand} {car.model}</span>
-                              </div>
-                              {selectedCar === car.id ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </div>
-                            
-                            {selectedCar === car.id && car.location && (
-                              <div className="mt-2 pl-6 text-sm space-y-1">
-                                <p className="flex items-center">
-                                  <MapPin className="h-3 w-3 mr-1 text-muted-foreground" />
-                                  {car.location.postcode}
-                                </p>
-                                {car.priceComparison && (
-                                  <div className="space-y-1 pt-1">
-                                    <p>
-                                      Your: <span className="font-medium">£{car.priceComparison.targetPrice.toLocaleString()}</span>
-                                    </p>
-                                    <p>
-                                      Market: <span className="font-medium">£{car.priceComparison.marketPrice.toLocaleString()}</span>
-                                    </p>
-                                    <p className={car.priceComparison.difference > 0 ? 'text-red-500' : 'text-green-500'}>
-                                      {car.priceComparison.difference > 0 ? 'Above' : 'Below'} market: 
-                                      <span className="font-medium"> {Math.abs(car.priceComparison.percentageDifference).toFixed(1)}%</span>
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+      <div className="flex-1 flex flex-col md:flex-row p-4 gap-4">
+        <div className="w-full md:w-96">
+          <Card>
+            <CardHeader>
+              <CardTitle>Price Radius Search</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="postcode">Postcode</Label>
+                <Input 
+                  id="postcode" 
+                  placeholder="e.g. SW1A 1AA" 
+                  value={postcode}
+                  onChange={(e) => setPostcode(e.target.value)}
+                />
+              </div>
               
-              <Card className="md:col-span-2">
-                <CardHeader>
-                  <CardTitle>Price Radius Visualization</CardTitle>
-                  <CardDescription>
-                    Green area shows where your price is the cheapest, orange area shows where you're competitive.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div ref={mapContainer} className="h-[600px] rounded-md overflow-hidden border" />
-                  <div className="mt-4 flex items-center gap-4 text-sm">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
-                      <span>Best price radius</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full bg-orange-500 mr-2"></div>
-                      <span>Competitive radius</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+              <div className="space-y-2">
+                <Label htmlFor="targetPrice">Target Price (£)</Label>
+                <Input 
+                  id="targetPrice" 
+                  type="number" 
+                  placeholder="e.g. 25000" 
+                  value={targetPrice}
+                  onChange={(e) => setTargetPrice(e.target.value)}
+                />
+              </div>
+              
+              <Button 
+                className="w-full" 
+                onClick={searchPostcode}
+                disabled={isLoading}
+              >
+                {isLoading ? 'Searching...' : 'Search'}
+              </Button>
+              
+              <div className="border rounded-md p-3 space-y-2 mt-6">
+                <h3 className="font-medium">Map Legend</h3>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-green-500"></div>
+                  <span className="text-sm">Best Price Zone (≤10% below target)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-orange-500"></div>
+                  <span className="text-sm">Competitive Zone (at or below target)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full bg-red-500"></div>
+                  <span className="text-sm">Above Target Price</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-      </main>
-      
-      <Footer />
+        
+        <div className="flex-1 bg-muted rounded-lg overflow-hidden min-h-[500px]" ref={mapContainer} />
+      </div>
     </div>
   );
 };

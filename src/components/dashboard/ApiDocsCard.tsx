@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -746,17 +745,6 @@ func main() {
   "message": "Vehicle added successfully"
 }`
     }
-  ];
-
-  const languageOptions = [
-    { value: 'curl', label: 'cURL' },
-    { value: 'javascript', label: 'JavaScript' },
-    { value: 'python', label: 'Python' },
-    { value: 'ruby', label: 'Ruby' },
-    { value: 'php', label: 'PHP' },
-    { value: 'java', label: 'Java' },
-    { value: 'csharp', label: 'C#' },
-    { value: 'go', label: 'Go' },
   ];
 
   return (
