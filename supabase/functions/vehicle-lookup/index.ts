@@ -71,8 +71,12 @@ serve(async (req) => {
         if (!dvlaApiKey) {
           console.error('DVLA API key not configured in environment')
           return new Response(
-            JSON.stringify({ error: 'DVLA API key not configured' }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+            JSON.stringify({ 
+              error: 'DVLA API key not configured',
+              source: 'mock_data',
+              vehicle: getMockVehicleData(registration)
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           )
         }
         
@@ -114,10 +118,29 @@ serve(async (req) => {
                 JSON.stringify({ error: 'Vehicle not found with that registration number' }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
               );
+            } else if (response.status === 403) {
+              console.error('Forbidden error from DVLA API. API key may be invalid or expired.');
+              // Return a more specific error for forbidden
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Access to DVLA API forbidden. The API key may be invalid or expired.',
+                  source: 'mock_data',
+                  vehicle: getMockVehicleData(registrationClean)
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+              );
             }
             
-            // For other errors, throw to be caught by the catch block
-            throw new Error(errorData.message || errorData.errors?.[0]?.message || `DVLA API responded with status ${response.status}`);
+            // For other errors, fall back to mock data with the error message
+            const errorMessage = errorData.message || `DVLA API error: ${response.status} ${response.statusText}`;
+            return new Response(
+              JSON.stringify({ 
+                error: errorMessage,
+                source: 'mock_data',
+                vehicle: getMockVehicleData(registrationClean)
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            );
           }
           
           // Try to parse response body
@@ -129,7 +152,14 @@ serve(async (req) => {
             dvlaData = JSON.parse(responseText);
           } catch (parseError) {
             console.error('Failed to parse DVLA API response:', parseError);
-            throw new Error('Invalid response format from DVLA API');
+            return new Response(
+              JSON.stringify({ 
+                error: 'Invalid response format from DVLA API',
+                source: 'mock_data',
+                vehicle: getMockVehicleData(registrationClean)
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+            );
           }
           
           console.log('Successfully retrieved DVLA data:', JSON.stringify(dvlaData).substring(0, 200));
@@ -165,23 +195,9 @@ serve(async (req) => {
           // This helps during development or if the API temporarily fails
           console.log('Falling back to mock data for registration:', registrationClean);
           
-          const mockVehicleData = {
-            registration: registrationClean,
-            make: 'Ford',
-            model: 'Focus',
-            color: 'Blue',
-            fuelType: 'Petrol',
-            year: '2022',
-            engineSize: '1.0L',
-            motStatus: 'Valid',
-            motExpiryDate: '2025-10-15',
-            taxStatus: 'Taxed',
-            taxDueDate: '2026-01-01',
-          };
-          
           return new Response(
             JSON.stringify({ 
-              vehicle: mockVehicleData, 
+              vehicle: getMockVehicleData(registrationClean), 
               warning: 'Using mock data due to API error',
               error: dvlaError.message,
               source: 'mock_data'
@@ -276,3 +292,20 @@ serve(async (req) => {
     )
   }
 })
+
+// Function to generate mock data for a registration
+function getMockVehicleData(registration) {
+  return {
+    registration: registration,
+    make: 'Ford',
+    model: 'Focus',
+    color: 'Blue',
+    fuelType: 'Petrol',
+    year: '2022',
+    engineSize: '1.0L',
+    motStatus: 'Valid',
+    motExpiryDate: '2025-10-15',
+    taxStatus: 'Taxed',
+    taxDueDate: '2026-01-01',
+  };
+}

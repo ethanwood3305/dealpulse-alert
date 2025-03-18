@@ -7,6 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 import { Loader2, SearchIcon, AlertCircleIcon, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrackedCars, AddCarParams } from "@/hooks/use-tracked-cars";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 interface VehicleLookupProps {
   userId: string;
@@ -66,7 +67,19 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       }
 
       if (data.error) {
+        console.error("Error from DVLA API:", data.error);
         setError(data.error);
+        
+        // If we still got vehicle data (mock data), show it despite the error
+        if (data.vehicle && data.source === 'mock_data') {
+          setVehicleDetails(data.vehicle);
+          setIsUsingMockData(true);
+          toast({
+            title: "Using Demo Data",
+            description: "API connection failed. Showing sample vehicle data instead.",
+            variant: "default"
+          });
+        }
         return;
       }
 
@@ -171,25 +184,25 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           )}
 
           {error && (
-            <div className="bg-destructive/10 p-4 rounded-md flex items-start space-x-2">
-              <AlertCircleIcon className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-medium text-destructive">Lookup failed</p>
-                <p className="text-sm text-muted-foreground">{error}</p>
-              </div>
-            </div>
+            <Alert variant="destructive">
+              <AlertCircleIcon className="h-4 w-4" />
+              <AlertTitle>Lookup failed</AlertTitle>
+              <AlertDescription>
+                {error.includes("forbidden") || error.includes("Forbidden") ? 
+                  "The DVLA API access is currently unavailable. This could be due to an invalid or expired API key. The system will show demo data instead." : 
+                  error}
+              </AlertDescription>
+            </Alert>
           )}
 
           {isUsingMockData && vehicleDetails && (
-            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 flex items-start space-x-2 dark:bg-amber-900/30 dark:border-amber-800">
-              <Info className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5 dark:text-amber-400" />
-              <div>
-                <p className="font-medium text-amber-800 dark:text-amber-400">Using demonstration data</p>
-                <p className="text-sm text-amber-700 dark:text-amber-500">
-                  The actual DVLA API couldn't be reached. Mock data is being shown instead.
-                </p>
-              </div>
-            </div>
+            <Alert className="bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/30 dark:border-amber-800 dark:text-amber-400">
+              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertTitle>Using demonstration data</AlertTitle>
+              <AlertDescription className="text-amber-700 dark:text-amber-500">
+                The actual DVLA API couldn't be reached. Demo data is being shown instead.
+              </AlertDescription>
+            </Alert>
           )}
 
           {vehicleDetails && (
