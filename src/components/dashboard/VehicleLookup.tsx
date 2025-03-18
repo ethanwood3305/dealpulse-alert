@@ -79,7 +79,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           toast({
             title: "Using Mock Data",
             description: "We couldn't connect to the DVLA API, so we're showing sample data instead.",
-            variant: "warning"
+            // Changed from "warning" to "default" as "warning" is not a supported variant
+            variant: "default"
           });
         }
       } else {
