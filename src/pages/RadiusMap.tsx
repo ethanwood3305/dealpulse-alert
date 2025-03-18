@@ -18,11 +18,15 @@ const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
 
 // Ensure the Mapbox token is set
-if (!MAPBOX_TOKEN) {
-  console.error('MAPBOX_TOKEN is missing. Please make sure it is defined in src/integrations/supabase/client.ts');
+if (!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') {
+  console.error('MAPBOX_TOKEN is missing or invalid. Please make sure it is correctly defined in src/integrations/supabase/client.ts');
 }
 
-mapboxgl.accessToken = MAPBOX_TOKEN;
+// Make sure token is available before setting it
+if (MAPBOX_TOKEN && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN') {
+  console.log('Setting Mapbox token:', MAPBOX_TOKEN.substring(0, 8) + '...');
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+}
 
 const RadiusMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -57,19 +61,25 @@ const RadiusMap = () => {
   useEffect(() => {
     if (mapContainer.current && !map.current) {
       console.log('Initializing map with container:', mapContainer.current);
-      console.log('Using Mapbox token:', MAPBOX_TOKEN);
       
       try {
-        if (!MAPBOX_TOKEN) {
-          throw new Error('Mapbox token is not defined');
+        // Check for valid Mapbox token
+        if (!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') {
+          throw new Error('Mapbox token is not defined or is invalid');
         }
         
+        // Log token status for debugging
+        console.log('Mapbox token status:', MAPBOX_TOKEN ? 'Available' : 'Missing');
+        
+        // Initialize map with error handling
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v12',
           center: DEFAULT_CENTER,
           zoom: DEFAULT_ZOOM,
         });
+        
+        console.log('Map initialization started');
         
         map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
         
@@ -81,21 +91,31 @@ const RadiusMap = () => {
         
         map.current.on('error', (e) => {
           console.error('Mapbox error:', e);
-          setMapError('There was an error loading the map. Please try refreshing the page.');
+          const errorMessage = e.error && e.error.message 
+            ? e.error.message 
+            : 'There was an error loading the map. Please try refreshing the page.';
+          
+          setMapError(errorMessage);
           setIsMapLoading(false);
+          
+          if (errorMessage.includes('API key')) {
+            setMapError('Invalid Mapbox API key. Please check the configuration.');
+          }
+          
           toast({
             title: "Map Error",
-            description: "There was an error loading the map. Please try refreshing the page.",
+            description: errorMessage,
             variant: "destructive"
           });
         });
       } catch (error: any) {
         console.error('Error initializing map:', error);
-        setMapError(error.message || 'Failed to initialize the map');
+        const errorMessage = error.message || 'Failed to initialize the map';
+        setMapError(errorMessage);
         setIsMapLoading(false);
         toast({
           title: "Map Error",
-          description: "Failed to initialize the map. Please check your connection and try again.",
+          description: errorMessage,
           variant: "destructive" 
         });
       }
@@ -630,6 +650,15 @@ const RadiusMap = () => {
                       <span className="text-sm">Dealer vehicle</span>
                     </div>
                   </div>
+                  
+                  {(!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') && (
+                    <div className="border border-yellow-500 rounded-md p-3 bg-yellow-50 dark:bg-yellow-900/10">
+                      <h3 className="font-medium text-yellow-700 mb-2">Missing Mapbox Token</h3>
+                      <p className="text-sm text-yellow-700">
+                        A valid Mapbox token is required for the map to work. Please ensure it's correctly set up in the application.
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
