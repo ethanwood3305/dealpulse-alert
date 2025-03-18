@@ -36,14 +36,22 @@ serve(async (req) => {
     const brandId = url.searchParams.get('brandId');
     const modelId = url.searchParams.get('modelId');
 
+    // Allow both GET method with query params and POST method with JSON body
+    let params = {};
+    if (req.method === 'POST') {
+      const body = await req.json();
+      params = body;
+    }
+
     // If modelId is provided, fetch engine types for that model
-    if (modelId) {
-      console.log(`Fetching engine types for model ID: ${modelId}`);
+    const requestModelId = modelId || params.modelId;
+    if (requestModelId) {
+      console.log(`Fetching engine types for model ID: ${requestModelId}`);
       
       const { data: engineTypes, error: engineTypesError } = await supabaseAdmin
         .from('engine_types')
         .select('id, name, fuel_type, capacity, power')
-        .eq('model_id', modelId)
+        .eq('model_id', requestModelId)
         .order('name');
 
       if (engineTypesError) {
@@ -67,13 +75,14 @@ serve(async (req) => {
     }
     
     // If brandId is provided, fetch models for that brand
-    else if (brandId) {
-      console.log(`Fetching models for brand ID: ${brandId}`);
+    const requestBrandId = brandId || params.brandId;
+    if (requestBrandId) {
+      console.log(`Fetching models for brand ID: ${requestBrandId}`);
       
       const { data: models, error: modelsError } = await supabaseAdmin
         .from('car_models')
         .select('id, name')
-        .eq('brand_id', brandId)
+        .eq('brand_id', requestBrandId)
         .order('name');
 
       if (modelsError) {

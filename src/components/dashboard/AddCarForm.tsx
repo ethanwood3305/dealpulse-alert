@@ -106,8 +106,8 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         }
         
         const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
-          method: 'GET',
-          queryParams: { brandId: selectedBrandObj.id }
+          method: 'POST',
+          body: { brandId: selectedBrandObj.id }
         });
         
         if (error) {
@@ -174,8 +174,8 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         }
         
         const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
-          method: 'GET',
-          queryParams: { modelId: selectedModelObj.id }
+          method: 'POST',
+          body: { modelId: selectedModelObj.id }
         });
         
         if (error) {
