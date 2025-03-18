@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { AlertCircle, ChevronDown, Copy, Database, Eye, EyeOff, Key, Lock, RefreshCw } from "lucide-react";
+import { AlertCircle, ChevronDown, Copy, Database, Eye, EyeOff, Key, Lock, RefreshCw, Terminal, Code, Globe } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface ApiDocsCardProps {
@@ -25,6 +25,12 @@ interface CodeExample {
   endpoint: string;
   code: Record<CodeLanguage, string>;
   response: string;
+}
+
+interface LanguageOption {
+  value: CodeLanguage;
+  label: string;
+  icon: JSX.Element;
 }
 
 export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: ApiDocsCardProps) => {
@@ -65,6 +71,18 @@ export const ApiDocsCard = ({ apiKey, userId, hasApiAccess, onGenerateKey }: Api
   const maskedApiKey = apiKey 
     ? `${apiKey.substring(0, 4)}${'•'.repeat(Math.max(0, apiKey.length - 8))}${apiKey.substring(apiKey.length - 4)}`
     : 'No API key generated yet';
+
+  // Language options with icons
+  const languageOptions: LanguageOption[] = [
+    { value: 'curl', label: 'cURL', icon: <Terminal className="h-4 w-4 mr-2" /> },
+    { value: 'javascript', label: 'JavaScript', icon: <Code className="h-4 w-4 mr-2 text-yellow-400" /> },
+    { value: 'python', label: 'Python', icon: <Code className="h-4 w-4 mr-2 text-blue-500" /> },
+    { value: 'ruby', label: 'Ruby', icon: <Code className="h-4 w-4 mr-2 text-red-500" /> },
+    { value: 'php', label: 'PHP', icon: <Code className="h-4 w-4 mr-2 text-purple-500" /> },
+    { value: 'java', label: 'Java', icon: <Code className="h-4 w-4 mr-2 text-orange-500" /> },
+    { value: 'csharp', label: 'C#', icon: <Code className="h-4 w-4 mr-2 text-green-500" /> },
+    { value: 'go', label: 'Go', icon: <Globe className="h-4 w-4 mr-2 text-cyan-500" /> },
+  ];
 
   // API examples with multiple language options
   const examples: CodeExample[] = [
@@ -862,11 +880,15 @@ func main() {
                   <label className="block text-sm font-medium mb-2">Programming Language</label>
                   <Select value={codeLanguage} onValueChange={(value) => setCodeLanguage(value as CodeLanguage)}>
                     <SelectTrigger className="w-full md:w-64">
-                      <SelectValue placeholder="Select language" />
+                      <SelectValue placeholder="Select language">
+                        {languageOptions.find(lang => lang.value === codeLanguage)?.icon}
+                        {languageOptions.find(lang => lang.value === codeLanguage)?.label}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {languageOptions.map((lang) => (
-                        <SelectItem key={lang.value} value={lang.value}>
+                        <SelectItem key={lang.value} value={lang.value} className="flex items-center">
+                          {lang.icon}
                           {lang.label}
                         </SelectItem>
                       ))}
