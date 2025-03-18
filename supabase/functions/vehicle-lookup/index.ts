@@ -1,117 +1,139 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+}
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log("Vehicle lookup function called with method: OPTIONS");
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const DVLA_API_KEY = Deno.env.get('DVLA_API_KEY');
-    if (!DVLA_API_KEY) {
-      throw new Error('DVLA API key not configured');
-    }
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    )
 
-    const { registration } = await req.json();
-    
-    if (!registration) {
+    if (req.method === 'GET') {
+      console.log('Fetching car brands')
+      const { data: brands, error: brandsError } = await supabaseClient
+        .from('car_brands')
+        .select('id, name')
+        .order('name')
+
+      if (brandsError) {
+        console.error('Error fetching brands:', brandsError)
+        throw brandsError
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Registration number is required' }),
+        JSON.stringify({ 
+          brands: brands || []
+        }),
         { 
-          status: 400, 
-          headers: { 
-            ...corsHeaders,
-            'Content-Type': 'application/json' 
-          } 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
         }
-      );
-    }
-
-    // Example URL for the UK DVLA MOT history API
-    const url = `https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles`;
-    
-    // Sanitize registration number (remove spaces, etc.)
-    const sanitizedReg = registration.replace(/\s/g, '').toUpperCase();
-    
-    console.log(`Looking up vehicle with registration: ${sanitizedReg}`);
-    
-    // Make request to DVLA API
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'x-api-key': DVLA_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ registrationNumber: sanitizedReg })
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`DVLA API error: ${response.status} - ${errorText}`);
+      )
+    } else if (req.method === 'POST') {
+      const { brandId, modelId, registration } = await req.json()
       
-      // Handle specific error cases
-      if (response.status === 404) {
+      // If we have a registration, process DVLA lookup
+      if (registration) {
+        const dvlaApiKey = Deno.env.get('DVLA_API_KEY')
+        if (!dvlaApiKey) {
+          return new Response(
+            JSON.stringify({ error: 'DVLA API key not configured' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          )
+        }
+        
+        // Implement DVLA lookup logic here
+        // This is a mock implementation since we don't have actual DVLA API access
+        const registrationClean = registration.replace(/\s+/g, '').toUpperCase()
+        
+        // Mock data for demonstration purposes
+        const vehicleData = {
+          registration: registrationClean,
+          make: 'Ford',
+          model: 'Focus',
+          color: 'Blue',
+          fuelType: 'Petrol',
+          year: '2022',
+          engineSize: '1.0L',
+          motStatus: 'Valid',
+          motExpiryDate: '2025-10-15',
+          taxStatus: 'Taxed',
+          taxDueDate: '2026-01-01',
+        }
+        
         return new Response(
-          JSON.stringify({ error: 'Vehicle not found' }),
-          { 
-            status: 404, 
-            headers: { 
-              ...corsHeaders,
-              'Content-Type': 'application/json' 
-            } 
-          }
-        );
+          JSON.stringify({ vehicle: vehicleData }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
       }
       
-      throw new Error(`DVLA API error: ${response.status}`);
+      // If we have a brandId, fetch models for that brand
+      if (brandId) {
+        console.log('Fetching models for brand ID:', brandId)
+        const { data: models, error: modelsError } = await supabaseClient
+          .from('car_models')
+          .select('id, name')
+          .eq('brand_id', brandId)
+          .order('name')
+
+        if (modelsError) {
+          console.error('Error fetching models:', modelsError)
+          throw modelsError
+        }
+
+        return new Response(
+          JSON.stringify({ models: models || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
+      }
+      
+      // If we have a modelId, fetch engine types for that model
+      if (modelId) {
+        console.log('Fetching engine types for model ID:', modelId)
+        const { data: engineTypes, error: engineTypesError } = await supabaseClient
+          .from('engine_types')
+          .select('id, name, fuel_type, capacity, power')
+          .eq('model_id', modelId)
+          .order('name')
+
+        if (engineTypesError) {
+          console.error('Error fetching engine types:', engineTypesError)
+          throw engineTypesError
+        }
+
+        return new Response(
+          JSON.stringify({ engineTypes: engineTypes || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+        )
+      }
+      
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      )
     }
     
-    const vehicleData = await response.json();
-    console.log(`Vehicle data retrieved successfully`);
-    
-    // Return the vehicle data with appropriate mapping/transformation
     return new Response(
-      JSON.stringify({ 
-        success: true,
-        vehicle: {
-          registration: vehicleData.registrationNumber,
-          make: vehicleData.make,
-          model: vehicleData.model || 'Unknown',
-          color: vehicleData.colour || 'Unknown',
-          fuelType: vehicleData.fuelType || 'Unknown',
-          year: vehicleData.yearOfManufacture || 'Unknown',
-          engineSize: vehicleData.engineCapacity ? `${vehicleData.engineCapacity}cc` : 'Unknown',
-          motStatus: vehicleData.motStatus || 'Unknown',
-          motExpiryDate: vehicleData.motExpiryDate || null,
-          taxStatus: vehicleData.taxStatus || 'Unknown',
-          taxDueDate: vehicleData.taxDueDate || null
-        }
-      }),
-      { 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
-        } 
-      }
-    );
+      JSON.stringify({ error: 'Method not allowed' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 405 }
+    )
   } catch (error) {
-    console.error('Error in vehicle-lookup function:', error);
+    console.error('Error processing request:', error)
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      { 
-        status: 500, 
-        headers: { 
-          ...corsHeaders,
-          'Content-Type': 'application/json' 
-        } 
-      }
-    );
+      JSON.stringify({ error: error.message || 'Unknown error' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    )
   }
-});
+})

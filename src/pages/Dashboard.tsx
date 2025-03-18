@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -11,6 +12,7 @@ import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
 import { AddCarForm } from '@/components/dashboard/AddCarForm';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
+import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import * as z from "zod";
@@ -28,6 +30,7 @@ const Dashboard = () => {
   const [isAddingCar, setIsAddingCar] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [activeTab, setActiveTab] = useState<'form' | 'lookup'>('form');
   const navigate = useNavigate();
   
   const { 
@@ -44,7 +47,8 @@ const Dashboard = () => {
     addCar,
     deleteCar,
     addTag,
-    removeTag
+    removeTag,
+    refreshCars
   } = useTrackedCars(user?.id);
 
   const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars);
@@ -161,6 +165,14 @@ const Dashboard = () => {
     document.getElementById('add-car-form')?.scrollIntoView({
       behavior: 'smooth'
     });
+    setActiveTab('form');
+  };
+  
+  const scrollToVehicleLookup = () => {
+    document.getElementById('vehicle-lookup')?.scrollIntoView({
+      behavior: 'smooth'
+    });
+    setActiveTab('lookup');
   };
 
   const manuallyRefreshSubscription = () => {
@@ -179,6 +191,11 @@ const Dashboard = () => {
         });
       }
     });
+  };
+
+  const handleCarAdded = () => {
+    refreshCars();
+    refreshSubscription();
   };
 
   if (isLoading) {
@@ -229,11 +246,37 @@ const Dashboard = () => {
             />
           </div>
           
-          <AddCarForm 
-            onSubmit={onSubmitCar}
-            isAddingCar={isAddingCar}
-            canAddMoreCars={canAddMoreCars}
-          />
+          <div className="mb-6">
+            <div className="flex border-b border-gray-200 mb-6">
+              <button
+                className={`py-2 px-4 text-center ${activeTab === 'form' ? 'border-b-2 border-primary font-medium text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('form')}
+              >
+                Add Vehicle Manually
+              </button>
+              <button
+                className={`py-2 px-4 text-center ${activeTab === 'lookup' ? 'border-b-2 border-primary font-medium text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+                onClick={() => setActiveTab('lookup')}
+              >
+                DVLA Registration Lookup
+              </button>
+            </div>
+            
+            <div className={activeTab === 'form' ? 'block' : 'hidden'}>
+              <AddCarForm 
+                onSubmit={onSubmitCar}
+                isAddingCar={isAddingCar}
+                canAddMoreCars={canAddMoreCars}
+              />
+            </div>
+            
+            <div id="vehicle-lookup" className={activeTab === 'lookup' ? 'block' : 'hidden'}>
+              <VehicleLookup 
+                userId={user?.id}
+                onCarAdded={handleCarAdded}
+              />
+            </div>
+          </div>
           
           <TrackedCarsTable 
             trackedCars={trackedCars}

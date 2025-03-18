@@ -1,10 +1,11 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -30,11 +31,17 @@ interface AddCarFormProps {
 
 export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarFormProps) => {
   const [brands, setBrands] = useState<{id: string, name: string}[]>([]);
+  const [filteredBrands, setFilteredBrands] = useState<{id: string, name: string}[]>([]);
   const [models, setModels] = useState<{id: string, name: string}[]>([]);
+  const [filteredModels, setFilteredModels] = useState<{id: string, name: string}[]>([]);
   const [engineTypes, setEngineTypes] = useState<{id: string, name: string, fuel_type: string, capacity?: string, power?: string}[]>([]);
+  const [filteredEngineTypes, setFilteredEngineTypes] = useState<{id: string, name: string, fuel_type: string, capacity?: string, power?: string}[]>([]);
   const [isLoadingBrands, setIsLoadingBrands] = useState(false);
   const [isLoadingModels, setIsLoadingModels] = useState(false);
   const [isLoadingEngineTypes, setIsLoadingEngineTypes] = useState(false);
+  const [brandSearchTerm, setBrandSearchTerm] = useState("");
+  const [modelSearchTerm, setModelSearchTerm] = useState("");
+  const [engineSearchTerm, setEngineSearchTerm] = useState("");
   
   const form = useForm<z.infer<typeof carSchema>>({
     resolver: zodResolver(carSchema),
@@ -65,10 +72,13 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         if (data?.brands && data.brands.length > 0) {
           console.log("Found brands from database:", data.brands.length);
           setBrands(data.brands);
+          setFilteredBrands(data.brands);
         } else {
           console.log("No brands returned from API, using hardcoded list");
           const defaultBrands = Object.keys(carBrandsData);
-          setBrands(defaultBrands.map(name => ({ id: name, name })));
+          const formattedBrands = defaultBrands.map(name => ({ id: name, name }));
+          setBrands(formattedBrands);
+          setFilteredBrands(formattedBrands);
         }
       } catch (error) {
         console.error('Error fetching car brands:', error);
@@ -79,7 +89,9 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         });
         
         const defaultBrands = Object.keys(carBrandsData);
-        setBrands(defaultBrands.map(name => ({ id: name, name })));
+        const formattedBrands = defaultBrands.map(name => ({ id: name, name }));
+        setBrands(formattedBrands);
+        setFilteredBrands(formattedBrands);
       } finally {
         setIsLoadingBrands(false);
       }
@@ -91,6 +103,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
   useEffect(() => {
     if (!selectedBrand) {
       setModels([]);
+      setFilteredModels([]);
       return;
     }
 
@@ -118,6 +131,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         if (data?.models && data.models.length > 0) {
           console.log(`Found ${data.models.length} models for ${selectedBrand} from API`);
           setModels(data.models);
+          setFilteredModels(data.models);
           setIsLoadingModels(false);
           return;
         }
@@ -125,11 +139,15 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         const brandModels = carBrandsData[selectedBrand as keyof typeof carBrandsData] || [];
         if (brandModels && brandModels.length > 0) {
           console.log(`Found ${brandModels.length} models for ${selectedBrand} in hardcoded data`);
-          setModels(brandModels.map(name => ({ id: name, name })));
+          const formattedModels = brandModels.map(name => ({ id: name, name }));
+          setModels(formattedModels);
+          setFilteredModels(formattedModels);
         } else {
           console.log(`No models found for ${selectedBrand}, using fallback models`);
           const defaultModels = ["Standard", "Deluxe", "Sport", "Limited", "Other"];
-          setModels(defaultModels.map(name => ({ id: name, name })));
+          const formattedModels = defaultModels.map(name => ({ id: name, name }));
+          setModels(formattedModels);
+          setFilteredModels(formattedModels);
         }
       } catch (error) {
         console.error('Error fetching car models:', error);
@@ -141,10 +159,14 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         
         const brandModels = carBrandsData[selectedBrand as keyof typeof carBrandsData] || [];
         if (brandModels.length > 0) {
-          setModels(brandModels.map(name => ({ id: name, name })));
+          const formattedModels = brandModels.map(name => ({ id: name, name }));
+          setModels(formattedModels);
+          setFilteredModels(formattedModels);
         } else {
           const defaultModels = ["Standard", "Deluxe", "Sport", "Limited", "Other"];
-          setModels(defaultModels.map(name => ({ id: name, name })));
+          const formattedModels = defaultModels.map(name => ({ id: name, name }));
+          setModels(formattedModels);
+          setFilteredModels(formattedModels);
         }
       } finally {
         setIsLoadingModels(false);
@@ -154,11 +176,14 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     fetchModels();
     form.setValue("engineType", "");
     form.setValue("model", "");
+    setModelSearchTerm("");
+    setEngineSearchTerm("");
   }, [selectedBrand, brands, form]);
 
   useEffect(() => {
     if (!selectedModel || !selectedBrand) {
       setEngineTypes([]);
+      setFilteredEngineTypes([]);
       return;
     }
 
@@ -186,6 +211,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
         if (data?.engineTypes && data.engineTypes.length > 0) {
           console.log(`Found ${data.engineTypes.length} engine types from API`);
           setEngineTypes(data.engineTypes);
+          setFilteredEngineTypes(data.engineTypes);
           setIsLoadingEngineTypes(false);
           return;
         }
@@ -195,18 +221,22 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           const specificEngineTypes = defaultEngineTypesMap[selectedBrand as keyof typeof defaultEngineTypesMap][selectedModel];
           console.log(`Using specific engine types for ${selectedBrand} ${selectedModel}, found ${specificEngineTypes.length}`);
           
-          setEngineTypes(specificEngineTypes.map(name => ({
+          const formattedEngineTypes = specificEngineTypes.map(name => ({
             id: name,
             name,
             fuel_type: determineFuelType(name)
-          })));
+          }));
+          setEngineTypes(formattedEngineTypes);
+          setFilteredEngineTypes(formattedEngineTypes);
         } else {
           console.log(`Using generic engine types for ${selectedBrand} ${selectedModel}`);
-          setEngineTypes(defaultCommonEngineTypes.map(name => ({
+          const formattedEngineTypes = defaultCommonEngineTypes.map(name => ({
             id: name,
             name,
             fuel_type: determineFuelType(name)
-          })));
+          }));
+          setEngineTypes(formattedEngineTypes);
+          setFilteredEngineTypes(formattedEngineTypes);
         }
       } catch (error) {
         console.error('Error fetching engine types:', error);
@@ -216,18 +246,55 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
           variant: "destructive"
         });
         
-        setEngineTypes(defaultCommonEngineTypes.map(name => ({
+        const formattedEngineTypes = defaultCommonEngineTypes.map(name => ({
           id: name,
           name,
           fuel_type: determineFuelType(name)
-        })));
+        }));
+        setEngineTypes(formattedEngineTypes);
+        setFilteredEngineTypes(formattedEngineTypes);
       } finally {
         setIsLoadingEngineTypes(false);
       }
     };
 
     fetchEngineTypes();
+    setEngineSearchTerm("");
   }, [selectedModel, selectedBrand, models]);
+
+  useEffect(() => {
+    if (brandSearchTerm.trim() === "") {
+      setFilteredBrands(brands);
+    } else {
+      const filtered = brands.filter(brand => 
+        brand.name.toLowerCase().includes(brandSearchTerm.toLowerCase())
+      );
+      setFilteredBrands(filtered);
+    }
+  }, [brandSearchTerm, brands]);
+
+  useEffect(() => {
+    if (modelSearchTerm.trim() === "") {
+      setFilteredModels(models);
+    } else {
+      const filtered = models.filter(model => 
+        model.name.toLowerCase().includes(modelSearchTerm.toLowerCase())
+      );
+      setFilteredModels(filtered);
+    }
+  }, [modelSearchTerm, models]);
+
+  useEffect(() => {
+    if (engineSearchTerm.trim() === "") {
+      setFilteredEngineTypes(engineTypes);
+    } else {
+      const filtered = engineTypes.filter(engine => 
+        engine.name.toLowerCase().includes(engineSearchTerm.toLowerCase()) ||
+        engine.fuel_type.toLowerCase().includes(engineSearchTerm.toLowerCase())
+      );
+      setFilteredEngineTypes(filtered);
+    }
+  }, [engineSearchTerm, engineTypes]);
 
   const determineFuelType = (engineName: string): string => {
     const lowerName = engineName.toLowerCase();
@@ -257,6 +324,18 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Brand</FormLabel>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <Input
+                        placeholder="Search brands..."
+                        className="pl-10 mb-2"
+                        value={brandSearchTerm}
+                        onChange={(e) => setBrandSearchTerm(e.target.value)}
+                        disabled={isAddingCar || !canAddMoreCars || isLoadingBrands}
+                      />
+                    </div>
                     <Select 
                       disabled={isAddingCar || !canAddMoreCars || isLoadingBrands}
                       onValueChange={(value) => {
@@ -277,10 +356,12 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                             <Loader2 className="h-4 w-4 mr-2 inline animate-spin" />
                             Loading...
                           </SelectItem>
-                        ) : (
-                          brands.map(brand => (
+                        ) : filteredBrands.length > 0 ? (
+                          filteredBrands.map(brand => (
                             <SelectItem key={brand.id} value={brand.name}>{brand.name}</SelectItem>
                           ))
+                        ) : (
+                          <SelectItem value="none" disabled>No brands found</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -295,6 +376,18 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Model</FormLabel>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <Input
+                        placeholder="Search models..."
+                        className="pl-10 mb-2"
+                        value={modelSearchTerm}
+                        onChange={(e) => setModelSearchTerm(e.target.value)}
+                        disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLoadingModels}
+                      />
+                    </div>
                     <Select 
                       disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLoadingModels}
                       onValueChange={(value) => {
@@ -314,10 +407,12 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                             <Loader2 className="h-4 w-4 mr-2 inline animate-spin" />
                             Loading...
                           </SelectItem>
-                        ) : (
-                          models.map(model => (
+                        ) : filteredModels.length > 0 ? (
+                          filteredModels.map(model => (
                             <SelectItem key={model.id} value={model.name}>{model.name}</SelectItem>
                           ))
+                        ) : (
+                          <SelectItem value="none" disabled>No models found</SelectItem>
                         )}
                       </SelectContent>
                     </Select>
@@ -332,6 +427,18 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Engine Type</FormLabel>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Search className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <Input
+                        placeholder="Search engines..."
+                        className="pl-10 mb-2"
+                        value={engineSearchTerm}
+                        onChange={(e) => setEngineSearchTerm(e.target.value)}
+                        disabled={!selectedModel || isAddingCar || !canAddMoreCars || isLoadingEngineTypes}
+                      />
+                    </div>
                     <Select 
                       disabled={!selectedModel || isAddingCar || !canAddMoreCars || isLoadingEngineTypes}
                       onValueChange={field.onChange} 
@@ -348,8 +455,8 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                             <Loader2 className="h-4 w-4 mr-2 inline animate-spin" />
                             Loading...
                           </SelectItem>
-                        ) : engineTypes.length > 0 ? (
-                          engineTypes.map(type => (
+                        ) : filteredEngineTypes.length > 0 ? (
+                          filteredEngineTypes.map(type => (
                             <SelectItem key={type.id} value={type.name}>
                               {type.name} 
                               {type.fuel_type && ` (${type.fuel_type})`}
