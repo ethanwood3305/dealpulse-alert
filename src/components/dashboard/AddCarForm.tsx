@@ -250,18 +250,36 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       setIsLoadingModels(true);
       try {
         console.log(`Fetching models for brand: ${selectedBrand}`);
-        // First try to get from database
-        const { data, error } = await supabase
-          .from('car_models')
-          .select('id, name')
-          .eq('brand_id', brands.find(b => b.name === selectedBrand)?.id)
-          .order('name');
         
-        if (error) throw error;
+        // Get the selected brand object
+        const selectedBrandObj = brands.find(b => b.name === selectedBrand);
+        console.log("Selected brand object:", selectedBrandObj);
         
-        if (data && data.length > 0) {
-          console.log(`Found ${data.length} models for ${selectedBrand} in database`);
-          setModels(data);
+        // Skip database call if using default brands (id = name)
+        const isDefaultBrand = selectedBrandObj?.id === selectedBrandObj?.name;
+        
+        // Only try database if it's not a default brand
+        let databaseModels = [];
+        if (!isDefaultBrand && selectedBrandObj?.id) {
+          const { data, error } = await supabase
+            .from('car_models')
+            .select('id, name')
+            .eq('brand_id', selectedBrandObj.id)
+            .order('name');
+          
+          if (error) {
+            console.error("Database error fetching models:", error);
+            throw error;
+          }
+          
+          if (data && data.length > 0) {
+            console.log(`Found ${data.length} models for ${selectedBrand} in database`);
+            databaseModels = data;
+          }
+        }
+        
+        if (databaseModels.length > 0) {
+          setModels(databaseModels);
         } else {
           console.log(`No models in database for ${selectedBrand}, using hardcoded data`);
           // Fall back to our hardcoded data
@@ -325,21 +343,36 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       setIsLoadingEngineTypes(true);
       try {
         console.log(`Fetching engine types for ${selectedBrand} ${selectedModel}`);
-        // First try to get from database
-        const { data, error } = await supabase
-          .from('engine_types')
-          .select('id, name, fuel_type, capacity, power')
-          .eq('model_id', models.find(m => m.name === selectedModel)?.id)
-          .order('name');
         
-        if (error) {
-          console.error('Database error fetching engine types:', error);
-          throw error;
+        // Get the selected model object
+        const selectedModelObj = models.find(m => m.name === selectedModel);
+        console.log("Selected model object:", selectedModelObj);
+        
+        // Skip database call if using default models (id = name)
+        const isDefaultModel = selectedModelObj?.id === selectedModelObj?.name;
+        
+        // Only try database if it's not a default model
+        let databaseEngineTypes = [];
+        if (!isDefaultModel && selectedModelObj?.id) {
+          const { data, error } = await supabase
+            .from('engine_types')
+            .select('id, name, fuel_type, capacity, power')
+            .eq('model_id', selectedModelObj.id)
+            .order('name');
+          
+          if (error) {
+            console.error('Database error fetching engine types:', error);
+            throw error;
+          }
+          
+          if (data && data.length > 0) {
+            console.log(`Found ${data.length} engine types in database`);
+            databaseEngineTypes = data;
+          }
         }
         
-        if (data && data.length > 0) {
-          console.log(`Found ${data.length} engine types in database`);
-          setEngineTypes(data);
+        if (databaseEngineTypes.length > 0) {
+          setEngineTypes(databaseEngineTypes);
         } else {
           console.log('No engine types in database, using fallback data');
           
