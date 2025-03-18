@@ -33,6 +33,7 @@ const RadiusMap = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [trackedCars, setTrackedCars] = useState<TrackedCarWithLocation[]>([]);
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
   
   // Parse query parameters
   useEffect(() => {
@@ -49,8 +50,11 @@ const RadiusMap = () => {
     }
   }, [location.search]);
   
+  // Initialize map
   useEffect(() => {
     if (mapContainer.current && !map.current) {
+      console.log('Initializing map with container:', mapContainer.current);
+      
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/light-v11',
@@ -59,10 +63,21 @@ const RadiusMap = () => {
       });
       
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      
+      // Log when map is loaded
+      map.current.on('load', () => {
+        console.log('Map loaded successfully');
+      });
+      
+      // Log any errors
+      map.current.on('error', (e) => {
+        console.error('Mapbox error:', e);
+      });
     }
     
     return () => {
       if (map.current) {
+        console.log('Removing map');
         map.current.remove();
         map.current = null;
       }
@@ -161,13 +176,14 @@ const RadiusMap = () => {
         
         // If selectedCarId is set, auto-populate form values from the selected car
         if (selectedCarId && targetPrice) {
-          const selectedCar = carsWithLocations.find(car => car.id === selectedCarId);
-          if (selectedCar && selectedCar.location) {
-            setPostcode(selectedCar.location.postcode);
+          const foundCar = carsWithLocations.find(car => car.id === selectedCarId);
+          if (foundCar && foundCar.location) {
+            setSelectedCar(foundCar);
+            setPostcode(foundCar.location.postcode);
             
             // Automatically trigger the search if we have all needed data
             setTimeout(() => {
-              searchPostcode(selectedCar.location?.postcode || '', targetPrice);
+              searchPostcode(foundCar.location?.postcode || '', targetPrice);
             }, 1000);
           }
         }
@@ -214,12 +230,16 @@ const RadiusMap = () => {
     setIsLoading(true);
     
     try {
+      console.log('Searching postcode:', postcodeValue, 'with target price:', targetPriceValue);
+      
       // Geocode the postcode (in a real app this would call an API)
       // For demo, we'll use a random UK location
       const lat = 51.5 + Math.random() * 2;
       const lng = -1.9 + Math.random() * 3;
       
       if (map.current) {
+        console.log('Map is available, updating view');
+        
         map.current.flyTo({
           center: [lng, lat],
           zoom: 10,
@@ -252,9 +272,12 @@ const RadiusMap = () => {
         // Add radius circles
         // First, ensure the map has a source
         if (map.current.loaded()) {
+          console.log('Map is loaded, adding circles');
           addCircles(map.current, [lng, lat], parseFloat(targetPriceValue));
         } else {
+          console.log('Map not loaded yet, waiting for load event');
           map.current.once('load', () => {
+            console.log('Map loaded, now adding circles');
             addCircles(map.current!, [lng, lat], parseFloat(targetPriceValue));
           });
         }
@@ -262,6 +285,13 @@ const RadiusMap = () => {
         toast({
           title: "Map Updated",
           description: `Showing price radius for postcode ${postcodeValue}`
+        });
+      } else {
+        console.error('Map is not available');
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Map is not available. Please try refreshing the page."
         });
       }
     } catch (error) {
@@ -277,6 +307,8 @@ const RadiusMap = () => {
   };
   
   const addCircles = (map: Map, center: [number, number], price: number) => {
+    console.log('Adding circles to map at', center, 'with price', price);
+    
     // Add a source for the circles
     map.addSource('radius-source', {
       type: 'geojson',
@@ -347,8 +379,24 @@ const RadiusMap = () => {
       filter: ['==', '$index', 0]
     });
     
-    // Add car markers
-    trackedCars.forEach(car => {
+    // Filter for similar car builds if a car is selected
+    const filteredCars = selectedCar 
+      ? trackedCars.filter(car => 
+          car.brand === selectedCar.brand && 
+          car.model === selectedCar.model && 
+          car.engineType === selectedCar.engineType &&
+          (!selectedCar.year || car.year === selectedCar.year) &&
+          (!selectedCar.mileage || 
+            (car.mileage && 
+             parseInt(car.mileage) >= parseInt(selectedCar.mileage) * 0.7 && 
+             parseInt(car.mileage) <= parseInt(selectedCar.mileage) * 1.3))
+        )
+      : trackedCars;
+    
+    console.log(`Showing ${filteredCars.length} similar cars out of ${trackedCars.length} total cars`);
+    
+    // Add car markers for filtered cars
+    filteredCars.forEach(car => {
       if (car.location) {
         const isPriceCompetitive = car.priceComparison && car.priceComparison.marketPrice <= price;
         const isBestPrice = car.priceComparison && car.priceComparison.marketPrice <= price * 0.9;
@@ -379,6 +427,9 @@ const RadiusMap = () => {
         const popupHTML = `
           <div class="p-2">
             <h3 class="font-bold">${car.brand} ${car.model}</h3>
+            <p><strong>Engine:</strong> ${car.engineType || 'N/A'}</p>
+            <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
+            <p><strong>Mileage:</strong> ${car.mileage ? `${car.mileage} miles` : 'N/A'}</p>
             <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
             <p><strong>Target:</strong> £${car.priceComparison?.targetPrice.toLocaleString() || 'N/A'}</p>
             <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
@@ -448,7 +499,21 @@ const RadiusMap = () => {
                     {isLoading ? 'Searching...' : <><Search className="mr-2 h-4 w-4" /> Search</>}
                   </Button>
                   
-                  <div className="border rounded-md p-3 space-y-2 mt-6">
+                  {selectedCar && (
+                    <div className="border rounded-md p-3 mt-4 bg-purple-50 dark:bg-purple-900/10">
+                      <h3 className="font-medium mb-2">Selected Vehicle</h3>
+                      <p><strong>Brand:</strong> {selectedCar.brand}</p>
+                      <p><strong>Model:</strong> {selectedCar.model}</p>
+                      <p><strong>Engine:</strong> {selectedCar.engineType}</p>
+                      {selectedCar.year && <p><strong>Year:</strong> {selectedCar.year}</p>}
+                      {selectedCar.mileage && <p><strong>Mileage:</strong> {selectedCar.mileage}</p>}
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Showing similar vehicles matching this specification
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="border rounded-md p-3 space-y-2 mt-4">
                     <h3 className="font-medium">Map Legend</h3>
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full bg-[#9b87f5]"></div>
@@ -467,8 +532,8 @@ const RadiusMap = () => {
               </Card>
             </div>
             
-            <div className="flex-1 rounded-lg overflow-hidden" style={{ height: "600px" }}>
-              <div ref={mapContainer} className="w-full h-full rounded-lg border border-border shadow-sm" />
+            <div className="flex-1 rounded-lg overflow-hidden border border-border shadow-sm" style={{ height: "600px" }}>
+              <div ref={mapContainer} id="map" className="w-full h-full rounded-lg" />
             </div>
           </div>
         </div>

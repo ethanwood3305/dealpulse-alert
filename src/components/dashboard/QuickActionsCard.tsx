@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Car, RefreshCw, MapPin } from "lucide-react";
+import { PlusCircle, Car } from "lucide-react";
 
 interface QuickActionsCardProps {
   canAddMoreCars: boolean;
@@ -15,7 +15,7 @@ export const QuickActionsCard = ({ canAddMoreCars, onAddCarClick }: QuickActions
         <CardTitle>Quick Actions</CardTitle>
         <CardDescription>Common tasks and actions</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <CardContent className="grid gap-2 sm:grid-cols-2">
         <Button 
           variant="outline" 
           className="w-full justify-start"
@@ -28,14 +28,6 @@ export const QuickActionsCard = ({ canAddMoreCars, onAddCarClick }: QuickActions
         <Button variant="outline" className="w-full justify-start">
           <Car className="mr-2 h-4 w-4" />
           View Car Trends
-        </Button>
-        <Button 
-          variant="outline" 
-          className="w-full justify-start"
-          onClick={() => window.location.href = "/radius-map"}
-        >
-          <MapPin className="mr-2 h-4 w-4" />
-          Price Radius Map
         </Button>
       </CardContent>
     </Card>
