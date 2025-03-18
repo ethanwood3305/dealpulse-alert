@@ -7,16 +7,24 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log('Vehicle lookup function called');
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
     // Get the request data
-    const { registration } = await req.json()
+    const body = await req.text();
+    console.log('Request body:', body);
+    
+    const { registration } = JSON.parse(body);
+    console.log('Parsed registration:', registration);
     
     if (!registration) {
+      console.log('No registration provided');
       return new Response(
         JSON.stringify({ error: 'Registration number is required' }),
         { 
@@ -28,21 +36,28 @@ serve(async (req) => {
 
     // Parse the registration number to standard format
     const formattedReg = registration.trim().toUpperCase().replace(/\s/g, '')
+    console.log('Formatted registration:', formattedReg);
     
     // Create a Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    console.log('Supabase URL available:', !!supabaseUrl);
+    console.log('Supabase key available:', !!supabaseKey);
+
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      supabaseUrl ?? '',
+      supabaseKey ?? ''
     )
 
     // Check if DVLA API key is available
-    const dvlaApiKey = Deno.env.get('DVLA_API_KEY')
+    const dvlaApiKey = Deno.env.get('DVLA_API_KEY');
+    console.log('DVLA API key available:', !!dvlaApiKey);
     let dvlaData = null;
 
     // If we have a DVLA API key, try to use the actual DVLA API
     if (dvlaApiKey) {
       try {
-        console.log('Attempting to use DVLA API with key');
+        console.log('Attempting DVLA API call for registration:', formattedReg);
         const dvlaResponse = await fetch('https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles', {
           method: 'POST',
           headers: {
@@ -52,12 +67,13 @@ serve(async (req) => {
           body: JSON.stringify({ registrationNumber: formattedReg })
         });
 
+        console.log('DVLA API response status:', dvlaResponse.status);
+        
         if (dvlaResponse.ok) {
           const responseData = await dvlaResponse.json();
-          console.log('DVLA API response:', responseData);
+          console.log('DVLA API response data:', responseData);
           
           // Transform DVLA data to our format
-          // Note: This transformation would need to be adapted to the actual DVLA response format
           dvlaData = {
             brand: responseData.make || 'Unknown',
             model: responseData.model || 'Unknown',
@@ -67,17 +83,22 @@ serve(async (req) => {
             year: responseData.yearOfManufacture || 'Unknown',
             color: responseData.colour || 'Unknown'
           };
+          console.log('Transformed DVLA data:', dvlaData);
         } else {
-          console.error('DVLA API error:', await dvlaResponse.text());
+          const errorText = await dvlaResponse.text();
+          console.error('DVLA API error response:', errorText);
+          throw new Error(`DVLA API error: ${dvlaResponse.status} - ${errorText}`);
         }
       } catch (dvlaError) {
         console.error('Error calling DVLA API:', dvlaError);
       }
+    } else {
+      console.log('No DVLA API key available, will use mock data');
     }
     
     // If we got data from DVLA API, use it
     if (dvlaData) {
-      console.log(`Using real DVLA data for ${formattedReg}:`, dvlaData);
+      console.log('Returning real DVLA data');
       return new Response(
         JSON.stringify(dvlaData),
         { 
@@ -97,8 +118,9 @@ serve(async (req) => {
     )
 
     if (error) {
-      console.error('Error calling database function:', error)
-      // Continue with mock data rather than throwing
+      console.error('Database function error:', error);
+    } else {
+      console.log('Database lookup result:', data);
     }
 
     // Initialize with default "not found" data
@@ -195,7 +217,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Vehicle lookup response for ${formattedReg}:`, mockData)
+    console.log('Final response data:', mockData);
 
     return new Response(
       JSON.stringify(mockData),
@@ -205,7 +227,7 @@ serve(async (req) => {
       }
     )
   } catch (error) {
-    console.error('Error in vehicle lookup:', error)
+    console.error('Error in vehicle lookup:', error);
     
     return new Response(
       JSON.stringify({ error: 'Failed to lookup vehicle details', details: error.message }),
