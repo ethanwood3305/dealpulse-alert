@@ -1,9 +1,8 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -29,10 +28,7 @@ const carSchema = z.object({
 const Dashboard = () => {
   const [isAddingCar, setIsAddingCar] = useState(false);
   const [user, setUser] = useState<any>(null);
-  const [checkoutProcessed, setCheckoutProcessed] = useState(false);
-  const [checkoutTime, setCheckoutTime] = useState<string | null>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const location = useLocation();
   const navigate = useNavigate();
   
   const { 
@@ -40,9 +36,7 @@ const Dashboard = () => {
     canAddMoreUrls: canAddMoreCars, 
     isLoading: isLoadingSubscription,
     refreshSubscription,
-    cancelSubscription,
-    generateApiKey,
-    refreshAttempts
+    generateApiKey
   } = useSubscription(user?.id);
   
   const { 
@@ -56,79 +50,6 @@ const Dashboard = () => {
 
   const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars);
 
-  const processCheckout = useCallback(async () => {
-    if (checkoutProcessed) return;
-    
-    const searchParams = new URLSearchParams(location.search);
-    const checkoutStatus = searchParams.get('checkout');
-    const timestamp = searchParams.get('t');
-    const expectedPlan = searchParams.get('plan');
-    const expectedUrls = searchParams.get('urls');
-    
-    if (checkoutStatus === 'success' && !checkoutProcessed) {
-      setCheckoutProcessed(true);
-      setCheckoutTime(timestamp);
-      
-      console.log("[Dashboard] Processing successful checkout");
-      console.log(`[Dashboard] Expected plan: ${expectedPlan}, URLs: ${expectedUrls}`);
-      
-      sessionStorage.setItem('expectedPlan', expectedPlan);
-      sessionStorage.setItem('expectedUrlCount', expectedUrls);
-      
-      toast({
-        title: "Processing your subscription...",
-        description: "Please wait while we update your account details.",
-      });
-      
-      const firstRefresh = await refreshSubscription(3);
-      
-      if (firstRefresh) {
-        if (expectedPlan && userSubscription?.plan === expectedPlan) {
-          toast({
-            title: "Subscription active!",
-            description: `Your ${expectedPlan} plan is now active.`
-          });
-        } else {
-          toast({
-            title: "Subscription active!",
-            description: "Your subscription has been updated successfully."
-          });
-        }
-      } else {
-        console.log("[Dashboard] First refresh attempt failed, scheduling delayed refreshes");
-        
-        const scheduleRefresh = (delayMs: number, attempts: number, index: number) => {
-          setTimeout(async () => {
-            if (checkoutProcessed) {
-              console.log(`[Dashboard] Running delayed refresh #${index} (${delayMs}ms delay)`);
-              const refreshSuccessful = await refreshSubscription(attempts);
-              
-              if (refreshSuccessful && index <= 2) {
-                toast({
-                  title: "Subscription active!",
-                  description: "Your subscription has been updated successfully."
-                });
-              } else if (!refreshSuccessful && index === 4) {
-                toast({
-                  title: "Subscription status unclear",
-                  description: "Please refresh the page to see your current subscription status.",
-                  variant: "destructive"
-                });
-              }
-            }
-          }, delayMs);
-        };
-        
-        scheduleRefresh(5000, 3, 1);
-        scheduleRefresh(15000, 3, 2);
-        scheduleRefresh(30000, 2, 3);
-        scheduleRefresh(60000, 2, 4);
-      }
-      
-      navigate('/dashboard', { replace: true });
-    }
-  }, [refreshSubscription, navigate, location.search, checkoutProcessed, userSubscription]);
-
   useEffect(() => {
     const checkAuth = async () => {
       const { data, error } = await supabase.auth.getUser();
@@ -137,14 +58,6 @@ const Dashboard = () => {
         return;
       }
       setUser(data.user);
-
-      const searchParams = new URLSearchParams(location.search);
-      const checkoutStatus = searchParams.get('checkout');
-      
-      if (checkoutStatus === 'success' && !checkoutProcessed) {
-        console.log("[Dashboard] Checkout success detected in URL");
-        processCheckout();
-      }
     };
     
     checkAuth();
@@ -160,7 +73,7 @@ const Dashboard = () => {
         authListener.subscription.unsubscribe();
       }
     };
-  }, [navigate, location.search, checkoutProcessed, processCheckout]);
+  }, [navigate]);
 
   useEffect(() => {
     if (!isLoadingSubscription && !isLoadingCars && !initialLoadComplete) {
@@ -184,7 +97,7 @@ const Dashboard = () => {
       if (!canAddMore) {
         toast({
           title: "Limit reached",
-          description: `You've reached your limit of ${userSubscription?.urls_limit} vehicles. Please upgrade your plan to add more.`,
+          description: `You've reached your limit of ${userSubscription?.urls_limit} vehicles. Please contact support to add more.`,
           variant: "destructive"
         });
         return;
@@ -233,18 +146,6 @@ const Dashboard = () => {
   const handleRemoveTag = async (urlId: string, tag: string) => {
     if (!user) return;
     await removeTag(urlId, tag);
-  };
-
-  const handleCancelSubscription = async (): Promise<void> => {
-    if (!user) return;
-    const success = await cancelSubscription();
-    if (success) {
-      toast({
-        title: "Subscription canceled",
-        description: "Your subscription has been canceled. Your plan will remain active until the end of the current billing period."
-      });
-      refreshSubscription();
-    }
   };
 
   const handleGenerateApiKey = async () => {
@@ -304,25 +205,11 @@ const Dashboard = () => {
             isPro={userSubscription?.plan !== 'free'}
           />
           
-          {checkoutTime && refreshAttempts > 0 && !userSubscription?.stripe_subscription_id && (
-            <div className="mb-6 p-4 border border-yellow-200 bg-yellow-50 rounded-md text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-400">
-              <h3 className="font-medium mb-2">Subscription Update In Progress</h3>
-              <p className="text-sm mb-2">
-                We're still processing your subscription. This usually takes less than a minute.
-              </p>
-              <Button onClick={() => refreshSubscription()} variant="outline" size="sm">
-                Check Subscription Status
-              </Button>
-            </div>
-          )}
-          
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             <SubscriptionCard 
               plan={userSubscription?.plan}
               urls_limit={userSubscription?.urls_limit}
               trackedUrlsCount={trackedCars.length}
-              onCancelSubscription={handleCancelSubscription}
-              hasActiveSubscription={!!userSubscription?.stripe_subscription_id}
               onRefreshSubscription={manuallyRefreshSubscription}
             />
             

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
-import { TRIAL_CARS, TRIAL_HOURS } from "@/components/pricing/PricingTiers";
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -49,31 +49,27 @@ const Signup = () => {
     checkSession();
   }, [navigate]);
 
-  const setupTrialSubscription = async (userId: string) => {
+  const setupInitialSubscription = async (userId: string) => {
     try {
-      console.log("Setting up trial subscription for user:", userId);
-      
-      const trialEnd = new Date();
-      trialEnd.setHours(trialEnd.getHours() + TRIAL_HOURS);
+      console.log("Setting up initial subscription for user:", userId);
       
       const { error } = await supabase
         .from('subscriptions')
         .update({
-          plan: 'trial',
-          urls_limit: TRIAL_CARS,
-          trial_end: trialEnd.toISOString()
+          plan: 'standard',
+          urls_limit: 10
         })
         .eq('user_id', userId);
         
       if (error) {
-        console.error("Error setting up trial:", error);
+        console.error("Error setting up subscription:", error);
         throw error;
       }
       
-      console.log("Trial subscription setup successfully");
+      console.log("Initial subscription setup successfully");
       return true;
     } catch (error) {
-      console.error("Failed to setup trial subscription:", error);
+      console.error("Failed to setup subscription:", error);
       return false;
     }
   };
@@ -97,17 +93,17 @@ const Signup = () => {
       }
 
       if (data?.user) {
-        const trialSetup = await setupTrialSubscription(data.user.id);
+        const setupSuccessful = await setupInitialSubscription(data.user.id);
         
-        if (trialSetup) {
+        if (setupSuccessful) {
           toast({
             title: "Account created successfully!",
-            description: `Your 48-hour trial with ${TRIAL_CARS} cars is now active. You can now log in to your account.`,
+            description: "Your account is now ready. You can log in to start tracking vehicles.",
           });
         } else {
           toast({
             title: "Account created successfully!",
-            description: "There was an issue setting up your trial. Please contact support.",
+            description: "There was an issue setting up your account. Please contact support.",
           });
         }
         
@@ -146,7 +142,7 @@ const Signup = () => {
               <div className="text-center mb-8">
                 <h1 className="text-2xl font-bold mb-2">Create your account</h1>
                 <p className="text-muted-foreground">
-                  Start your 48-hour free trial today
+                  Start tracking vehicle prices today
                 </p>
               </div>
               
@@ -258,9 +254,9 @@ const Signup = () => {
                   <div className="flex items-start">
                     <CheckCircle className="h-5 w-5 text-primary mr-3 mt-0.5" />
                     <div>
-                      <h3 className="font-medium">48-Hour Free Trial</h3>
+                      <h3 className="font-medium">Enterprise Solutions</h3>
                       <p className="text-muted-foreground text-sm">
-                        Test with up to {TRIAL_CARS} cars for 48 hours with no commitment or credit card required.
+                        Tailored plans for businesses of all sizes with advanced features.
                       </p>
                     </div>
                   </div>

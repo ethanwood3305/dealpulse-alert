@@ -1,37 +1,30 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Car, CheckCircle, XCircle, CreditCard, Loader2, RefreshCw } from "lucide-react";
+import { Car, CheckCircle, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
 
 interface SubscriptionCardProps {
   plan: string | undefined;
   urls_limit: number | undefined;
   trackedUrlsCount: number;
-  onCancelSubscription: () => Promise<void>;
-  hasActiveSubscription: boolean;
   onRefreshSubscription: () => void;
 }
 
 export const SubscriptionCard = ({ 
-  plan = 'free', 
-  urls_limit = 1, 
+  plan = 'standard', 
+  urls_limit = 10, 
   trackedUrlsCount,
-  onCancelSubscription,
-  hasActiveSubscription,
   onRefreshSubscription
 }: SubscriptionCardProps) => {
-  const [isCancelling, setIsCancelling] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  let planLabel = 'Free Plan';
+  let planLabel = 'Standard Plan';
   let planDescription = 'Basic tracking features';
-  let planFeatures = ['Limited to 1 car', 'Daily price checks', 'Basic notifications'];
+  let planFeatures = ['Limited to 10 cars', 'Daily price checks', 'Basic notifications'];
 
-  if (plan === 'pro') {
-    planLabel = 'Pro Plan';
+  if (plan === 'professional') {
+    planLabel = 'Professional Plan';
     planDescription = 'Advanced tracking features';
     planFeatures = [
       `Up to ${urls_limit} cars`, 
@@ -40,8 +33,8 @@ export const SubscriptionCard = ({
       'API access',
       'Historical data'
     ];
-  } else if (plan === 'business') {
-    planLabel = 'Business Plan';
+  } else if (plan === 'enterprise') {
+    planLabel = 'Enterprise Plan';
     planDescription = 'Enterprise-grade tracking';
     planFeatures = [
       `Up to ${urls_limit} cars`, 
@@ -52,12 +45,6 @@ export const SubscriptionCard = ({
       'Custom integrations'
     ];
   }
-
-  const handleCancelSubscription = async () => {
-    setIsCancelling(true);
-    await onCancelSubscription();
-    setIsCancelling(false);
-  };
 
   const handleRefreshSubscription = () => {
     setIsRefreshing(true);
@@ -101,54 +88,7 @@ export const SubscriptionCard = ({
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-2">
-        {plan === 'free' ? (
-          <Button className="w-full" asChild>
-            <Link to="/pricing">
-              Upgrade to Pro
-            </Link>
-          </Button>
-        ) : hasActiveSubscription ? (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" className="w-full">
-                {isCancelling ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Cancelling...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Subscription
-                  </>
-                )}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This will cancel your subscription. You'll still have access to your current plan until the end of your billing period.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                <AlertDialogAction onClick={handleCancelSubscription}>
-                  Yes, Cancel
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        ) : (
-          <Button className="w-full" asChild>
-            <Link to="/pricing">
-              <CreditCard className="h-4 w-4 mr-2" />
-              Reactivate Subscription
-            </Link>
-          </Button>
-        )}
-        
+      <CardFooter>
         <Button variant="ghost" size="sm" className="w-full" onClick={handleRefreshSubscription}>
           {isRefreshing ? (
             <>
