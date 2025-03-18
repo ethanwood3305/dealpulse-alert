@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Check, Copy, KeyRound, RefreshCw } from 'lucide-react';
+import { Check, Copy, Eye, EyeOff, KeyRound, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -25,6 +25,7 @@ export const ApiDocsCard = ({
 }: ApiDocsCardProps) => {
   const [copied, setCopied] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showKey, setShowKey] = useState(false);
   
   const copyApiKey = () => {
     if (apiKey) {
@@ -41,6 +42,15 @@ export const ApiDocsCard = ({
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const toggleKeyVisibility = () => {
+    setShowKey(!showKey);
+  };
+  
+  const maskApiKey = (key: string | null) => {
+    if (!key) return 'No API key found';
+    return showKey ? key : key.substring(0, 4) + '••••••••••••••••' + key.substring(key.length - 4);
   };
   
   return (
@@ -79,8 +89,17 @@ export const ApiDocsCard = ({
                     </div>
                     <div className="flex">
                       <div className="flex-1 p-2 bg-muted rounded-l-md font-mono text-xs truncate">
-                        {apiKey || 'No API key found'}
+                        {maskApiKey(apiKey)}
                       </div>
+                      <Button 
+                        variant="secondary" 
+                        size="sm" 
+                        className="rounded-none"
+                        onClick={toggleKeyVisibility}
+                        disabled={!apiKey}
+                      >
+                        {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Button>
                       <Button 
                         variant="secondary" 
                         size="sm" 
@@ -98,7 +117,7 @@ export const ApiDocsCard = ({
                       <h4 className="text-sm font-medium mb-2">Get all tracked vehicles</h4>
                       <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
                         <pre>GET https://api.dealpulse.app/vehicles</pre>
-                        <pre>{`Headers: { "x-api-key": "${apiKey || 'YOUR_API_KEY'}" }`}</pre>
+                        <pre>{`Headers: { "x-api-key": "${apiKey ? (showKey ? apiKey : "YOUR_API_KEY") : 'YOUR_API_KEY'}" }`}</pre>
                       </div>
                     </div>
                     
@@ -106,16 +125,49 @@ export const ApiDocsCard = ({
                       <h4 className="text-sm font-medium mb-2">Get vehicle by ID</h4>
                       <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
                         <pre>GET https://api.dealpulse.app/vehicles/:id</pre>
-                        <pre>{`Headers: { "x-api-key": "${apiKey || 'YOUR_API_KEY'}" }`}</pre>
+                        <pre>{`Headers: { "x-api-key": "${apiKey ? (showKey ? apiKey : "YOUR_API_KEY") : 'YOUR_API_KEY'}" }`}</pre>
                       </div>
                     </div>
                     
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Example with curl</h4>
-                      <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
-                        <pre>{`curl -X GET \\
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium mb-2">Code Examples</h4>
+                      
+                      <div>
+                        <h5 className="text-xs font-medium mb-1">cURL</h5>
+                        <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                          <pre>{`curl -X GET \\
   https://api.dealpulse.app/vehicles \\
-  -H "x-api-key: ${apiKey || 'YOUR_API_KEY'}"`}</pre>
+  -H "x-api-key: ${apiKey ? (showKey ? apiKey : "YOUR_API_KEY") : 'YOUR_API_KEY'}"`}</pre>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h5 className="text-xs font-medium mb-1">JavaScript</h5>
+                        <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                          <pre>{`fetch('https://api.dealpulse.app/vehicles', {
+  headers: {
+    'x-api-key': '${apiKey ? (showKey ? apiKey : "YOUR_API_KEY") : 'YOUR_API_KEY'}'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data))
+.catch(error => console.error('Error:', error));`}</pre>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h5 className="text-xs font-medium mb-1">Python</h5>
+                        <div className="bg-muted p-2 rounded-md font-mono text-xs overflow-x-auto">
+                          <pre>{`import requests
+
+headers = {
+    'x-api-key': '${apiKey ? (showKey ? apiKey : "YOUR_API_KEY") : 'YOUR_API_KEY'}'
+}
+
+response = requests.get('https://api.dealpulse.app/vehicles', headers=headers)
+data = response.json()
+print(data)`}</pre>
+                        </div>
                       </div>
                     </div>
                   </div>

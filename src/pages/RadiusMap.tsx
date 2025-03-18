@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,6 +17,11 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
 
+// Ensure the Mapbox token is set
+if (!MAPBOX_TOKEN) {
+  console.error('MAPBOX_TOKEN is missing. Please make sure it is defined in src/integrations/supabase/client.ts');
+}
+
 mapboxgl.accessToken = MAPBOX_TOKEN;
 
 const RadiusMap = () => {
@@ -28,6 +34,7 @@ const RadiusMap = () => {
   const [targetPrice, setTargetPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMapLoading, setIsMapLoading] = useState(true);
+  const [mapError, setMapError] = useState<string | null>(null);
   const [trackedCars, setTrackedCars] = useState<TrackedCarWithLocation[]>([]);
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
@@ -50,8 +57,13 @@ const RadiusMap = () => {
   useEffect(() => {
     if (mapContainer.current && !map.current) {
       console.log('Initializing map with container:', mapContainer.current);
+      console.log('Using Mapbox token:', MAPBOX_TOKEN);
       
       try {
+        if (!MAPBOX_TOKEN) {
+          throw new Error('Mapbox token is not defined');
+        }
+        
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v12',
@@ -64,18 +76,23 @@ const RadiusMap = () => {
         map.current.on('load', () => {
           console.log('Map loaded successfully');
           setIsMapLoading(false);
+          setMapError(null);
         });
         
         map.current.on('error', (e) => {
           console.error('Mapbox error:', e);
+          setMapError('There was an error loading the map. Please try refreshing the page.');
+          setIsMapLoading(false);
           toast({
             title: "Map Error",
             description: "There was an error loading the map. Please try refreshing the page.",
             variant: "destructive"
           });
         });
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error initializing map:', error);
+        setMapError(error.message || 'Failed to initialize the map');
+        setIsMapLoading(false);
         toast({
           title: "Map Error",
           description: "Failed to initialize the map. Please check your connection and try again.",
@@ -571,7 +588,7 @@ const RadiusMap = () => {
                   <Button 
                     className="w-full" 
                     onClick={() => searchPostcode()}
-                    disabled={isLoading}
+                    disabled={isLoading || !!mapError}
                   >
                     {isLoading ? 'Searching...' : <><Search className="mr-2 h-4 w-4" /> Search</>}
                   </Button>
@@ -624,6 +641,21 @@ const RadiusMap = () => {
                   <div className="flex flex-col items-center">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <span className="mt-2">Loading map...</span>
+                  </div>
+                </div>
+              )}
+              {mapError && !isMapLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
+                  <div className="flex flex-col items-center text-center p-6 max-w-md">
+                    <div className="text-destructive mb-4 text-4xl">⚠️</div>
+                    <h3 className="text-lg font-bold mb-2">Map Error</h3>
+                    <p className="mb-4">{mapError}</p>
+                    <Button 
+                      onClick={() => window.location.reload()}
+                      variant="default"
+                    >
+                      Refresh Page
+                    </Button>
                   </div>
                 </div>
               )}
