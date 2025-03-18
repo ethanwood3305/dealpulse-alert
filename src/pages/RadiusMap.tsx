@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,31 +8,13 @@ import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Loader2, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TrackedCarWithLocation, DealerVehicle } from '@/types/car-types';
-import { supabase, MAPBOX_TOKEN } from '@/integrations/supabase/client';
+import { supabase, getMapboxToken } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
-
-// Ensure the Mapbox token is set
-if (!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') {
-  console.error('MAPBOX_TOKEN is missing or invalid. Please make sure it is correctly defined in Supabase secrets');
-}
-
-// Make sure token is available before setting it and logging it
-const mapboxTokenStatus = typeof MAPBOX_TOKEN === 'string' && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN'
-  ? 'Available'
-  : 'Missing or Invalid';
-
-console.log('Mapbox token status:', mapboxTokenStatus);
-
-// Only set the token if it's valid
-if (typeof MAPBOX_TOKEN === 'string' && MAPBOX_TOKEN !== 'YOUR_MAPBOX_TOKEN') {
-  console.log('Setting Mapbox token:', MAPBOX_TOKEN.substring(0, 8) + '...');
-  mapboxgl.accessToken = MAPBOX_TOKEN;
-}
 
 const RadiusMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -50,6 +31,28 @@ const RadiusMap = () => {
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const token = await getMapboxToken();
+        console.log('Fetched Mapbox token:', token ? 'Available' : 'Not available');
+        setMapboxToken(token);
+        
+        if (!token) {
+          setMapError('Failed to load Mapbox token from Supabase');
+          setIsMapLoading(false);
+        }
+      } catch (error) {
+        console.error('Error fetching Mapbox token:', error);
+        setMapError('Failed to load Mapbox token');
+        setIsMapLoading(false);
+      }
+    };
+    
+    fetchToken();
+  }, []);
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -66,19 +69,12 @@ const RadiusMap = () => {
   }, [location.search]);
   
   useEffect(() => {
-    if (mapContainer.current && !map.current) {
-      console.log('Initializing map with container:', mapContainer.current);
+    if (mapContainer.current && !map.current && mapboxToken) {
+      console.log('Initializing map with token');
       
       try {
-        // Check for valid Mapbox token
-        if (!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') {
-          throw new Error('Mapbox token is not defined or is invalid');
-        }
+        mapboxgl.accessToken = mapboxToken;
         
-        // Log token status for debugging
-        console.log('Mapbox token status:', MAPBOX_TOKEN ? 'Available' : 'Missing');
-        
-        // Initialize map with error handling
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v12',
@@ -135,114 +131,116 @@ const RadiusMap = () => {
         map.current = null;
       }
     };
-  }, []);
+  }, [mapboxToken]);
   
   useEffect(() => {
-    const fetchTrackedCars = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          navigate('/login');
-          return;
-        }
-        
-        const { data, error } = await supabase
-          .from('tracked_urls')
-          .select('*')
-          .eq('user_id', user.id);
-          
-        if (error) throw error;
-        
-        const carsWithLocations = data.map((car) => {
-          let brand = 'Unknown';
-          let model = 'Unknown';
-          let engineType = '';
-          let mileage = '';
-          let year = '';
-          let color = '';
-          
-          const urlParts = car.url ? car.url.split('/') : [];
-          if (urlParts.length > 0) brand = urlParts[0] || 'Unknown';
-          if (urlParts.length > 1) model = urlParts[1] || 'Unknown';
-          if (urlParts.length > 2) engineType = urlParts[2] || '';
-          
-          if (urlParts.length > 3) {
-            const params = urlParts[3].split('&');
-            params.forEach(param => {
-              if (param.includes('mil=')) {
-                mileage = param.split('mil=')[1];
-              }
-              if (param.includes('year=')) {
-                year = param.split('year=')[1];
-              }
-              if (param.includes('color=')) {
-                color = param.split('color=')[1];
-              }
-            });
-          }
-          
-          const randomPostcode = generateRandomPostcode();
-          const randomLat = 51.5 + Math.random() * 2;
-          const randomLng = -1.9 + Math.random() * 3;
-          
-          const parsedMileage = mileage ? parseInt(mileage) : 10000;
-          const targetPrice = 10000 + parsedMileage * 0.5;
-          const marketPrice = car.last_price || targetPrice * (0.9 + Math.random() * 0.3);
-          
-          const difference = targetPrice - marketPrice;
-          const percentageDifference = (difference / targetPrice) * 100;
-          
-          return {
-            id: car.id,
-            brand,
-            model,
-            engineType,
-            mileage,
-            year,
-            color,
-            last_price: car.last_price,
-            last_checked: car.last_checked,
-            created_at: car.created_at,
-            tags: car.tags || [],
-            location: {
-              postcode: randomPostcode,
-              lat: randomLat,
-              lng: randomLng
-            },
-            priceComparison: {
-              targetPrice,
-              marketPrice,
-              difference,
-              percentageDifference
-            }
-          };
-        });
-        
-        setTrackedCars(carsWithLocations);
-        
-        if (selectedCarId && targetPrice) {
-          const foundCar = carsWithLocations.find(car => car.id === selectedCarId);
-          if (foundCar && foundCar.location) {
-            setSelectedCar(foundCar);
-            setPostcode(foundCar.location.postcode);
-            
-            setTimeout(() => {
-              searchPostcode(foundCar.location?.postcode || '', targetPrice);
-            }, 1000);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching tracked cars:', error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load your tracked cars."
-        });
+    if (mapboxToken) {
+      fetchTrackedCars();
+    }
+  }, [mapboxToken]);
+  
+  const fetchTrackedCars = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/login');
+        return;
       }
-    };
-    
-    fetchTrackedCars();
-  }, [navigate, selectedCarId, targetPrice]);
+      
+      const { data, error } = await supabase
+        .from('tracked_urls')
+        .select('*')
+        .eq('user_id', user.id);
+        
+      if (error) throw error;
+      
+      const carsWithLocations = data.map((car) => {
+        let brand = 'Unknown';
+        let model = 'Unknown';
+        let engineType = '';
+        let mileage = '';
+        let year = '';
+        let color = '';
+        
+        const urlParts = car.url ? car.url.split('/') : [];
+        if (urlParts.length > 0) brand = urlParts[0] || 'Unknown';
+        if (urlParts.length > 1) model = urlParts[1] || 'Unknown';
+        if (urlParts.length > 2) engineType = urlParts[2] || '';
+        
+        if (urlParts.length > 3) {
+          const params = urlParts[3].split('&');
+          params.forEach(param => {
+            if (param.includes('mil=')) {
+              mileage = param.split('mil=')[1];
+            }
+            if (param.includes('year=')) {
+              year = param.split('year=')[1];
+            }
+            if (param.includes('color=')) {
+              color = param.split('color=')[1];
+            }
+          });
+        }
+        
+        const randomPostcode = generateRandomPostcode();
+        const randomLat = 51.5 + Math.random() * 2;
+        const randomLng = -1.9 + Math.random() * 3;
+        
+        const parsedMileage = mileage ? parseInt(mileage) : 10000;
+        const targetPrice = 10000 + parsedMileage * 0.5;
+        const marketPrice = car.last_price || targetPrice * (0.9 + Math.random() * 0.3);
+        
+        const difference = targetPrice - marketPrice;
+        const percentageDifference = (difference / targetPrice) * 100;
+        
+        return {
+          id: car.id,
+          brand,
+          model,
+          engineType,
+          mileage,
+          year,
+          color,
+          last_price: car.last_price,
+          last_checked: car.last_checked,
+          created_at: car.created_at,
+          tags: car.tags || [],
+          location: {
+            postcode: randomPostcode,
+            lat: randomLat,
+            lng: randomLng
+          },
+          priceComparison: {
+            targetPrice,
+            marketPrice,
+            difference,
+            percentageDifference
+          }
+        };
+      });
+      
+      setTrackedCars(carsWithLocations);
+      
+      if (selectedCarId && targetPrice) {
+        const foundCar = carsWithLocations.find(car => car.id === selectedCarId);
+        if (foundCar && foundCar.location) {
+          setSelectedCar(foundCar);
+          setPostcode(foundCar.location.postcode);
+          
+          setTimeout(() => {
+            searchPostcode(foundCar.location?.postcode || '', targetPrice);
+          }, 1000);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tracked cars:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load your tracked cars."
+      });
+    }
+  };
   
   const generateRandomPostcode = () => {
     const prefixes = ['SW', 'NW', 'SE', 'NE', 'W', 'E', 'N', 'S', 'B', 'M', 'L', 'G'];
@@ -615,7 +613,7 @@ const RadiusMap = () => {
                   <Button 
                     className="w-full" 
                     onClick={() => searchPostcode()}
-                    disabled={isLoading || !!mapError}
+                    disabled={isLoading || !!mapError || !mapboxToken}
                   >
                     {isLoading ? 'Searching...' : <><Search className="mr-2 h-4 w-4" /> Search</>}
                   </Button>
@@ -658,11 +656,11 @@ const RadiusMap = () => {
                     </div>
                   </div>
                   
-                  {(!MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_TOKEN') && (
+                  {!mapboxToken && (
                     <div className="border border-yellow-500 rounded-md p-3 bg-yellow-50 dark:bg-yellow-900/10">
-                      <h3 className="font-medium text-yellow-700 mb-2">Missing Mapbox Token</h3>
+                      <h3 className="font-medium text-yellow-700 mb-2">Loading Mapbox Token</h3>
                       <p className="text-sm text-yellow-700">
-                        A valid Mapbox token is required for the map to work. Please ensure it's correctly set up in the application.
+                        Attempting to fetch the Mapbox token from Supabase...
                       </p>
                     </div>
                   )}
@@ -706,3 +704,4 @@ const RadiusMap = () => {
 };
 
 export default RadiusMap;
+
