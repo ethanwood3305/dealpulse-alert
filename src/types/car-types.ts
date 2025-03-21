@@ -33,12 +33,6 @@ export interface TrackedCar {
   bodyStyle?: string;
   transmission?: string;
   weight?: string;
-  registration?: string;
-  engineSize?: string;
-  motStatus?: string;
-  motExpiryDate?: string | null;
-  taxStatus?: string;
-  taxDueDate?: string | null;
 }
 
 export interface DealerVehicle extends TrackedCarWithLocation {
@@ -46,22 +40,4 @@ export interface DealerVehicle extends TrackedCarWithLocation {
   dealerPhone: string;
   dealerAddress?: string;
   dealerWebsite?: string;
-}
-
-export interface VehicleDetails {
-  registration: string;
-  make: string;
-  model: string;
-  color: string;
-  fuelType: string;
-  year: string;
-  engineSize: string;
-  motStatus: string;
-  motExpiryDate: string | null;
-  taxStatus: string;
-  taxDueDate: string | null;
-  doorCount?: string;
-  bodyStyle?: string;
-  transmission?: string;
-  weight?: string;
 }

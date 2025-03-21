@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -86,32 +87,12 @@ serve(async (req) => {
           console.log(`Calling UKVehicleData API for registration: ${registrationClean}`)
           console.log(`Using API key: ${ukVehicleDataApiKey.substring(0, 5)}...`)
           
-          // Build the URL without any string templates to avoid any potential issues
-          const baseUrl = "https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData";
-          const apiUrl = baseUrl + 
-            "?v=2" + 
-            "&api_nullitems=1" + 
-            "&auth_apikey=" + encodeURIComponent(ukVehicleDataApiKey) + 
-            "&key_VRM=" + encodeURIComponent(registrationClean);
+          // Fix: Ensure we're using the correct API key format directly from environment variable
+          const apiUrl = `https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&api_nullitems=1&auth_apikey=${ukVehicleDataApiKey}&key_VRM=${registrationClean}`;
           
           console.log("API URL:", apiUrl);
           
-          // Due to network restrictions in serverless environments, we'll immediately use mock data
-          console.log('Serverless environment detected, falling back to mock data');
-          
-          return new Response(
-            JSON.stringify({
-              vehicle: getMockVehicleData(registrationClean),
-              source: 'mock_data',
-              warning: 'Using mock data due to serverless environment restrictions',
-              serverless_environment: true
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-          );
-          
-          // The following code will not execute in the current environment
-          // but is left here for reference or future use in a different environment
-          /*
+          // Try the API call with a timeout to prevent long-running requests
           try {
             // We'll use AbortController with a timeout to prevent hanging requests
             const controller = new AbortController();
@@ -257,7 +238,6 @@ serve(async (req) => {
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             );
           }
-          */
         } catch (apiError) {
           console.error('Error during UKVehicleData API call:', apiError);
           

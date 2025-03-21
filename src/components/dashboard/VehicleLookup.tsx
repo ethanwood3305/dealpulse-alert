@@ -74,10 +74,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         throw new Error(error.message || 'Failed to lookup vehicle');
       }
 
-      if (data.serverless_environment) {
-        setServerlessEnvironmentIssue(true);
-      }
-
       if (data.diagnostic) {
         console.log("Diagnostic information:", data.diagnostic);
         setDiagnosticInfo(data.diagnostic);
@@ -111,11 +107,11 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         setVehicleDetails(data.vehicle);
         
         // Check if we're using mock data
-        if (data.warning || data.source === 'mock_data' || data.serverless_environment) {
+        if (data.warning || data.source === 'mock_data') {
           setIsUsingMockData(true);
           toast({
             title: "Using Demo Data",
-            description: "Using sample vehicle data due to API connection limitations.",
+            description: "We couldn't connect to the vehicle database API, so we're showing sample data instead.",
             variant: "default"
           });
         } else {
@@ -215,10 +211,11 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           {serverlessEnvironmentIssue && (
             <Alert className="bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400">
               <ServerCrash className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <AlertTitle>Demo Mode Active</AlertTitle>
+              <AlertTitle>Serverless Environment Limitation</AlertTitle>
               <AlertDescription className="text-blue-700 dark:text-blue-500">
-                The vehicle lookup is currently running in demo mode. In this preview environment, 
-                external API calls are restricted. Sample data is shown instead of live vehicle data.
+                The vehicle lookup API connection is failing due to restrictions in the serverless environment. 
+                This is a common issue with edge functions that need to connect to external APIs.
+                Demo data will be shown instead.
               </AlertDescription>
             </Alert>
           )}
@@ -240,7 +237,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertTitle>Using demonstration data</AlertTitle>
               <AlertDescription className="text-amber-700 dark:text-amber-500">
-                Showing sample vehicle data. In a production environment, this would display real vehicle data.
+                The vehicle lookup API couldn't be reached. Demo data is being shown instead.
               </AlertDescription>
             </Alert>
           )}
@@ -317,7 +314,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         </div>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground border-t pt-4">
-        Vehicle lookup powered by UKVehicleData API. In demo mode, sample data is displayed.
+        Data provided by UKVehicleData. Registration should be a UK vehicle registration number.
       </CardFooter>
     </Card>
   );
