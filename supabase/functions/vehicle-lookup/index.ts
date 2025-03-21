@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -77,10 +78,21 @@ serve(async (req) => {
           
           console.log("Proxy URL:", proxyUrl);
           
-          // Call the proxy endpoint
+          // Get the API key to pass to the proxy
+          const apiKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+          
+          if (!apiKey) {
+            console.error('Missing API key for proxy request');
+            throw new Error('Authentication information missing');
+          }
+          
+          // Call the proxy endpoint with the anon key in the apikey header
           const response = await fetch(proxyUrl, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'apikey': apiKey 
+            },
             body: JSON.stringify({ vrm: registrationClean })
           });
           
