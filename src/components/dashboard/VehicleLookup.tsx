@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, SearchIcon, AlertCircleIcon, Info } from "lucide-react";
+import { Loader2, SearchIcon, AlertCircle, Info, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrackedCars, AddCarParams } from "@/hooks/use-tracked-cars";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -182,8 +182,18 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
           {error && (
             <Alert variant={errorCode === "VEHICLE_NOT_FOUND" ? "default" : "destructive"}>
-              <AlertCircleIcon className="h-4 w-4" />
-              <AlertTitle>{errorCode === "VEHICLE_NOT_FOUND" ? "Vehicle not found" : "Lookup failed"}</AlertTitle>
+              {errorCode === "VEHICLE_NOT_FOUND" ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              <AlertTitle>
+                {errorCode === "VEHICLE_NOT_FOUND" 
+                  ? "Vehicle not found" 
+                  : errorCode === "SERVICE_UNAVAILABLE"
+                  ? "Service unavailable"
+                  : "Lookup failed"}
+              </AlertTitle>
               <AlertDescription>
                 {error}
                 {errorCode === "VEHICLE_NOT_FOUND" && (
@@ -191,8 +201,24 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
                     Please check the registration number and try again. Make sure it's a valid UK registration.
                   </p>
                 )}
+                {errorCode === "SERVICE_UNAVAILABLE" && (
+                  <p className="mt-2 text-sm">
+                    The vehicle lookup service is currently unavailable. Please try again later.
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
+          )}
+
+          {diagnosticInfo && (
+            <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 rounded-md p-3 text-xs font-mono">
+              <details>
+                <summary className="cursor-pointer text-amber-800 dark:text-amber-400 font-medium">Debug information</summary>
+                <pre className="mt-2 whitespace-pre-wrap overflow-auto max-h-40 text-amber-700 dark:text-amber-300">
+                  {JSON.stringify(diagnosticInfo, null, 2)}
+                </pre>
+              </details>
+            </div>
           )}
 
           {vehicleDetails && (

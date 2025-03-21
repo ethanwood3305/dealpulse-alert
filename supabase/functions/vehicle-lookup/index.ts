@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -72,10 +73,11 @@ serve(async (req) => {
         try {
           console.log(`Calling vehicle proxy for registration: ${registrationClean}`)
           
-          // Hardcoded proxy URL using Supabase URL
-          const proxyUrl = `https://wskiwwfgelypkrufsimz.supabase.co/functions/v1/vehicle-proxy`;
+          // Get the complete URL for the vehicle-proxy function, ensuring it's properly formed
+          const supabaseUrl = 'https://wskiwwfgelypkrufsimz.supabase.co';
+          const proxyUrl = `${supabaseUrl}/functions/v1/vehicle-proxy`;
           
-          console.log("Proxy URL:", proxyUrl);
+          console.log("Complete Proxy URL:", proxyUrl);
           
           // Get the API key to pass to the proxy
           const apiKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
@@ -86,8 +88,9 @@ serve(async (req) => {
           }
           
           console.log("Using API key:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5));
+          console.log("Request body:", JSON.stringify({ vrm: registrationClean }));
           
-          // Call the proxy endpoint with the anon key in the apikey header
+          // Call the proxy endpoint with the anon key in both the apikey header and Authorization header
           const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 
@@ -110,13 +113,23 @@ serve(async (req) => {
               const errorJson = JSON.parse(errorText);
               console.log('Parsed error details:', JSON.stringify(errorJson));
               
-              if (errorJson.message) {
-                console.log('Error message from proxy:', errorJson.message);
+              // Check if this is a "NOT_FOUND" error for the function itself
+              if (errorJson.code === "NOT_FOUND" && errorJson.message === "Requested function was not found") {
+                console.error("The vehicle-proxy function does not exist or is not accessible");
+                return new Response(
+                  JSON.stringify({ 
+                    error: 'The vehicle lookup service is currently unavailable. Please try again later.',
+                    diagnostic: {
+                      error_type: 'FUNCTION_NOT_FOUND',
+                      error_details: errorJson
+                    },
+                    code: 'SERVICE_UNAVAILABLE'
+                  }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 503 }
+                );
               }
               
-              // Check for specific error conditions
-              if (response.status === 404 || 
-                  (errorJson.message && errorJson.message.toLowerCase().includes('not found'))) {
+              if (errorJson.message && errorJson.message.toLowerCase().includes('not found')) {
                 console.log('This appears to be a vehicle not found error');
                 return new Response(
                   JSON.stringify({ 
