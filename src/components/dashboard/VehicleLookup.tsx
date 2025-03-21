@@ -26,6 +26,10 @@ interface VehicleDetails {
   motExpiryDate: string | null;
   taxStatus: string;
   taxDueDate: string | null;
+  doorCount?: string;
+  bodyStyle?: string;
+  transmission?: string;
+  weight?: string;
 }
 
 export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
@@ -143,7 +147,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         engineType: vehicleDetails.fuelType,
         color: vehicleDetails.color,
         year: vehicleDetails.year,
-        mileage: vehicleDetails.engineSize
+        mileage: vehicleDetails.weight
       };
 
       const success = await addCar(carParams);
@@ -249,7 +253,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
                 </span>
               </div>
               
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                 <div>
                   <p className="text-muted-foreground">Year</p>
                   <p className="font-medium">{vehicleDetails.year}</p>
@@ -274,6 +278,32 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
                   <p className="text-muted-foreground">Tax Status</p>
                   <p className="font-medium">{vehicleDetails.taxStatus}</p>
                 </div>
+                
+                {/* Additional details */}
+                {vehicleDetails.doorCount && (
+                  <div>
+                    <p className="text-muted-foreground">Doors</p>
+                    <p className="font-medium">{vehicleDetails.doorCount}</p>
+                  </div>
+                )}
+                {vehicleDetails.bodyStyle && (
+                  <div>
+                    <p className="text-muted-foreground">Body Style</p>
+                    <p className="font-medium">{vehicleDetails.bodyStyle}</p>
+                  </div>
+                )}
+                {vehicleDetails.transmission && (
+                  <div>
+                    <p className="text-muted-foreground">Transmission</p>
+                    <p className="font-medium">{vehicleDetails.transmission}</p>
+                  </div>
+                )}
+                {vehicleDetails.weight && (
+                  <div>
+                    <p className="text-muted-foreground">Weight (kg)</p>
+                    <p className="font-medium">{vehicleDetails.weight}</p>
+                  </div>
+                )}
               </div>
               
               <Button onClick={handleAddCar} className="w-full">

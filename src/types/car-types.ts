@@ -29,6 +29,10 @@ export interface TrackedCar {
   last_checked: string | null;
   created_at: string;
   tags: string[];
+  doorCount?: string;
+  bodyStyle?: string;
+  transmission?: string;
+  weight?: string;
 }
 
 export interface DealerVehicle extends TrackedCarWithLocation {
