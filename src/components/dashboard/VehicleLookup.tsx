@@ -67,7 +67,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       }
 
       if (data.error) {
-        console.error("Error from DVLA API:", data.error);
+        console.error("Error from Vehicle API:", data.error);
         setError(data.error);
         
         // If we still got vehicle data (mock data), show it despite the error
@@ -90,9 +90,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         if (data.warning || data.source === 'mock_data') {
           setIsUsingMockData(true);
           toast({
-            title: "Using Mock Data",
-            description: "We couldn't connect to the DVLA API, so we're showing sample data instead.",
-            // Changed from "warning" to "default" as "warning" is not a supported variant
+            title: "Using Demo Data",
+            description: "We couldn't connect to the vehicle database API, so we're showing sample data instead.",
             variant: "default"
           });
         }
@@ -154,7 +153,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       <CardHeader>
         <CardTitle>Vehicle Lookup</CardTitle>
         <CardDescription>
-          Quickly find vehicle details using registration number
+          Quickly find vehicle details using UK registration number
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -188,8 +187,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               <AlertCircleIcon className="h-4 w-4" />
               <AlertTitle>Lookup failed</AlertTitle>
               <AlertDescription>
-                {error.includes("forbidden") || error.includes("Forbidden") ? 
-                  "The DVLA API access is currently unavailable. This could be due to an invalid or expired API key. The system will show demo data instead." : 
+                {error.includes("forbidden") || error.includes("Forbidden") || error.includes("Authentication") ? 
+                  "The vehicle lookup API access is currently unavailable. This could be due to an invalid or expired API key. The system will show demo data instead." : 
                   error}
               </AlertDescription>
             </Alert>
@@ -200,7 +199,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               <Info className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <AlertTitle>Using demonstration data</AlertTitle>
               <AlertDescription className="text-amber-700 dark:text-amber-500">
-                The actual DVLA API couldn't be reached. Demo data is being shown instead.
+                The vehicle lookup API couldn't be reached. Demo data is being shown instead.
               </AlertDescription>
             </Alert>
           )}
@@ -251,7 +250,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         </div>
       </CardContent>
       <CardFooter className="text-xs text-muted-foreground border-t pt-4">
-        Data provided by DVLA Vehicle Enquiry Service. Registration should be a UK vehicle registration number.
+        Data provided by UKVehicleData. Registration should be a UK vehicle registration number.
       </CardFooter>
     </Card>
   );

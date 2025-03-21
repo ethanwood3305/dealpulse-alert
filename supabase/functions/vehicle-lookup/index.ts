@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -67,12 +66,12 @@ serve(async (req) => {
       
       // If we have a registration, process DVLA lookup
       if (registration) {
-        const dvlaApiKey = Deno.env.get('DVLA_API_KEY')
-        if (!dvlaApiKey) {
-          console.error('DVLA API key not configured in environment')
+        const ukVehicleDataApiKey = Deno.env.get('UKVEHICLEDATA_API_KEY')
+        if (!ukVehicleDataApiKey) {
+          console.error('UKVehicleData API key not configured in environment')
           return new Response(
             JSON.stringify({ 
-              error: 'DVLA API key not configured',
+              error: 'UKVehicleData API key not configured',
               source: 'mock_data',
               vehicle: getMockVehicleData(registration)
             }),
@@ -84,55 +83,49 @@ serve(async (req) => {
         const registrationClean = registration.replace(/\s+/g, '').toUpperCase()
         
         try {
-          console.log(`Calling DVLA API for registration: ${registrationClean}`)
-          console.log(`Using API key: ${dvlaApiKey.substring(0, 3)}...${dvlaApiKey.substring(dvlaApiKey.length - 3)}`)
+          console.log(`Calling UKVehicleData API for registration: ${registrationClean}`)
           
-          // Call the real DVLA API
-          // DVLA Vehicle Enquiry Service API: https://developer-portal.driver-vehicle-licensing.api.gov.uk/
-          const response = await fetch('https://driver-vehicle-licensing.api.gov.uk/vehicle-enquiry/v1/vehicles', {
+          // Call the UKVehicleData API
+          // UKVehicleData API Documentation: https://ukvehicledata.co.uk/apidocumentation?Doc=AccountSecurity
+          const response = await fetch('https://api.ukvehicledata.co.uk/api/datapackage/VehicleData', {
             method: 'POST',
             headers: {
-              'x-api-key': dvlaApiKey,
-              'Content-Type': 'application/json'
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
             },
-            body: JSON.stringify({ registrationNumber: registrationClean })
+            body: JSON.stringify({
+              v: 2,
+              api_nullitems: 1,
+              auth_apikey: ukVehicleDataApiKey,
+              key_VRM: registrationClean,
+            })
           });
           
-          console.log(`DVLA API response status: ${response.status}`);
+          console.log(`UKVehicleData API response status: ${response.status}`);
           
           if (!response.ok) {
             // Try to parse error response
             const errorText = await response.text();
-            console.error('DVLA API error response text:', errorText);
+            console.error('UKVehicleData API error response text:', errorText);
             
             let errorData = {};
             try {
               errorData = JSON.parse(errorText);
-              console.error('DVLA API error data:', errorData);
+              console.error('UKVehicleData API error data:', errorData);
             } catch (parseError) {
-              console.error('Could not parse DVLA error response:', parseError);
+              console.error('Could not parse UKVehicleData error response:', parseError);
             }
             
+            let errorMessage = 'Error connecting to vehicle data service';
+            
+            // Handle specific error cases
             if (response.status === 404) {
-              return new Response(
-                JSON.stringify({ error: 'Vehicle not found with that registration number' }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-              );
-            } else if (response.status === 403) {
-              console.error('Forbidden error from DVLA API. API key may be invalid or expired.');
-              // Return a more specific error for forbidden
-              return new Response(
-                JSON.stringify({ 
-                  error: 'Access to DVLA API forbidden. The API key may be invalid or expired.',
-                  source: 'mock_data',
-                  vehicle: getMockVehicleData(registrationClean)
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-              );
+              errorMessage = 'Vehicle not found with that registration number';
+            } else if (response.status === 401 || response.status === 403) {
+              errorMessage = 'Authentication failed with vehicle data service. The API key may be invalid.';
             }
             
-            // For other errors, fall back to mock data with the error message
-            const errorMessage = errorData.message || `DVLA API error: ${response.status} ${response.statusText}`;
+            // For API errors, fall back to mock data with the error message
             return new Response(
               JSON.stringify({ 
                 error: errorMessage,
@@ -143,18 +136,16 @@ serve(async (req) => {
             );
           }
           
-          // Try to parse response body
-          const responseText = await response.text();
-          console.log('DVLA API response text:', responseText.substring(0, 200) + (responseText.length > 200 ? '...' : ''));
+          // Parse response body
+          const responseData = await response.json();
+          console.log('UKVehicleData API response data (partial):', JSON.stringify(responseData).substring(0, 200) + '...');
           
-          let dvlaData;
-          try {
-            dvlaData = JSON.parse(responseText);
-          } catch (parseError) {
-            console.error('Failed to parse DVLA API response:', parseError);
+          if (!responseData.Response || responseData.Response.StatusCode !== "Success") {
+            console.error('UKVehicleData API returned an error:', responseData.Response?.StatusMessage || 'Unknown error');
+            
             return new Response(
-              JSON.stringify({ 
-                error: 'Invalid response format from DVLA API',
+              JSON.stringify({
+                error: responseData.Response?.StatusMessage || 'Error retrieving vehicle data',
                 source: 'mock_data',
                 vehicle: getMockVehicleData(registrationClean)
               }),
@@ -162,21 +153,26 @@ serve(async (req) => {
             );
           }
           
-          console.log('Successfully retrieved DVLA data:', JSON.stringify(dvlaData).substring(0, 200));
+          // Extract the vehicle data
+          const vehicleInfo = responseData.Response.DataItems.VehicleRegistration;
+          const motInfo = responseData.Response.DataItems.MotVed?.MotHistory?.[0] || {};
+          const technicalInfo = responseData.Response.DataItems.TechnicalDetails;
           
-          // Map DVLA API response to our expected format
+          // Map UKVehicleData API response to our expected format
           const vehicleData = {
             registration: registrationClean,
-            make: dvlaData.make || 'Unknown',
-            model: dvlaData.model || 'Unknown',
-            color: dvlaData.colour || 'Unknown',
-            fuelType: dvlaData.fuelType || 'Unknown',
-            year: dvlaData.yearOfManufacture?.toString() || 'Unknown',
-            engineSize: dvlaData.engineCapacity ? `${(dvlaData.engineCapacity / 1000).toFixed(1)}L` : 'Unknown',
-            motStatus: dvlaData.motStatus || 'Unknown',
-            motExpiryDate: dvlaData.motExpiryDate || null,
-            taxStatus: dvlaData.taxStatus || 'Unknown',
-            taxDueDate: dvlaData.taxDueDate || null,
+            make: vehicleInfo.Make || 'Unknown',
+            model: vehicleInfo.Model || 'Unknown',
+            color: vehicleInfo.Colour || 'Unknown',
+            fuelType: technicalInfo?.FuelType || 'Unknown',
+            year: vehicleInfo.YearOfManufacture?.toString() || 'Unknown',
+            engineSize: technicalInfo?.EngineCapacity 
+              ? `${(parseInt(technicalInfo.EngineCapacity) / 1000).toFixed(1)}L` 
+              : 'Unknown',
+            motStatus: motInfo?.TestResult === 'PASSED' ? 'Valid' : (motInfo?.TestResult === 'FAILED' ? 'Invalid' : 'Unknown'),
+            motExpiryDate: motInfo?.ExpiryDate || null,
+            taxStatus: vehicleInfo.TaxStatus || 'Unknown',
+            taxDueDate: vehicleInfo.TaxDueDate || null,
           };
           
           console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
@@ -184,22 +180,21 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               vehicle: vehicleData,
-              source: 'dvla_api'
+              source: 'ukvehicledata_api'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
-        } catch (dvlaError) {
-          console.error('Error during DVLA API call:', dvlaError);
+        } catch (apiError) {
+          console.error('Error during UKVehicleData API call:', apiError);
           
           // If the actual API call fails, provide some realistic mock data as fallback
-          // This helps during development or if the API temporarily fails
           console.log('Falling back to mock data for registration:', registrationClean);
           
           return new Response(
             JSON.stringify({ 
               vehicle: getMockVehicleData(registrationClean), 
               warning: 'Using mock data due to API error',
-              error: dvlaError.message,
+              error: apiError.message,
               source: 'mock_data'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
