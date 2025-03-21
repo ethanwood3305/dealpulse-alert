@@ -65,193 +65,96 @@ serve(async (req) => {
     } else if (req.method === 'POST') {
       const { brandId, modelId, registration } = await req.json()
       
-      // If we have a registration, process DVLA lookup
+      // If we have a registration, process vehicle lookup via proxy
       if (registration) {
-        const ukVehicleDataApiKey = Deno.env.get('UKVEHICLEDATA_API_KEY')
-        if (!ukVehicleDataApiKey) {
-          console.error('UKVehicleData API key not configured in environment')
-          return new Response(
-            JSON.stringify({ 
-              error: 'UKVehicleData API key not configured',
-              source: 'mock_data',
-              vehicle: getMockVehicleData(registration)
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-          )
-        }
-        
         console.log(`Processing registration lookup for: ${registration}`)
         const registrationClean = registration.replace(/\s+/g, '').toUpperCase()
         
         try {
-          console.log(`Calling UKVehicleData API for registration: ${registrationClean}`)
-          console.log(`Using API key: ${ukVehicleDataApiKey.substring(0, 5)}...`)
+          console.log(`Calling vehicle proxy for registration: ${registrationClean}`)
           
-          // Fix: Ensure we're using the correct API key format directly from environment variable
-          const apiUrl = `https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&api_nullitems=1&auth_apikey=${ukVehicleDataApiKey}&key_VRM=${registrationClean}`;
+          // Get proxy URL from environment
+          const proxyUrl = `${Deno.env.get('SUPABASE_EDGE_FUNC_URL')}/vehicle-proxy`;
           
-          console.log("API URL:", apiUrl);
-          
-          // Try the API call with a timeout to prevent long-running requests
-          try {
-            // We'll use AbortController with a timeout to prevent hanging requests
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-            
-            const response = await fetch(apiUrl, {
-              method: 'GET',
-              headers: {
-                'Accept': 'application/json'
-              },
-              signal: controller.signal
-            });
-            
-            clearTimeout(timeoutId);
-            
-            console.log(`UKVehicleData API response status: ${response.status}`);
-            
-            if (!response.ok) {
-              // Try to parse error response
-              const errorText = await response.text();
-              console.error('UKVehicleData API error response text:', errorText);
-              
-              let errorData = {};
-              try {
-                errorData = JSON.parse(errorText);
-                console.error('UKVehicleData API error data:', errorData);
-              } catch (parseError) {
-                console.error('Could not parse UKVehicleData error response:', parseError);
-              }
-              
-              let errorMessage = 'Error connecting to vehicle data service';
-              
-              // Handle specific error cases
-              if (response.status === 404) {
-                errorMessage = 'Vehicle not found with that registration number';
-              } else if (response.status === 401 || response.status === 403) {
-                errorMessage = 'Authentication failed with vehicle data service. The API key may be invalid.';
-              }
-              
-              // For API errors, fall back to mock data with the error message
-              return new Response(
-                JSON.stringify({ 
-                  error: errorMessage,
-                  source: 'mock_data',
-                  vehicle: getMockVehicleData(registrationClean)
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-              );
-            }
-            
-            // Parse response body
-            const responseData = await response.json();
-            console.log('UKVehicleData API response data (partial):', JSON.stringify(responseData).substring(0, 200) + '...');
-            
-            if (!responseData.Response || responseData.Response.StatusCode !== "Success") {
-              console.error('UKVehicleData API returned an error:', responseData.Response?.StatusMessage || 'Unknown error');
-              
-              return new Response(
-                JSON.stringify({
-                  error: responseData.Response?.StatusMessage || 'Error retrieving vehicle data',
-                  source: 'mock_data',
-                  vehicle: getMockVehicleData(registrationClean)
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-              );
-            }
-            
-            // Extract the vehicle data - updated to match the actual API response structure
-            const vehicleInfo = responseData.Response.DataItems.VehicleRegistration;
-            const motInfo = responseData.Response.DataItems.MotVed?.VedRate || {};
-            const technicalInfo = responseData.Response.DataItems.TechnicalDetails;
-            const dimensions = technicalInfo?.Dimensions || {};
-            
-            // Map UKVehicleData API response to our expected format with additional details
-            const vehicleData = {
-              registration: registrationClean,
-              make: vehicleInfo.Make || 'Unknown',
-              model: vehicleInfo.Model || 'Unknown',
-              color: vehicleInfo.Colour || 'Unknown',
-              fuelType: vehicleInfo.FuelType || 'Unknown',
-              year: vehicleInfo.YearOfManufacture || 'Unknown',
-              engineSize: vehicleInfo.EngineCapacity 
-                ? `${(parseInt(vehicleInfo.EngineCapacity) / 1000).toFixed(1)}L` 
-                : 'Unknown',
-              motStatus: 'Valid', // This would need to be extracted from MotVed if available
-              motExpiryDate: null, // This would need to be extracted if available
-              taxStatus: 'Taxed', // This would need to be extracted if available
-              taxDueDate: null, // This would need to be extracted if available
-              doorCount: dimensions.NumberOfDoors?.toString() || 'Unknown',
-              bodyStyle: vehicleInfo.DoorPlanLiteral || 'Unknown',
-              transmission: vehicleInfo.Transmission || 'Unknown',
-              weight: dimensions.KerbWeight?.toString() || 'Unknown',
-            };
-            
-            console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
-            
-            return new Response(
-              JSON.stringify({ 
-                vehicle: vehicleData,
-                source: 'ukvehicledata_api'
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-            );
-          } catch (fetchError) {
-            console.error('Fetch error with UKVehicleData API call:', fetchError);
-            console.error('Error details:', fetchError.stack || 'No stack trace available');
-            
-            // Check if it's a TLS or network-related error
-            const errorString = fetchError.toString().toLowerCase();
-            const isTlsError = errorString.includes('tls') || errorString.includes('certificate') || errorString.includes('ssl');
-            const isNetworkError = errorString.includes('network') || errorString.includes('connection') || errorString.includes('connect');
-            const isTimeoutError = errorString.includes('timeout') || errorString.includes('abort');
-            
-            let errorMessage = `API connection error: ${fetchError.message}`;
-            
-            if (isTlsError) {
-              errorMessage += ". TLS/SSL verification failed. This is a common issue in serverless environments.";
-            } else if (isNetworkError) {
-              errorMessage += ". Network connection failed. The serverless environment may be restricting outbound connections.";
-            } else if (isTimeoutError) {
-              errorMessage += ". Request timed out. The API may be slow to respond or unreachable.";
-            } else {
-              errorMessage += ". This may be due to network restrictions in the serverless environment.";
-            }
-            
-            // Provide more detailed diagnostic information
-            return new Response(
-              JSON.stringify({ 
-                vehicle: getMockVehicleData(registrationClean), 
-                warning: 'Using mock data due to API connection error',
-                error: errorMessage,
-                source: 'mock_data',
-                serverless_environment: true,
-                diagnostic: {
-                  error_type: fetchError.name,
-                  error_message: fetchError.message,
-                  stack: fetchError.stack,
-                  is_tls_error: isTlsError,
-                  is_network_error: isNetworkError,
-                  is_timeout_error: isTimeoutError
-                }
-              }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-            );
+          if (!proxyUrl) {
+            throw new Error('SUPABASE_EDGE_FUNC_URL environment variable is not set');
           }
-        } catch (apiError) {
-          console.error('Error during UKVehicleData API call:', apiError);
           
-          // If the actual API call fails, provide some realistic mock data as fallback
-          console.log('Falling back to mock data for registration:', registrationClean);
+          console.log("Proxy URL:", proxyUrl);
+          
+          // Call the proxy endpoint
+          const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vrm: registrationClean })
+          });
+          
+          console.log(`Vehicle proxy response status: ${response.status}`);
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Vehicle proxy error response:', errorText);
+            
+            let errorMessage = 'Error connecting to vehicle data service';
+            
+            if (response.status === 404) {
+              errorMessage = 'Vehicle not found with that registration number';
+            } else if (response.status === 401 || response.status === 403) {
+              errorMessage = 'Authentication failed with vehicle data service';
+            }
+            
+            throw new Error(errorMessage);
+          }
+          
+          // Parse response body
+          const proxyData = await response.json();
+          console.log('Vehicle proxy response received');
+          
+          if (!proxyData.success) {
+            throw new Error(proxyData.error || 'Error retrieving vehicle data');
+          }
+          
+          // Map the proxy response to our expected format
+          const vehicleData = {
+            registration: registrationClean,
+            make: proxyData.vehicle.make || 'Unknown',
+            model: proxyData.vehicle.model || 'Unknown',
+            color: proxyData.vehicle.color || 'Unknown',
+            fuelType: proxyData.vehicle.fuelType || 'Unknown',
+            year: proxyData.vehicle.year || 'Unknown',
+            engineSize: proxyData.vehicle.engineSize || 'Unknown',
+            motStatus: proxyData.vehicle.motStatus || 'Unknown',
+            motExpiryDate: proxyData.vehicle.motExpiryDate || null,
+            taxStatus: proxyData.vehicle.taxStatus || 'Unknown',
+            taxDueDate: proxyData.vehicle.taxDueDate || null,
+            doorCount: proxyData.vehicle.doorCount || 'Unknown',
+            bodyStyle: proxyData.vehicle.bodyStyle || 'Unknown',
+            transmission: proxyData.vehicle.transmission || 'Unknown',
+            weight: proxyData.vehicle.weight || 'Unknown',
+          };
+          
+          console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
           
           return new Response(
             JSON.stringify({ 
-              vehicle: getMockVehicleData(registrationClean), 
-              warning: 'Using mock data due to API error',
-              error: apiError.message,
-              source: 'mock_data'
+              vehicle: vehicleData,
+              source: 'proxy_data'
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+          );
+        } catch (apiError) {
+          console.error('Error during vehicle proxy API call:', apiError);
+          
+          return new Response(
+            JSON.stringify({ 
+              error: apiError.message || 'Failed to lookup vehicle details',
+              diagnostic: {
+                error_type: apiError.name,
+                error_message: apiError.message,
+                stack: apiError.stack
+              }
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
           );
         }
       }
@@ -341,52 +244,3 @@ serve(async (req) => {
     )
   }
 })
-
-// Function to generate mock data for a registration - enhanced with more details
-function getMockVehicleData(registration) {
-  // Randomize some data to make it look more realistic
-  const makes = ['Ford', 'Toyota', 'Volkswagen', 'BMW', 'Mercedes', 'Audi', 'Tesla'];
-  const models = ['Focus', 'Corolla', 'Golf', '3 Series', 'E-Class', 'A4', 'Model 3'];
-  const colors = ['Black', 'Silver', 'Blue', 'White', 'Red', 'Grey', 'Green'];
-  const fuelTypes = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plug-in Hybrid'];
-  const transmissions = ['Manual', 'Automatic', 'Semi-Automatic', 'CVT'];
-  const bodyStyles = ['5 Door Hatchback', '4 Door Saloon', '5 Door Estate', '2 Door Coupe', 'SUV'];
-  
-  // Generate a stable "random" selection based on the registration
-  const charSum = registration.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const makeIndex = charSum % makes.length;
-  const modelIndex = (charSum + 1) % models.length;
-  const colorIndex = (charSum + 2) % colors.length;
-  const fuelIndex = (charSum + 3) % fuelTypes.length;
-  const transmissionIndex = (charSum + 4) % transmissions.length;
-  const bodyStyleIndex = (charSum + 5) % bodyStyles.length;
-  const year = 2015 + (charSum % 9); // Years between 2015-2023
-  const doorCount = [3, 4, 5][charSum % 3];
-  const weight = 1000 + (charSum % 1000);
-  
-  // Generate future dates for MOT and tax
-  const today = new Date();
-  const motExpiryDate = new Date(today);
-  motExpiryDate.setMonth(today.getMonth() + (charSum % 11) + 1); // 1-12 months in the future
-  
-  const taxDueDate = new Date(today);
-  taxDueDate.setMonth(today.getMonth() + (charSum % 5) + 7); // 7-12 months in the future
-  
-  return {
-    registration: registration,
-    make: makes[makeIndex],
-    model: models[modelIndex],
-    color: colors[colorIndex],
-    fuelType: fuelTypes[fuelIndex],
-    year: year.toString(),
-    engineSize: [1.0, 1.4, 1.6, 2.0, 2.5, 3.0][charSum % 6] + 'L',
-    motStatus: 'Valid',
-    motExpiryDate: motExpiryDate.toISOString().split('T')[0],
-    taxStatus: 'Taxed',
-    taxDueDate: taxDueDate.toISOString().split('T')[0],
-    doorCount: doorCount.toString(),
-    bodyStyle: bodyStyles[bodyStyleIndex],
-    transmission: transmissions[transmissionIndex],
-    weight: weight.toString(),
-  };
-}
