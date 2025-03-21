@@ -65,6 +65,7 @@ serve(async (req) => {
 
     console.log(`Processing VRM lookup for: ${vrm}`);
 
+    // Construct the query params following the sample request format
     const requestData = {
       v: 2,
       api_nullitems: 1,
@@ -80,8 +81,9 @@ serve(async (req) => {
       console.log('Calling UK Vehicle Data API...');
       console.log('Request data:', JSON.stringify(requestData));
 
+      // Use POST method with JSON body as specified in the docs
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
       
       try {
         const response = await fetch(API_ENDPOINT, {
@@ -179,7 +181,7 @@ serve(async (req) => {
         clearTimeout(timeoutId);
         
         if (fetchError.name === 'AbortError') {
-          console.error('API request timed out after 25 seconds');
+          console.error('API request timed out after 30 seconds');
           return new Response(
             JSON.stringify({ 
               error: 'Request to vehicle data service timed out',
@@ -187,7 +189,7 @@ serve(async (req) => {
               code: 'API_TIMEOUT',
               diagnostic: {
                 error_type: 'AbortError',
-                error_message: 'Request timed out after 25 seconds'
+                error_message: 'Request timed out after 30 seconds'
               }
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }

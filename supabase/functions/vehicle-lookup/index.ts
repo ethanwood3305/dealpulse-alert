@@ -109,7 +109,7 @@ serve(async (req) => {
           
           // Set a 30-second timeout for the proxy request
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          const timeoutId = setTimeout(() => controller.abort(), 35000);
           
           try {
             const response = await fetch(proxyUrl, {
@@ -187,7 +187,7 @@ serve(async (req) => {
                   code: 'TIMEOUT',
                   diagnostic: {
                     error_type: 'AbortError',
-                    error_message: 'Request timed out after 30 seconds'
+                    error_message: 'Request timed out after 35 seconds'
                   }
                 }),
                 { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
