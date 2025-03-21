@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -87,7 +86,7 @@ serve(async (req) => {
           console.log(`Calling UKVehicleData API for registration: ${registrationClean}`)
           console.log(`Using API key: ${ukVehicleDataApiKey.substring(0, 5)}...`)
           
-          // Use the direct URL query format instead of POST body
+          // Updated URL to exactly match the format provided
           const apiUrl = `https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData?v=2&api_nullitems=1&auth_apikey=${ukVehicleDataApiKey}&key_VRM=${registrationClean}`;
           
           console.log("API URL:", apiUrl);
