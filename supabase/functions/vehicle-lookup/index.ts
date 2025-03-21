@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -62,7 +63,26 @@ serve(async (req) => {
         )
       }
     } else if (req.method === 'POST') {
-      const { brandId, modelId, registration } = await req.json()
+      // Parse the request body
+      let requestBody;
+      try {
+        requestBody = await req.json();
+        console.log('Received POST request with body:', JSON.stringify(requestBody));
+      } catch (parseError) {
+        console.error('Error parsing request body:', parseError);
+        return new Response(
+          JSON.stringify({ 
+            error: 'Invalid request format',
+            success: false
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400 
+          }
+        );
+      }
+      
+      const { brandId, modelId, registration } = requestBody;
       
       // If we have a registration, process vehicle lookup via proxy
       if (registration) {
@@ -87,6 +107,10 @@ serve(async (req) => {
           
           console.log("Starting request to vehicle-proxy");
           
+          // Set a 30-second timeout for the proxy request
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          
           try {
             const response = await fetch(proxyUrl, {
               method: 'POST',
@@ -95,60 +119,80 @@ serve(async (req) => {
                 'apikey': apiKey,
                 'Authorization': `Bearer ${apiKey}`
               },
-              body: JSON.stringify({ vrm: registrationClean })
+              body: JSON.stringify({ vrm: registrationClean }),
+              signal: controller.signal
             });
+            
+            // Clear the timeout since we got a response
+            clearTimeout(timeoutId);
             
             console.log(`Vehicle-proxy response status: ${response.status}`);
             
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error('Vehicle-proxy error response:', errorText);
+            // Get the full response text for better logging
+            const responseText = await response.text();
+            console.log('Vehicle-proxy response text:', responseText);
+            
+            // Try to parse the response as JSON
+            let responseData;
+            try {
+              responseData = JSON.parse(responseText);
+            } catch (jsonError) {
+              console.error('Error parsing proxy response as JSON:', jsonError);
+              return new Response(
+                JSON.stringify({ 
+                  error: 'Invalid response from vehicle lookup service',
+                  code: 'INVALID_RESPONSE',
+                  diagnostic: {
+                    response: responseText.substring(0, 500) // Limit to 500 chars in case it's huge
+                  }
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
+              );
+            }
+            
+            if (!response.ok || !responseData.success) {
+              console.error('Vehicle-proxy error response:', responseData);
               
-              try {
-                const errorJson = JSON.parse(errorText);
-                console.log('Parsed error details:', JSON.stringify(errorJson));
-                
-                if (errorJson.code === "VEHICLE_NOT_FOUND") {
-                  return new Response(
-                    JSON.stringify({ 
-                      error: 'Registration not found in vehicle database',
-                      code: 'VEHICLE_NOT_FOUND'
-                    }),
-                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-                  );
-                }
-                
-                return new Response(
-                  JSON.stringify({ 
-                    error: errorJson.error || 'Error retrieving vehicle data',
-                    code: errorJson.code || 'SERVICE_ERROR',
-                    diagnostic: errorJson.diagnostic
-                  }),
-                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
-                );
-              } catch (parseError) {
-                console.error('Error parsing error response:', parseError);
-                throw new Error(`Vehicle-proxy request failed with status ${response.status}`);
-              }
+              return new Response(
+                JSON.stringify({ 
+                  error: responseData.error || 'Error retrieving vehicle data',
+                  code: responseData.code || 'SERVICE_ERROR',
+                  diagnostic: responseData.diagnostic
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
+              );
             }
             
-            const proxyData = await response.json();
-            console.log('Vehicle-proxy response received:', JSON.stringify(proxyData));
-            
-            if (!proxyData.success) {
-              throw new Error(proxyData.error || 'Error retrieving vehicle data');
-            }
+            console.log('Vehicle-proxy successful response:', JSON.stringify(responseData));
             
             return new Response(
               JSON.stringify({ 
-                vehicle: proxyData.vehicle,
+                vehicle: responseData.vehicle,
                 source: 'vehicle_proxy',
                 success: true
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             );
           } catch (fetchError) {
+            // Make sure to clear the timeout
+            clearTimeout(timeoutId);
+            
             console.error('Fetch error:', fetchError);
+            
+            // Special handling for timeout errors
+            if (fetchError.name === 'AbortError') {
+              return new Response(
+                JSON.stringify({ 
+                  error: 'The vehicle lookup service took too long to respond',
+                  code: 'TIMEOUT',
+                  diagnostic: {
+                    error_type: 'AbortError',
+                    error_message: 'Request timed out after 30 seconds'
+                  }
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
+              );
+            }
             
             return new Response(
               JSON.stringify({ 
@@ -259,7 +303,14 @@ serve(async (req) => {
     console.error('Error processing request:', error)
     
     return new Response(
-      JSON.stringify({ error: error.message || 'Unknown error' }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error',
+        diagnostic: {
+          error_type: error.name,
+          error_message: error.message,
+          stack: error.stack
+        }
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     )
   }
