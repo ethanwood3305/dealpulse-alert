@@ -37,6 +37,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [vehicleDetails, setVehicleDetails] = useState<VehicleDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
   const { addCar } = useTrackedCars(userId);
 
@@ -52,6 +53,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
     setIsLoading(true);
     setError(null);
+    setErrorCode(null);
     setVehicleDetails(null);
     setDiagnosticInfo(null);
 
@@ -78,6 +80,9 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       if (data.error) {
         console.error("Error from Vehicle API:", data.error);
         setError(data.error);
+        if (data.code) {
+          setErrorCode(data.code);
+        }
         return;
       }
 
@@ -176,11 +181,16 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           )}
 
           {error && (
-            <Alert variant="destructive">
+            <Alert variant={errorCode === "VEHICLE_NOT_FOUND" ? "default" : "destructive"}>
               <AlertCircleIcon className="h-4 w-4" />
-              <AlertTitle>Lookup failed</AlertTitle>
+              <AlertTitle>{errorCode === "VEHICLE_NOT_FOUND" ? "Vehicle not found" : "Lookup failed"}</AlertTitle>
               <AlertDescription>
                 {error}
+                {errorCode === "VEHICLE_NOT_FOUND" && (
+                  <p className="mt-2 text-sm">
+                    Please check the registration number and try again. Make sure it's a valid UK registration.
+                  </p>
+                )}
               </AlertDescription>
             </Alert>
           )}

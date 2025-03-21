@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -101,19 +100,69 @@ serve(async (req) => {
           
           console.log(`Vehicle proxy response status: ${response.status}`);
           
+          // Get detailed error information
           if (!response.ok) {
             const errorText = await response.text();
             console.error('Vehicle proxy error response:', errorText);
             
-            let errorMessage = 'Error connecting to vehicle data service';
-            
-            if (response.status === 404) {
-              errorMessage = 'Vehicle not found with that registration number';
-            } else if (response.status === 401 || response.status === 403) {
-              errorMessage = 'Authentication failed with vehicle data service';
+            try {
+              // Try to parse the error response as JSON for more details
+              const errorJson = JSON.parse(errorText);
+              console.log('Parsed error details:', JSON.stringify(errorJson));
+              
+              if (errorJson.message) {
+                console.log('Error message from proxy:', errorJson.message);
+              }
+              
+              // Check for specific error conditions
+              if (response.status === 404 || 
+                  (errorJson.message && errorJson.message.toLowerCase().includes('not found'))) {
+                console.log('This appears to be a vehicle not found error');
+                return new Response(
+                  JSON.stringify({ 
+                    error: 'Registration not found in vehicle database',
+                    originalError: errorJson,
+                    code: 'VEHICLE_NOT_FOUND'
+                  }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+                );
+              }
+              
+              // Other API-specific errors
+              let errorMessage = 'Error connecting to vehicle data service';
+              
+              if (response.status === 401 || response.status === 403) {
+                errorMessage = 'Authentication failed with vehicle data service';
+              }
+              
+              return new Response(
+                JSON.stringify({ 
+                  error: errorMessage,
+                  originalError: errorJson,
+                  code: 'PROXY_ERROR'
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
+              );
+            } catch (parseError) {
+              // If error response wasn't valid JSON
+              let errorMessage = 'Error connecting to vehicle data service';
+              
+              if (response.status === 404) {
+                errorMessage = 'Vehicle not found with that registration number';
+              } else if (response.status === 401 || response.status === 403) {
+                errorMessage = 'Authentication failed with vehicle data service';
+              }
+              
+              return new Response(
+                JSON.stringify({ 
+                  error: errorMessage,
+                  rawError: errorText,
+                  parseError: parseError.message,
+                  code: 'PROXY_ERROR'
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
+              );
             }
-            
-            throw new Error(errorMessage);
           }
           
           // Parse response body
@@ -154,6 +203,22 @@ serve(async (req) => {
           );
         } catch (apiError) {
           console.error('Error during vehicle proxy API call:', apiError);
+          
+          // Check if this is the specific not found error
+          if (apiError.message && apiError.message.includes('Vehicle not found')) {
+            return new Response(
+              JSON.stringify({ 
+                error: 'Registration not found in vehicle database. Please check the number and try again.',
+                code: 'VEHICLE_NOT_FOUND',
+                diagnostic: {
+                  error_type: apiError.name,
+                  error_message: apiError.message,
+                  stack: apiError.stack
+                }
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+            );
+          }
           
           return new Response(
             JSON.stringify({ 
