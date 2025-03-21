@@ -34,6 +34,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [vehicleDetails, setVehicleDetails] = useState<VehicleDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
+  const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
   const { addCar } = useTrackedCars(userId);
 
   const handleLookup = async () => {
@@ -50,6 +51,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     setError(null);
     setVehicleDetails(null);
     setIsUsingMockData(false);
+    setDiagnosticInfo(null);
 
     try {
       console.log("Calling vehicle-lookup function with registration:", registration.trim());
@@ -66,12 +68,17 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         throw new Error(error.message || 'Failed to lookup vehicle');
       }
 
+      if (data.diagnostic) {
+        console.log("Diagnostic information:", data.diagnostic);
+        setDiagnosticInfo(data.diagnostic);
+      }
+
       if (data.error) {
         console.error("Error from Vehicle API:", data.error);
         setError(data.error);
         
         // If we still got vehicle data (mock data), show it despite the error
-        if (data.vehicle && data.source === 'mock_data') {
+        if (data.vehicle && (data.source === 'mock_data' || data.warning)) {
           setVehicleDetails(data.vehicle);
           setIsUsingMockData(true);
           toast({
@@ -92,6 +99,12 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           toast({
             title: "Using Demo Data",
             description: "We couldn't connect to the vehicle database API, so we're showing sample data instead.",
+            variant: "default"
+          });
+        } else {
+          toast({
+            title: "Vehicle Found",
+            description: `Found details for ${data.vehicle.make} ${data.vehicle.model}`,
             variant: "default"
           });
         }
@@ -187,8 +200,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               <AlertCircleIcon className="h-4 w-4" />
               <AlertTitle>Lookup failed</AlertTitle>
               <AlertDescription>
-                {error.includes("forbidden") || error.includes("Forbidden") || error.includes("Authentication") ? 
-                  "The vehicle lookup API access is currently unavailable. This could be due to an invalid or expired API key. The system will show demo data instead." : 
+                {error.includes("forbidden") || error.includes("Forbidden") || error.includes("Authentication") || error.includes("API connection error") ? 
+                  "The vehicle lookup API access is currently unavailable. This could be due to network restrictions in the serverless environment. The system will show demo data instead." : 
                   error}
               </AlertDescription>
             </Alert>

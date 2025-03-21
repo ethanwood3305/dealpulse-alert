@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -84,106 +85,132 @@ serve(async (req) => {
         
         try {
           console.log(`Calling UKVehicleData API for registration: ${registrationClean}`)
+          console.log(`Using API key: ${ukVehicleDataApiKey.substring(0, 5)}...`)
           
-          // Call the UKVehicleData API
-          // UKVehicleData API Documentation: https://ukvehicledata.co.uk/apidocumentation?Doc=AccountSecurity
-          const response = await fetch('https://api.ukvehicledata.co.uk/api/datapackage/VehicleData', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-              v: 2,
-              api_nullitems: 1,
-              auth_apikey: ukVehicleDataApiKey,
-              key_VRM: registrationClean,
-            })
+          // Prepare the request body
+          const requestBody = JSON.stringify({
+            v: 2,
+            api_nullitems: 1,
+            auth_apikey: ukVehicleDataApiKey,
+            key_VRM: registrationClean,
           });
           
-          console.log(`UKVehicleData API response status: ${response.status}`);
+          console.log("Request body:", requestBody);
           
-          if (!response.ok) {
-            // Try to parse error response
-            const errorText = await response.text();
-            console.error('UKVehicleData API error response text:', errorText);
+          // Call the UKVehicleData API with improved error handling
+          try {
+            const response = await fetch('https://api.ukvehicledata.co.uk/api/datapackage/VehicleData', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              },
+              body: requestBody
+            });
             
-            let errorData = {};
-            try {
-              errorData = JSON.parse(errorText);
-              console.error('UKVehicleData API error data:', errorData);
-            } catch (parseError) {
-              console.error('Could not parse UKVehicleData error response:', parseError);
+            console.log(`UKVehicleData API response status: ${response.status}`);
+            
+            if (!response.ok) {
+              // Try to parse error response
+              const errorText = await response.text();
+              console.error('UKVehicleData API error response text:', errorText);
+              
+              let errorData = {};
+              try {
+                errorData = JSON.parse(errorText);
+                console.error('UKVehicleData API error data:', errorData);
+              } catch (parseError) {
+                console.error('Could not parse UKVehicleData error response:', parseError);
+              }
+              
+              let errorMessage = 'Error connecting to vehicle data service';
+              
+              // Handle specific error cases
+              if (response.status === 404) {
+                errorMessage = 'Vehicle not found with that registration number';
+              } else if (response.status === 401 || response.status === 403) {
+                errorMessage = 'Authentication failed with vehicle data service. The API key may be invalid.';
+              }
+              
+              // For API errors, fall back to mock data with the error message
+              return new Response(
+                JSON.stringify({ 
+                  error: errorMessage,
+                  source: 'mock_data',
+                  vehicle: getMockVehicleData(registrationClean)
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+              );
             }
             
-            let errorMessage = 'Error connecting to vehicle data service';
+            // Parse response body
+            const responseData = await response.json();
+            console.log('UKVehicleData API response data (partial):', JSON.stringify(responseData).substring(0, 200) + '...');
             
-            // Handle specific error cases
-            if (response.status === 404) {
-              errorMessage = 'Vehicle not found with that registration number';
-            } else if (response.status === 401 || response.status === 403) {
-              errorMessage = 'Authentication failed with vehicle data service. The API key may be invalid.';
+            if (!responseData.Response || responseData.Response.StatusCode !== "Success") {
+              console.error('UKVehicleData API returned an error:', responseData.Response?.StatusMessage || 'Unknown error');
+              
+              return new Response(
+                JSON.stringify({
+                  error: responseData.Response?.StatusMessage || 'Error retrieving vehicle data',
+                  source: 'mock_data',
+                  vehicle: getMockVehicleData(registrationClean)
+                }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+              );
             }
             
-            // For API errors, fall back to mock data with the error message
+            // Extract the vehicle data
+            const vehicleInfo = responseData.Response.DataItems.VehicleRegistration;
+            const motInfo = responseData.Response.DataItems.MotVed?.MotHistory?.[0] || {};
+            const technicalInfo = responseData.Response.DataItems.TechnicalDetails;
+            
+            // Map UKVehicleData API response to our expected format
+            const vehicleData = {
+              registration: registrationClean,
+              make: vehicleInfo.Make || 'Unknown',
+              model: vehicleInfo.Model || 'Unknown',
+              color: vehicleInfo.Colour || 'Unknown',
+              fuelType: technicalInfo?.FuelType || 'Unknown',
+              year: vehicleInfo.YearOfManufacture?.toString() || 'Unknown',
+              engineSize: technicalInfo?.EngineCapacity 
+                ? `${(parseInt(technicalInfo.EngineCapacity) / 1000).toFixed(1)}L` 
+                : 'Unknown',
+              motStatus: motInfo?.TestResult === 'PASSED' ? 'Valid' : (motInfo?.TestResult === 'FAILED' ? 'Invalid' : 'Unknown'),
+              motExpiryDate: motInfo?.ExpiryDate || null,
+              taxStatus: vehicleInfo.TaxStatus || 'Unknown',
+              taxDueDate: vehicleInfo.TaxDueDate || null,
+            };
+            
+            console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
+            
             return new Response(
               JSON.stringify({ 
-                error: errorMessage,
-                source: 'mock_data',
-                vehicle: getMockVehicleData(registrationClean)
+                vehicle: vehicleData,
+                source: 'ukvehicledata_api'
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             );
-          }
-          
-          // Parse response body
-          const responseData = await response.json();
-          console.log('UKVehicleData API response data (partial):', JSON.stringify(responseData).substring(0, 200) + '...');
-          
-          if (!responseData.Response || responseData.Response.StatusCode !== "Success") {
-            console.error('UKVehicleData API returned an error:', responseData.Response?.StatusMessage || 'Unknown error');
+          } catch (fetchError) {
+            console.error('Fetch error with UKVehicleData API call:', fetchError);
+            console.error('Error details:', fetchError.stack || 'No stack trace available');
             
+            // Provide more detailed diagnostic information
             return new Response(
-              JSON.stringify({
-                error: responseData.Response?.StatusMessage || 'Error retrieving vehicle data',
+              JSON.stringify({ 
+                vehicle: getMockVehicleData(registrationClean), 
+                warning: 'Using mock data due to API connection error',
+                error: `API connection error: ${fetchError.message}. This may be due to network restrictions in the serverless environment.`,
                 source: 'mock_data',
-                vehicle: getMockVehicleData(registrationClean)
+                diagnostic: {
+                  error_type: fetchError.name,
+                  error_message: fetchError.message,
+                  stack: fetchError.stack
+                }
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             );
           }
-          
-          // Extract the vehicle data
-          const vehicleInfo = responseData.Response.DataItems.VehicleRegistration;
-          const motInfo = responseData.Response.DataItems.MotVed?.MotHistory?.[0] || {};
-          const technicalInfo = responseData.Response.DataItems.TechnicalDetails;
-          
-          // Map UKVehicleData API response to our expected format
-          const vehicleData = {
-            registration: registrationClean,
-            make: vehicleInfo.Make || 'Unknown',
-            model: vehicleInfo.Model || 'Unknown',
-            color: vehicleInfo.Colour || 'Unknown',
-            fuelType: technicalInfo?.FuelType || 'Unknown',
-            year: vehicleInfo.YearOfManufacture?.toString() || 'Unknown',
-            engineSize: technicalInfo?.EngineCapacity 
-              ? `${(parseInt(technicalInfo.EngineCapacity) / 1000).toFixed(1)}L` 
-              : 'Unknown',
-            motStatus: motInfo?.TestResult === 'PASSED' ? 'Valid' : (motInfo?.TestResult === 'FAILED' ? 'Invalid' : 'Unknown'),
-            motExpiryDate: motInfo?.ExpiryDate || null,
-            taxStatus: vehicleInfo.TaxStatus || 'Unknown',
-            taxDueDate: vehicleInfo.TaxDueDate || null,
-          };
-          
-          console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
-          
-          return new Response(
-            JSON.stringify({ 
-              vehicle: vehicleData,
-              source: 'ukvehicledata_api'
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-          );
         } catch (apiError) {
           console.error('Error during UKVehicleData API call:', apiError);
           
