@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,14 +58,14 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     setDiagnosticInfo(null);
 
     try {
-      console.log("Calling vehicle-lookup function with registration:", registration.trim());
+      console.log("Starting vehicle lookup for registration:", registration.trim());
       
       const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
         method: 'POST',
         body: { registration: registration.trim() }
       });
 
-      console.log("Vehicle lookup response:", data);
+      console.log("Vehicle lookup response received:", data);
       
       if (error) {
         console.error("Supabase function error:", error);
@@ -74,7 +73,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       }
 
       if (data.diagnostic) {
-        console.log("Diagnostic information:", data.diagnostic);
+        console.log("Diagnostic information received:", data.diagnostic);
         setDiagnosticInfo(data.diagnostic);
       }
 
@@ -88,6 +87,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       }
 
       if (data.vehicle) {
+        console.log("Vehicle data received:", data.vehicle);
         setVehicleDetails(data.vehicle);
         toast({
           title: "Vehicle Found",
@@ -95,6 +95,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           variant: "default"
         });
       } else {
+        console.error("No vehicle data in response");
         setError('No vehicle data returned');
       }
     } catch (err: any) {
@@ -120,7 +121,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         });
       }
     } finally {
-      setIsLoading(false);  // Always reset loading state
+      console.log("Vehicle lookup completed, resetting loading state");
+      setIsLoading(false);
     }
   };
 
