@@ -74,7 +74,7 @@ serve(async (req) => {
           console.log(`Calling vehicle proxy for registration: ${registrationClean}`)
           
           // Hardcoded proxy URL using Supabase URL
-          const proxyUrl = `https://wskiwwfgelypkrufsimz.supabase.co/functions/vehicle-proxy`;
+          const proxyUrl = `https://wskiwwfgelypkrufsimz.supabase.co/functions/v1/vehicle-proxy`;
           
           console.log("Proxy URL:", proxyUrl);
           
@@ -86,12 +86,15 @@ serve(async (req) => {
             throw new Error('Authentication information missing');
           }
           
+          console.log("Using API key:", apiKey.substring(0, 5) + "..." + apiKey.substring(apiKey.length - 5));
+          
           // Call the proxy endpoint with the anon key in the apikey header
           const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
-              'apikey': apiKey 
+              'apikey': apiKey,
+              'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({ vrm: registrationClean })
           });
