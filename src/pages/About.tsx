@@ -99,8 +99,8 @@ const About = () => {
               <div className="relative">
                 <div className="aspect-video rounded-lg overflow-hidden shadow-xl">
                   <img 
-                    src="https://images.unsplash.com/photo-1560179707-f14e90ef3623?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2574&q=80" 
-                    alt="Car dealership" 
+                    src="https://images.unsplash.com/photo-1605810230434-7631ac76ec81?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2574&q=80" 
+                    alt="Car dealership showroom" 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -170,25 +170,19 @@ const About = () => {
               </p>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               {[
                 {
-                  name: "Alex Morgan",
-                  title: "CEO & Founder",
+                  name: "Bradley",
+                  title: "Co-Founder & Automotive Expert",
                   image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-                  bio: "Former auto industry executive with 15+ years of experience in dealership operations and digital transformation."
+                  bio: "With over 20 years in the automotive industry as a former car dealership salesman, Bradley brings unparalleled industry insight to DealPulse's strategic direction."
                 },
                 {
-                  name: "Sarah Chen",
-                  title: "CTO",
-                  image: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=988&q=80",
-                  bio: "Tech leader with expertise in data science and AI applications for business intelligence."
-                },
-                {
-                  name: "Michael Rodriguez",
-                  title: "Head of Client Success",
+                  name: "Ethan",
+                  title: "Co-Founder & CTO",
                   image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-                  bio: "Customer experience specialist focused on helping dealerships maximize platform value."
+                  bio: "A software developer with 2 years of automotive industry experience, Ethan leads our technology development with innovative solutions that transform dealership operations."
                 }
               ].map((person, index) => (
                 <motion.div 
