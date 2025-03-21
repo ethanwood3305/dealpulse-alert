@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -15,7 +14,7 @@ serve(async (req) => {
 
   try {
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
+      'https://wskiwwfgelypkrufsimz.supabase.co',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     )
 
@@ -73,12 +72,8 @@ serve(async (req) => {
         try {
           console.log(`Calling vehicle proxy for registration: ${registrationClean}`)
           
-          // Get proxy URL from environment
-          const proxyUrl = `${Deno.env.get('SUPABASE_EDGE_FUNC_URL')}/vehicle-proxy`;
-          
-          if (!proxyUrl) {
-            throw new Error('SUPABASE_EDGE_FUNC_URL environment variable is not set');
-          }
+          // Hardcoded proxy URL using Supabase URL
+          const proxyUrl = `https://wskiwwfgelypkrufsimz.supabase.co/functions/vehicle-proxy`;
           
           console.log("Proxy URL:", proxyUrl);
           
