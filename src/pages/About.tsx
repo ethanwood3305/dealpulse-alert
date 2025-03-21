@@ -173,16 +173,16 @@ const About = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
               {[
                 {
-                  name: "Bradley",
-                  title: "Co-Founder & Automotive Expert",
-                  image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-                  bio: "With over 20 years in the automotive industry as a former car dealership salesman, Bradley brings unparalleled industry insight to DealPulse's strategic direction."
-                },
-                {
                   name: "Ethan",
                   title: "CEO & Co-Founder",
                   image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
                   bio: "A software developer with 2 years of automotive industry experience, Ethan leads our technology development with innovative solutions that transform dealership operations."
+                },
+                {
+                  name: "Bradley",
+                  title: "Co-Founder & Automotive Expert",
+                  image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
+                  bio: "With over 20 years in the automotive industry as a former car dealership salesman, Bradley brings unparalleled industry insight to DealPulse's strategic direction."
                 }
               ].map((person, index) => (
                 <motion.div 
