@@ -99,7 +99,7 @@ const About = () => {
               <div className="relative">
                 <div className="aspect-video rounded-lg overflow-hidden shadow-xl">
                   <img 
-                    src="https://images.unsplash.com/photo-1605810230434-7631ac76ec81?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2574&q=80" 
+                    src="https://images.unsplash.com/photo-1606657365159-b93e81651cb8?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2574&q=80" 
                     alt="Car dealership showroom" 
                     className="w-full h-full object-cover"
                   />
@@ -180,7 +180,7 @@ const About = () => {
                 },
                 {
                   name: "Ethan",
-                  title: "Co-Founder & CTO",
+                  title: "CEO & Co-Founder",
                   image: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
                   bio: "A software developer with 2 years of automotive industry experience, Ethan leads our technology development with innovative solutions that transform dealership operations."
                 }
