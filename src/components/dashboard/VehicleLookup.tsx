@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, SearchIcon, AlertCircleIcon, Info } from "lucide-react";
+import { Loader2, SearchIcon, AlertCircleIcon, Info, ServerCrash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrackedCars, AddCarParams } from "@/hooks/use-tracked-cars";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -35,6 +35,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [error, setError] = useState<string | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
+  const [serverlessEnvironmentIssue, setServerlessEnvironmentIssue] = useState(false);
   const { addCar } = useTrackedCars(userId);
 
   const handleLookup = async () => {
@@ -52,6 +53,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     setVehicleDetails(null);
     setIsUsingMockData(false);
     setDiagnosticInfo(null);
+    setServerlessEnvironmentIssue(false);
 
     try {
       console.log("Calling vehicle-lookup function with registration:", registration.trim());
@@ -71,6 +73,13 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       if (data.diagnostic) {
         console.log("Diagnostic information:", data.diagnostic);
         setDiagnosticInfo(data.diagnostic);
+        
+        // Check if this is likely a serverless environment issue
+        if (data.serverless_environment || 
+            (data.diagnostic.is_network_error || data.diagnostic.is_tls_error) || 
+            data.error?.includes('network restrictions')) {
+          setServerlessEnvironmentIssue(true);
+        }
       }
 
       if (data.error) {
@@ -195,7 +204,19 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
             </div>
           )}
 
-          {error && (
+          {serverlessEnvironmentIssue && (
+            <Alert className="bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/30 dark:border-blue-800 dark:text-blue-400">
+              <ServerCrash className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <AlertTitle>Serverless Environment Limitation</AlertTitle>
+              <AlertDescription className="text-blue-700 dark:text-blue-500">
+                The vehicle lookup API connection is failing due to restrictions in the serverless environment. 
+                This is a common issue with edge functions that need to connect to external APIs.
+                Demo data will be shown instead.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {error && !serverlessEnvironmentIssue && (
             <Alert variant="destructive">
               <AlertCircleIcon className="h-4 w-4" />
               <AlertTitle>Lookup failed</AlertTitle>

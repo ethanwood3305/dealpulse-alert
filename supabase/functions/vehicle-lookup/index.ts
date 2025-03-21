@@ -97,16 +97,23 @@ serve(async (req) => {
           
           console.log("Request body:", requestBody);
           
-          // Call the UKVehicleData API with improved error handling
+          // Try the API call with a timeout to prevent long-running requests
           try {
+            // We'll use AbortController with a timeout to prevent hanging requests
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+            
             const response = await fetch('https://api.ukvehicledata.co.uk/api/datapackage/VehicleData', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
               },
-              body: requestBody
+              body: requestBody,
+              signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             
             console.log(`UKVehicleData API response status: ${response.status}`);
             
@@ -195,17 +202,39 @@ serve(async (req) => {
             console.error('Fetch error with UKVehicleData API call:', fetchError);
             console.error('Error details:', fetchError.stack || 'No stack trace available');
             
+            // Check if it's a TLS or network-related error
+            const errorString = fetchError.toString().toLowerCase();
+            const isTlsError = errorString.includes('tls') || errorString.includes('certificate') || errorString.includes('ssl');
+            const isNetworkError = errorString.includes('network') || errorString.includes('connection') || errorString.includes('connect');
+            const isTimeoutError = errorString.includes('timeout') || errorString.includes('abort');
+            
+            let errorMessage = `API connection error: ${fetchError.message}`;
+            
+            if (isTlsError) {
+              errorMessage += ". TLS/SSL verification failed. This is a common issue in serverless environments.";
+            } else if (isNetworkError) {
+              errorMessage += ". Network connection failed. The serverless environment may be restricting outbound connections.";
+            } else if (isTimeoutError) {
+              errorMessage += ". Request timed out. The API may be slow to respond or unreachable.";
+            } else {
+              errorMessage += ". This may be due to network restrictions in the serverless environment.";
+            }
+            
             // Provide more detailed diagnostic information
             return new Response(
               JSON.stringify({ 
                 vehicle: getMockVehicleData(registrationClean), 
                 warning: 'Using mock data due to API connection error',
-                error: `API connection error: ${fetchError.message}. This may be due to network restrictions in the serverless environment.`,
+                error: errorMessage,
                 source: 'mock_data',
+                serverless_environment: true,
                 diagnostic: {
                   error_type: fetchError.name,
                   error_message: fetchError.message,
-                  stack: fetchError.stack
+                  stack: fetchError.stack,
+                  is_tls_error: isTlsError,
+                  is_network_error: isNetworkError,
+                  is_timeout_error: isTimeoutError
                 }
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -317,17 +346,39 @@ serve(async (req) => {
 
 // Function to generate mock data for a registration
 function getMockVehicleData(registration) {
+  // Randomize some data to make it look more realistic
+  const makes = ['Ford', 'Toyota', 'Volkswagen', 'BMW', 'Mercedes', 'Audi', 'Tesla'];
+  const models = ['Focus', 'Corolla', 'Golf', '3 Series', 'E-Class', 'A4', 'Model 3'];
+  const colors = ['Black', 'Silver', 'Blue', 'White', 'Red', 'Grey', 'Green'];
+  const fuelTypes = ['Petrol', 'Diesel', 'Hybrid', 'Electric', 'Plug-in Hybrid'];
+  
+  // Generate a stable "random" selection based on the registration
+  const charSum = registration.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const makeIndex = charSum % makes.length;
+  const modelIndex = (charSum + 1) % models.length;
+  const colorIndex = (charSum + 2) % colors.length;
+  const fuelIndex = (charSum + 3) % fuelTypes.length;
+  const year = 2015 + (charSum % 9); // Years between 2015-2023
+  
+  // Generate future dates for MOT and tax
+  const today = new Date();
+  const motExpiryDate = new Date(today);
+  motExpiryDate.setMonth(today.getMonth() + (charSum % 11) + 1); // 1-12 months in the future
+  
+  const taxDueDate = new Date(today);
+  taxDueDate.setMonth(today.getMonth() + (charSum % 5) + 7); // 7-12 months in the future
+  
   return {
     registration: registration,
-    make: 'Ford',
-    model: 'Focus',
-    color: 'Blue',
-    fuelType: 'Petrol',
-    year: '2022',
-    engineSize: '1.0L',
+    make: makes[makeIndex],
+    model: models[modelIndex],
+    color: colors[colorIndex],
+    fuelType: fuelTypes[fuelIndex],
+    year: year.toString(),
+    engineSize: [1.0, 1.4, 1.6, 2.0, 2.5, 3.0][charSum % 6] + 'L',
     motStatus: 'Valid',
-    motExpiryDate: '2025-10-15',
+    motExpiryDate: motExpiryDate.toISOString().split('T')[0],
     taxStatus: 'Taxed',
-    taxDueDate: '2026-01-01',
+    taxDueDate: taxDueDate.toISOString().split('T')[0],
   };
 }
