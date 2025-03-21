@@ -70,10 +70,10 @@ serve(async (req) => {
         const registrationClean = registration.replace(/\s+/g, '').toUpperCase()
         
         try {
-          console.log(`Calling vehicle-lup function for registration: ${registrationClean}`)
+          console.log(`Calling vehicle-proxy function for registration: ${registrationClean}`)
           
           const supabaseUrl = 'https://wskiwwfgelypkrufsimz.supabase.co';
-          const proxyUrl = `${supabaseUrl}/functions/v1/vehicle-lup`;
+          const proxyUrl = `${supabaseUrl}/functions/v1/vehicle-proxy`;
           
           console.log("Complete Proxy URL:", proxyUrl);
           
@@ -85,11 +85,7 @@ serve(async (req) => {
             throw new Error('Authentication information missing');
           }
           
-          console.log("Starting request with timeout of 30 seconds");
-          
-          // Increase timeout to 30 seconds and add more detailed error handling
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+          console.log("Starting request to vehicle-proxy");
           
           try {
             const response = await fetch(proxyUrl, {
@@ -99,131 +95,75 @@ serve(async (req) => {
                 'apikey': apiKey,
                 'Authorization': `Bearer ${apiKey}`
               },
-              body: JSON.stringify({ vrm: registrationClean }),
-              signal: controller.signal
+              body: JSON.stringify({ vrm: registrationClean })
             });
             
-            clearTimeout(timeoutId);
-            
-            console.log(`Vehicle-lup response status: ${response.status}`);
+            console.log(`Vehicle-proxy response status: ${response.status}`);
             
             if (!response.ok) {
               const errorText = await response.text();
-              console.error('Vehicle-lup error response:', errorText);
+              console.error('Vehicle-proxy error response:', errorText);
               
               try {
                 const errorJson = JSON.parse(errorText);
                 console.log('Parsed error details:', JSON.stringify(errorJson));
                 
-                if (errorJson.code === "NOT_FOUND" && errorJson.message === "Requested function was not found") {
-                  return new Response(
-                    JSON.stringify({ 
-                      error: 'The vehicle lookup service is currently unavailable. Please try again later.',
-                      diagnostic: {
-                        error_type: 'FUNCTION_NOT_FOUND',
-                        error_details: errorJson
-                      },
-                      code: 'SERVICE_UNAVAILABLE'
-                    }),
-                    { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 503 }
-                  );
-                }
-                
-                // Handle specific error cases
-                if (errorJson.message && errorJson.message.toLowerCase().includes('not found')) {
+                if (errorJson.code === "VEHICLE_NOT_FOUND") {
                   return new Response(
                     JSON.stringify({ 
                       error: 'Registration not found in vehicle database',
-                      originalError: errorJson,
                       code: 'VEHICLE_NOT_FOUND'
                     }),
                     { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
                   );
                 }
+                
+                return new Response(
+                  JSON.stringify({ 
+                    error: errorJson.error || 'Error retrieving vehicle data',
+                    code: errorJson.code || 'SERVICE_ERROR',
+                    diagnostic: errorJson.diagnostic
+                  }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: response.status }
+                );
               } catch (parseError) {
                 console.error('Error parsing error response:', parseError);
+                throw new Error(`Vehicle-proxy request failed with status ${response.status}`);
               }
-              
-              throw new Error(`Vehicle-lup request failed with status ${response.status}`);
             }
             
             const proxyData = await response.json();
-            console.log('Vehicle-lup response received:', JSON.stringify(proxyData));
+            console.log('Vehicle-proxy response received:', JSON.stringify(proxyData));
             
             if (!proxyData.success) {
               throw new Error(proxyData.error || 'Error retrieving vehicle data');
             }
             
-            // Map the proxy response to our expected format
-            const vehicleData = {
-              registration: registrationClean,
-              make: proxyData.vehicle.make || 'Unknown',
-              model: proxyData.vehicle.model || 'Unknown',
-              color: proxyData.vehicle.color || 'Unknown',
-              fuelType: proxyData.vehicle.fuelType || 'Unknown',
-              year: proxyData.vehicle.year || 'Unknown',
-              engineSize: proxyData.vehicle.engineSize || 'Unknown',
-              motStatus: proxyData.vehicle.motStatus || 'Unknown',
-              motExpiryDate: proxyData.vehicle.motExpiryDate || null,
-              taxStatus: proxyData.vehicle.taxStatus || 'Unknown',
-              taxDueDate: proxyData.vehicle.taxDueDate || null,
-              doorCount: proxyData.vehicle.doorCount || 'Unknown',
-              bodyStyle: proxyData.vehicle.bodyStyle || 'Unknown',
-              transmission: proxyData.vehicle.transmission || 'Unknown',
-              weight: proxyData.vehicle.weight || 'Unknown',
-            };
-            
-            console.log('Mapped vehicle data:', JSON.stringify(vehicleData));
-            
             return new Response(
               JSON.stringify({ 
-                vehicle: vehicleData,
-                source: 'proxy_data',
+                vehicle: proxyData.vehicle,
+                source: 'vehicle_proxy',
                 success: true
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
             );
           } catch (fetchError) {
-            clearTimeout(timeoutId);
-            
             console.error('Fetch error:', fetchError);
             
-            if (fetchError.name === 'AbortError') {
-              console.error('Request aborted due to timeout after 30 seconds');
-              return new Response(
-                JSON.stringify({ 
-                  error: 'The vehicle lookup service timed out. Please try again later.',
-                  code: 'TIMEOUT',
-                  diagnostic: {
-                    error_type: 'TIMEOUT',
-                    duration: '30 seconds',
-                    message: fetchError.message
-                  }
-                }),
-                { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
-              );
-            }
-            
-            throw fetchError;
-          }
-        } catch (apiError) {
-          console.error('Error during vehicle-lup API call:', apiError);
-          
-          if (apiError.name === 'AbortError' || apiError.name === 'TimeoutError') {
-            console.error('Vehicle lookup timed out after 30 seconds');
             return new Response(
               JSON.stringify({ 
-                error: 'The vehicle lookup service timed out. Please try again later.',
-                code: 'TIMEOUT',
+                error: fetchError.message || 'Failed to lookup vehicle details',
+                code: 'PROXY_ERROR',
                 diagnostic: {
-                  error_type: apiError.name,
-                  error_message: apiError.message,
-                  duration: '30 seconds'
+                  error_type: fetchError.name,
+                  error_message: fetchError.message
                 }
               }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
             );
           }
+        } catch (apiError) {
+          console.error('Error during vehicle-proxy API call:', apiError);
           
           return new Response(
             JSON.stringify({ 
