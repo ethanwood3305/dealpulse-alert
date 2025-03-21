@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
-import { Loader2, SearchIcon, AlertCircle, Info, AlertTriangle } from "lucide-react";
+import { Loader2, SearchIcon, AlertCircle, Info, AlertTriangle, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrackedCars, AddCarParams } from "@/hooks/use-tracked-cars";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -51,6 +51,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       return;
     }
 
+    // Reset all states before new lookup
     setIsLoading(true);
     setError(null);
     setErrorCode(null);
@@ -83,7 +84,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         if (data.code) {
           setErrorCode(data.code);
         }
-        setIsLoading(false); // Ensure loading state is reset on error
         return;
       }
 
@@ -99,12 +99,26 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       }
     } catch (err: any) {
       console.error('Vehicle lookup error:', err);
-      setError(err.message || 'An error occurred during vehicle lookup');
-      toast({
-        title: "Lookup Failed",
-        description: err.message || "Failed to lookup vehicle details",
-        variant: "destructive"
-      });
+      
+      // Handle timeout errors specifically
+      if (err.message && (err.message.includes('timeout') || err.message.includes('timed out'))) {
+        setError('The vehicle lookup service timed out. Please try again later.');
+        setErrorCode('TIMEOUT');
+        
+        toast({
+          title: "Lookup Timed Out",
+          description: "The vehicle lookup service is taking too long to respond. Please try again later.",
+          variant: "destructive"
+        });
+      } else {
+        setError(err.message || 'An error occurred during vehicle lookup');
+        
+        toast({
+          title: "Lookup Failed",
+          description: err.message || "Failed to lookup vehicle details",
+          variant: "destructive"
+        });
+      }
     } finally {
       setIsLoading(false);  // Always reset loading state
     }
@@ -166,7 +180,11 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               maxLength={8}
               disabled={isLoading}
             />
-            <Button onClick={handleLookup} disabled={isLoading || !registration.trim()}>
+            <Button 
+              onClick={handleLookup} 
+              disabled={isLoading || !registration.trim()}
+              className={isLoading ? "bg-muted text-muted-foreground" : ""}
+            >
               {isLoading ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
@@ -180,13 +198,19 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
             <div className="flex flex-col items-center justify-center p-6 space-y-2">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground">Searching for vehicle details...</p>
+              <p className="text-xs text-muted-foreground">This may take a few moments</p>
             </div>
           )}
 
           {error && !isLoading && (
-            <Alert variant={errorCode === "VEHICLE_NOT_FOUND" ? "default" : "destructive"}>
+            <Alert variant={
+              errorCode === "VEHICLE_NOT_FOUND" ? "default" : 
+              errorCode === "TIMEOUT" ? "default" : "destructive"
+            }>
               {errorCode === "VEHICLE_NOT_FOUND" ? (
                 <AlertTriangle className="h-4 w-4" />
+              ) : errorCode === "TIMEOUT" ? (
+                <Clock className="h-4 w-4" />
               ) : (
                 <AlertCircle className="h-4 w-4" />
               )}
@@ -195,6 +219,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
                   ? "Vehicle not found" 
                   : errorCode === "SERVICE_UNAVAILABLE"
                   ? "Service unavailable"
+                  : errorCode === "TIMEOUT"
+                  ? "Service timed out"
                   : "Lookup failed"}
               </AlertTitle>
               <AlertDescription>
@@ -207,6 +233,11 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
                 {errorCode === "SERVICE_UNAVAILABLE" && (
                   <p className="mt-2 text-sm">
                     The vehicle lookup service is currently unavailable. Please try again later.
+                  </p>
+                )}
+                {errorCode === "TIMEOUT" && (
+                  <p className="mt-2 text-sm">
+                    The vehicle lookup service is taking too long to respond. Please try again in a few minutes.
                   </p>
                 )}
               </AlertDescription>

@@ -91,6 +91,7 @@ serve(async (req) => {
           console.log("Request body:", JSON.stringify({ vrm: registrationClean }));
           
           // Call the proxy endpoint with the anon key in both the apikey header and Authorization header
+          // Increase the timeout to 20 seconds to allow more time for the external API to respond
           const response = await fetch(proxyUrl, {
             method: 'POST',
             headers: { 
@@ -99,8 +100,8 @@ serve(async (req) => {
               'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify({ vrm: registrationClean }),
-            // Add a timeout to prevent hanging requests
-            signal: AbortSignal.timeout(10000)  // 10 second timeout
+            // Increase timeout to 20 seconds
+            signal: AbortSignal.timeout(20000)  // 20 second timeout
           });
           
           console.log(`Vehicle-lup response status: ${response.status}`);
@@ -236,15 +237,17 @@ serve(async (req) => {
             );
           }
           
-          // Handle timeout errors
+          // Handle timeout errors with a specific message and code
           if (apiError.name === 'TimeoutError' || apiError.name === 'AbortError') {
+            console.error('Vehicle lookup timed out after 20 seconds');
             return new Response(
               JSON.stringify({ 
                 error: 'The vehicle lookup service timed out. Please try again later.',
                 code: 'TIMEOUT',
                 diagnostic: {
                   error_type: apiError.name,
-                  error_message: apiError.message
+                  error_message: apiError.message,
+                  duration: '20 seconds'
                 }
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
