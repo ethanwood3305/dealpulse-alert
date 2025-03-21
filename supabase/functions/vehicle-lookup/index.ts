@@ -98,7 +98,9 @@ serve(async (req) => {
               'apikey': apiKey,
               'Authorization': `Bearer ${apiKey}`
             },
-            body: JSON.stringify({ vrm: registrationClean })
+            body: JSON.stringify({ vrm: registrationClean }),
+            // Add a timeout to prevent hanging requests
+            signal: AbortSignal.timeout(10000)  // 10 second timeout
           });
           
           console.log(`Vehicle-lup response status: ${response.status}`);
@@ -210,7 +212,8 @@ serve(async (req) => {
           return new Response(
             JSON.stringify({ 
               vehicle: vehicleData,
-              source: 'proxy_data'
+              source: 'proxy_data',
+              success: true
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
@@ -230,6 +233,21 @@ serve(async (req) => {
                 }
               }),
               { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+            );
+          }
+          
+          // Handle timeout errors
+          if (apiError.name === 'TimeoutError' || apiError.name === 'AbortError') {
+            return new Response(
+              JSON.stringify({ 
+                error: 'The vehicle lookup service timed out. Please try again later.',
+                code: 'TIMEOUT',
+                diagnostic: {
+                  error_type: apiError.name,
+                  error_message: apiError.message
+                }
+              }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
             );
           }
           

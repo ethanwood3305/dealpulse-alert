@@ -83,6 +83,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         if (data.code) {
           setErrorCode(data.code);
         }
+        setIsLoading(false); // Ensure loading state is reset on error
         return;
       }
 
@@ -105,7 +106,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsLoading(false);  // Always reset loading state
     }
   };
 
@@ -163,6 +164,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               onChange={(e) => setRegistration(e.target.value)}
               className="flex-1"
               maxLength={8}
+              disabled={isLoading}
             />
             <Button onClick={handleLookup} disabled={isLoading || !registration.trim()}>
               {isLoading ? (
@@ -170,17 +172,18 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
               ) : (
                 <SearchIcon className="h-4 w-4 mr-2" />
               )}
-              Lookup
+              {isLoading ? "Searching..." : "Lookup"}
             </Button>
           </div>
 
           {isLoading && (
-            <div className="flex justify-center p-4">
+            <div className="flex flex-col items-center justify-center p-6 space-y-2">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Searching for vehicle details...</p>
             </div>
           )}
 
-          {error && (
+          {error && !isLoading && (
             <Alert variant={errorCode === "VEHICLE_NOT_FOUND" ? "default" : "destructive"}>
               {errorCode === "VEHICLE_NOT_FOUND" ? (
                 <AlertTriangle className="h-4 w-4" />
@@ -210,7 +213,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
             </Alert>
           )}
 
-          {diagnosticInfo && (
+          {diagnosticInfo && !isLoading && (
             <div className="border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 rounded-md p-3 text-xs font-mono">
               <details>
                 <summary className="cursor-pointer text-amber-800 dark:text-amber-400 font-medium">Debug information</summary>
@@ -221,7 +224,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
             </div>
           )}
 
-          {vehicleDetails && (
+          {vehicleDetails && !isLoading && (
             <div className="border rounded-md p-4 space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="font-semibold text-lg">
