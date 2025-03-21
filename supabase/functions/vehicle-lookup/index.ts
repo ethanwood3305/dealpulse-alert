@@ -71,11 +71,11 @@ serve(async (req) => {
         const registrationClean = registration.replace(/\s+/g, '').toUpperCase()
         
         try {
-          console.log(`Calling vehicle proxy for registration: ${registrationClean}`)
+          console.log(`Calling vehicle-lup function for registration: ${registrationClean}`)
           
-          // Get the complete URL for the vehicle-proxy function, ensuring it's properly formed
+          // Get the complete URL for the vehicle-lup function, ensuring it's properly formed
           const supabaseUrl = 'https://wskiwwfgelypkrufsimz.supabase.co';
-          const proxyUrl = `${supabaseUrl}/functions/v1/vehicle-proxy`;
+          const proxyUrl = `${supabaseUrl}/functions/v1/vehicle-lup`;
           
           console.log("Complete Proxy URL:", proxyUrl);
           
@@ -101,12 +101,12 @@ serve(async (req) => {
             body: JSON.stringify({ vrm: registrationClean })
           });
           
-          console.log(`Vehicle proxy response status: ${response.status}`);
+          console.log(`Vehicle-lup response status: ${response.status}`);
           
           // Get detailed error information
           if (!response.ok) {
             const errorText = await response.text();
-            console.error('Vehicle proxy error response:', errorText);
+            console.error('Vehicle-lup error response:', errorText);
             
             try {
               // Try to parse the error response as JSON for more details
@@ -115,7 +115,7 @@ serve(async (req) => {
               
               // Check if this is a "NOT_FOUND" error for the function itself
               if (errorJson.code === "NOT_FOUND" && errorJson.message === "Requested function was not found") {
-                console.error("The vehicle-proxy function does not exist or is not accessible");
+                console.error("The vehicle-lup function does not exist or is not accessible");
                 return new Response(
                   JSON.stringify({ 
                     error: 'The vehicle lookup service is currently unavailable. Please try again later.',
@@ -180,7 +180,7 @@ serve(async (req) => {
           
           // Parse response body
           const proxyData = await response.json();
-          console.log('Vehicle proxy response received');
+          console.log('Vehicle-lup response received');
           
           if (!proxyData.success) {
             throw new Error(proxyData.error || 'Error retrieving vehicle data');
@@ -215,7 +215,7 @@ serve(async (req) => {
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
           );
         } catch (apiError) {
-          console.error('Error during vehicle proxy API call:', apiError);
+          console.error('Error during vehicle-lup API call:', apiError);
           
           // Check if this is the specific not found error
           if (apiError.message && apiError.message.includes('Vehicle not found')) {
