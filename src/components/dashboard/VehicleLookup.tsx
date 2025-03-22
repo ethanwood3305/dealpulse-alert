@@ -50,7 +50,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       return;
     }
 
-    // Reset all states before new lookup
     setIsLoading(true);
     setError(null);
     setErrorCode(null);
@@ -101,7 +100,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     } catch (err: any) {
       console.error('Vehicle lookup error:', err);
       
-      // Handle timeout errors specifically
       if (err.message && (err.message.includes('timeout') || err.message.includes('timed out'))) {
         setError('The vehicle lookup service timed out. Please try again later.');
         setErrorCode('TIMEOUT');
@@ -294,7 +292,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
                   <p className="font-medium">{vehicleDetails.taxStatus}</p>
                 </div>
                 
-                {/* Additional details */}
                 {vehicleDetails.doorCount && (
                   <div>
                     <p className="text-muted-foreground">Doors</p>

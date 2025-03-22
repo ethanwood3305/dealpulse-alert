@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const corsHeaders = {
@@ -160,7 +159,7 @@ serve(async (req) => {
           motExpiryDate: motInfo.ExpiryDate || null,
           taxStatus: taxInfo.TaxStatus || 'Unknown',
           taxDueDate: taxInfo.TaxDueDate || null,
-          doorCount: vehicleInfo.DoorPlan || 'Unknown',
+          doorCount: vehicleInfo.NumberOfDoors || 'Unknown',
           bodyStyle: vehicleInfo.BodyStyle || 'Unknown',
           transmission: vehicleInfo.Transmission || 'Unknown',
           weight: vehicleInfo.GrossVehicleWeight ? 
