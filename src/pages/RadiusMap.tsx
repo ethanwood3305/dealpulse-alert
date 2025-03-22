@@ -126,22 +126,6 @@ const RadiusMap = () => {
           if (coords) {
             console.log('Geocoded dealer postcode to coordinates:', coords);
             setDealerLocation(coords);
-            
-            // If map is already initialized, fly to the dealer location
-            if (map.current) {
-              map.current.flyTo({
-                center: coords,
-                zoom: 8.5,
-                essential: true
-              });
-              
-              // If we have a car and target price, auto-search with dealer location
-              if (selectedCarId && targetPrice) {
-                setTimeout(() => {
-                  searchWithDealerLocation();
-                }, 1000);
-              }
-            }
           } else {
             console.warn('Failed to geocode dealer postcode:', userSubscription.dealer_postcode);
           }
@@ -150,8 +134,9 @@ const RadiusMap = () => {
         }
       })();
     }
-  }, [userSubscription, dealerPostcodeLoaded, selectedCarId, targetPrice]);
+  }, [userSubscription, dealerPostcodeLoaded]);
   
+  // Initialize map when mapbox token is available
   useEffect(() => {
     if (mapContainer.current && !map.current && mapboxToken) {
       console.log('Initializing map with token');
@@ -177,18 +162,12 @@ const RadiusMap = () => {
           
           // If we have a dealer location, fly to it
           if (dealerLocation) {
+            console.log('Flying to dealer location:', dealerLocation);
             map.current?.flyTo({
               center: dealerLocation,
               zoom: 8.5,
               essential: true
             });
-            
-            // If we have a car and target price, auto-search with dealer location
-            if (selectedCarId && targetPrice && dealerLocation) {
-              setTimeout(() => {
-                searchWithDealerLocation();
-              }, 1000);
-            }
           }
         });
         
@@ -231,7 +210,23 @@ const RadiusMap = () => {
         map.current = null;
       }
     };
-  }, [mapboxToken, dealerLocation, targetPrice, selectedCarId]);
+  }, [mapboxToken]);
+  
+  // When both dealer location and map are ready, perform auto-search if car is selected
+  useEffect(() => {
+    if (map.current && dealerLocation && selectedCarId && targetPrice) {
+      console.log('All conditions met for auto-search. Executing searchWithDealerLocation.');
+      
+      // Wait for the map to be fully loaded before performing search
+      if (map.current.loaded()) {
+        searchWithDealerLocation();
+      } else {
+        map.current.once('load', () => {
+          searchWithDealerLocation();
+        });
+      }
+    }
+  }, [dealerLocation, map.current, selectedCarId, targetPrice]);
   
   useEffect(() => {
     if (mapboxToken) {
@@ -560,14 +555,21 @@ const RadiusMap = () => {
   ) => {
     if (!map.current) return;
     
+    console.log('Adding dealer marker and circles at', center, 'with price', price);
+    
     // Remove existing markers and layers
     const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
     existingMarkers.forEach(marker => marker.remove());
     
-    if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
-    if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
-    if (map.current.getLayer('high-price-radius')) map.current.removeLayer('high-price-radius');
-    if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
+    // Remove existing layers if they exist
+    try {
+      if (map.current.getLayer('high-price-radius')) map.current.removeLayer('high-price-radius');
+      if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
+      if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
+      if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
+    } catch (e) {
+      console.log('Error removing existing layers, may not exist yet', e);
+    }
     
     // Add dealer marker
     const dealerMarkerEl = document.createElement('div');
@@ -670,8 +672,9 @@ const RadiusMap = () => {
       paint: {
         'circle-radius': {
           stops: [
-            [0, 0],
-            [20, 5000000]
+            [5, 10000],
+            [10, 100000],
+            [15, 500000]
           ],
           base: 2
         },
@@ -691,8 +694,9 @@ const RadiusMap = () => {
       paint: {
         'circle-radius': {
           stops: [
-            [0, 0],
-            [20, 3000000]
+            [5, 5000],
+            [10, 50000],
+            [15, 300000]
           ],
           base: 2
         },
@@ -712,8 +716,9 @@ const RadiusMap = () => {
       paint: {
         'circle-radius': {
           stops: [
-            [0, 0],
-            [20, 1500000]
+            [5, 2500],
+            [10, 25000],
+            [15, 150000]
           ],
           base: 2
         },
@@ -956,3 +961,4 @@ const RadiusMap = () => {
 };
 
 export default RadiusMap;
+
