@@ -4,4 +4,5 @@ export interface UserSubscription {
   urls_limit: number;
   has_api_access: boolean;
   api_key: string | null;
+  dealer_postcode: string | null;
 }

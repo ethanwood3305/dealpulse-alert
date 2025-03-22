@@ -98,6 +98,7 @@ export type Database = {
         Row: {
           api_key: string | null
           created_at: string
+          dealer_postcode: string | null
           has_api_access: boolean | null
           id: string
           plan: string
@@ -112,6 +113,7 @@ export type Database = {
         Insert: {
           api_key?: string | null
           created_at?: string
+          dealer_postcode?: string | null
           has_api_access?: boolean | null
           id?: string
           plan?: string
@@ -126,6 +128,7 @@ export type Database = {
         Update: {
           api_key?: string | null
           created_at?: string
+          dealer_postcode?: string | null
           has_api_access?: boolean | null
           id?: string
           plan?: string
@@ -195,6 +198,7 @@ export type Database = {
           has_api_access: boolean
           api_key: string
           trial_end: string
+          dealer_postcode: string
         }[]
       }
     }

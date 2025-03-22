@@ -32,8 +32,18 @@ export function DealerPostcodeCard({ dealerPostcode, onUpdatePostcode }: DealerP
     
     try {
       const success = await onUpdatePostcode(postcode);
-      if (!success) {
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Dealer postcode has been updated successfully."
+        });
+      } else {
         setPostcode(dealerPostcode || "");
+        toast({
+          title: "Error",
+          description: "Failed to update dealer postcode.",
+          variant: "destructive"
+        });
       }
     } finally {
       setIsUpdating(false);
