@@ -209,7 +209,27 @@ async function getVehicleListings(carDetails) {
 }
 
 async function scrapeAutoTrader(carDetails, baseUrl) {
-  const searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}&model=${encodeURIComponent(carDetails.model)}`;
+  // Create mileage range - within 5000 miles of the target mileage
+  const targetMileage = carDetails.mileage || 30000;
+  const minMileage = Math.max(0, targetMileage - 5000);
+  const maxMileage = targetMileage + 5000;
+  
+  // Build the search URL with mileage constraints
+  let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}&model=${encodeURIComponent(carDetails.model)}`;
+  
+  // Add mileage parameters if we have a target mileage
+  if (targetMileage) {
+    searchUrl += `&minimum-mileage=${minMileage}&maximum-mileage=${maxMileage}`;
+  }
+  
+  // Add year if available
+  if (carDetails.year) {
+    searchUrl += `&year-from=${carDetails.year}&year-to=${carDetails.year}`;
+  }
+  
+  // Add postcode for location-based search (using a default UK postcode if needed)
+  searchUrl += "&postcode=b31%203xr";
+  
   console.log(`Scraping AutoTrader: ${searchUrl}`);
 
   try {
@@ -233,9 +253,6 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
 
     const results = [];
     console.log('Parsing AutoTrader listings...');
-
-    // Real UK postcodes for locations
-    const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD'];
     
     const listings = doc.querySelectorAll('.search-page__result');
     console.log(`Found ${listings.length} listing elements`);
@@ -263,7 +280,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         }
         
         // Try to find location in the listing
-        let location = postcodes[Math.floor(Math.random() * postcodes.length)];
+        let location = 'Unknown';
         let locationEl = el.querySelector('[data-testid="seller-location"]');
         if (locationEl && locationEl.textContent) {
           location = locationEl.textContent.trim();
@@ -272,8 +289,8 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         const urlSuffix = el.querySelector('a.product-card-link')?.getAttribute('href');
         const url = urlSuffix ? `${baseUrl}${urlSuffix}` : null;
 
-        // Calculate coordinates for the map (we still need these for the map UI)
-        // In a real implementation, we would use geocoding to get proper coordinates for the listed locations
+        // Calculate coordinates for the map (approximate based on UK postcodes)
+        // In a real implementation, we would geocode the actual location
         const lat = 51.5 + (Math.random() * 3) - 1.5;
         const lng = -0.9 + (Math.random() * 3) - 1.5;
 
@@ -326,13 +343,16 @@ async function simulateScrapedListings(carDetails) {
   const cities = ['Birmingham', 'Manchester', 'London', 'London', 'Glasgow', 'Liverpool', 'Newcastle', 'Cardiff', 'Bristol',
                   'Sheffield', 'Leeds', 'Plymouth', 'Southampton', 'Edinburgh', 'Belfast', 'Aberdeen', 'St. Andrews'];
   
+  // Calculate mileage range (±5000 miles)
+  const targetMileage = mileage || 30000;
+  const minMileage = Math.max(0, targetMileage - 5000);
+  const maxMileage = targetMileage + 5000;
+  
   for (let i = 0; i < resultCount; i++) {
     const dealerSite = simulatedDealerSites[Math.floor(Math.random() * simulatedDealerSites.length)];
     
-    // Calculate mileage variation (±20%)
-    const baseMileage = mileage || 30000;
-    const mileageVariation = Math.floor(baseMileage * (Math.random() * 0.4 - 0.2));
-    const resultMileage = Math.max(1000, baseMileage + mileageVariation);
+    // Calculate mileage within the range
+    const resultMileage = Math.floor(Math.random() * (maxMileage - minMileage + 1)) + minMileage;
     
     // Calculate price based on mileage and random variation
     const basePrice = (carDetails.lastPrice || 10000);
