@@ -1,0 +1,23 @@
+
+export interface VehicleDetails {
+  registration: string;
+  make: string;
+  model: string;
+  color: string;
+  fuelType: string;
+  year: string;
+  engineSize: string;
+  motStatus: string;
+  motExpiryDate: string | null;
+  taxStatus: string;
+  taxDueDate: string | null;
+  doorCount?: string;
+  bodyStyle?: string;
+  transmission?: string;
+  weight?: string;
+}
+
+export interface VehicleLookupProps {
+  userId: string;
+  onCarAdded?: () => void;
+}
