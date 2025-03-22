@@ -1,6 +1,7 @@
 
 export interface VehicleDetails {
   registration: string;
+  originalRegistration?: string;
   make: string;
   model: string;
   color: string;

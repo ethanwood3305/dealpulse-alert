@@ -1,7 +1,8 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { TrashIcon, MapPinIcon } from "lucide-react";
+import { TrashIcon, MapPinIcon, ChevronUp, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
 import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { TagInput } from "./TagInput";
@@ -19,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/use-toast";
+import { useState } from "react";
 
 interface TrackedCarsTableProps {
   trackedCars: TrackedCar[];
@@ -28,6 +30,9 @@ interface TrackedCarsTableProps {
   carsLimit: number | undefined;
 }
 
+type SortField = 'brand' | 'model' | 'year' | 'mileage' | 'created_at' | 'tags';
+type SortDirection = 'asc' | 'desc';
+
 export const TrackedCarsTable = ({ 
   trackedCars, 
   onDelete,
@@ -36,6 +41,8 @@ export const TrackedCarsTable = ({
   carsLimit = 1
 }: TrackedCarsTableProps) => {
   const navigate = useNavigate();
+  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   if (trackedCars.length === 0) {
     return (
@@ -53,9 +60,36 @@ export const TrackedCarsTable = ({
     );
   }
 
-  const sortedCars = [...trackedCars].sort((a, b) => 
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedCars = [...trackedCars].sort((a, b) => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    
+    switch (sortField) {
+      case 'brand':
+        return (a.brand || '').localeCompare(b.brand || '') * direction;
+      case 'model':
+        return (a.model || '').localeCompare(b.model || '') * direction;
+      case 'year':
+        return ((a.year || '0').localeCompare(b.year || '0')) * direction;
+      case 'mileage':
+        return ((parseInt(a.mileage || '0') - parseInt(b.mileage || '0'))) * direction;
+      case 'tags':
+        return ((a.tags?.length || 0) - (b.tags?.length || 0)) * direction;
+      case 'created_at':
+      default:
+        return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * (sortDirection === 'asc' ? -1 : 1);
+    }
+  });
 
   const handleDelete = async (id: string) => {
     try {
@@ -85,6 +119,22 @@ export const TrackedCarsTable = ({
     navigate(`/radius-map?car=${encodeURIComponent(car.id)}&targetPrice=${estimatedTargetPrice}`);
   };
 
+  const SortButton = ({ field }: { field: SortField }) => {
+    const isActive = sortField === field;
+    return (
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="ml-2 px-0 h-4"
+        onClick={() => handleSort(field)}
+      >
+        {isActive && sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : null}
+        {isActive && sortDirection === 'desc' ? <ChevronDown className="h-4 w-4" /> : null}
+        {!isActive ? <ChevronUp className="h-4 w-4 opacity-20" /> : null}
+      </Button>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -96,16 +146,31 @@ export const TrackedCarsTable = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Brand</TableHead>
-                <TableHead>Model</TableHead>
+                <TableHead className="flex items-center">
+                  Brand
+                  <SortButton field="brand" />
+                </TableHead>
+                <TableHead className="flex items-center">
+                  Model
+                  <SortButton field="model" />
+                </TableHead>
                 <TableHead>Engine Type</TableHead>
-                <TableHead>Year</TableHead>
+                <TableHead className="flex items-center">
+                  Year
+                  <SortButton field="year" />
+                </TableHead>
                 <TableHead>Color</TableHead>
-                <TableHead>Mileage</TableHead>
+                <TableHead className="flex items-center">
+                  Mileage
+                  <SortButton field="mileage" />
+                </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Price</TableHead>
                 <TableHead>Last Checked</TableHead>
-                <TableHead>Tags</TableHead>
+                <TableHead className="flex items-center">
+                  Tags
+                  <SortButton field="tags" />
+                </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

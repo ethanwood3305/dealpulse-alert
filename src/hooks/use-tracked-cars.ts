@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -24,6 +25,7 @@ export interface AddCarParams {
   mileage?: string;
   year?: string;
   color?: string;
+  initialTags?: string[];
 }
 
 export const useTrackedCars = (userId: string | undefined) => {
@@ -119,7 +121,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         .insert({
           user_id: userId,
           url: carUrl,
-          tags: []
+          tags: car.initialTags || []
         })
         .select();
         

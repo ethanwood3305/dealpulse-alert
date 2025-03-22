@@ -82,7 +82,11 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
       if (data.vehicle) {
         console.log("Vehicle data received:", data.vehicle);
-        setVehicleDetails(data.vehicle);
+        setVehicleDetails({
+          ...data.vehicle,
+          // Store the original registration for use as a tag
+          originalRegistration: registration.toUpperCase().replace(/\s+/g, '')
+        });
         toast({
           title: "Vehicle Found",
           description: `Found details for ${data.vehicle.make} ${data.vehicle.model}`,
@@ -125,13 +129,17 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     if (!vehicleDetails) return;
 
     try {
+      // Add registration as a tag
+      const regTag = vehicleDetails.originalRegistration || vehicleDetails.registration.toUpperCase().replace(/\s+/g, '');
+      
       const carParams: AddCarParams = {
         brand: vehicleDetails.make,
         model: vehicleDetails.model,
         engineType: vehicleDetails.fuelType,
         color: vehicleDetails.color,
         year: vehicleDetails.year,
-        mileage: mileage || '0' // Use entered mileage instead of weight
+        mileage: mileage || '0',
+        initialTags: [regTag] // Add registration as initial tag
       };
 
       const success = await addCar(carParams);
