@@ -14,7 +14,7 @@ interface RadiusMapProps {
   dealerLocation?: CarLocation;
 }
 
-const RadiusMap = () => {
+const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [scrapedListings, setScrapedListings] = useState<ScrapedListing[]>([]);
   const [mapboxToken, setMapboxToken] = useState('');
@@ -23,9 +23,6 @@ const RadiusMap = () => {
   const [lng, setLng] = useState(-70.9);
   const [lat, setLat] = useState(42.35);
   const [zoom, setZoom] = useState(9);
-  const [carId, setCarId] = useState('your_car_id'); // Replace with actual car ID
-  const [targetPrice, setTargetPrice] = useState('20000'); // Replace with actual target price
-  const [dealerLocation, setDealerLocation] = useState<CarLocation | null>(null); // Replace with actual dealer location
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -191,7 +188,7 @@ const RadiusMap = () => {
     });
   };
 
-  const fetchScrapedListings = async (carId: string) => {
+  const fetchScrapedListings = async () => {
     try {
       setIsLoading(true);
       
@@ -227,7 +224,7 @@ const RadiusMap = () => {
       </div>
       <div ref={mapContainer} className="map-container" style={{ height: '400px' }} />
       <div>
-        <button onClick={() => fetchScrapedListings(carId)} disabled={isLoading}>
+        <button onClick={fetchScrapedListings} disabled={isLoading}>
           {isLoading ? 'Loading...' : 'Load Scraped Listings'}
         </button>
       </div>
