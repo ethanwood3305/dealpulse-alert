@@ -8,6 +8,14 @@ import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { EditVehicleDialog } from "./EditVehicleDialog";
 import { ScrapedListing } from "@/integrations/supabase/database.types";
 import { useNavigate } from "react-router-dom";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface TrackedCarsTableProps {
   trackedCars: TrackedCar[];
@@ -98,43 +106,40 @@ export function TrackedCarsTable({
       ) : (
         <div className="border rounded-md overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-muted/50">
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Vehicle</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Details</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Price</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Tags</th>
-                  <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Make/Model</TableHead>
+                  <TableHead>Engine</TableHead>
+                  <TableHead>Year</TableHead>
+                  <TableHead>Mileage</TableHead>
+                  <TableHead>Color</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Registration</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {trackedCars.map((car) => (
-                  <tr key={car.id} className="bg-card">
-                    <td className="px-4 py-4 align-top">
-                      <div>
-                        <div className="font-medium">{car.brand} {car.model}</div>
-                        <div className="text-sm text-muted-foreground">{car.engineType}</div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="text-sm">
-                        {car.year && <div>Year: {car.year}</div>}
-                        {car.mileage && <div>Mileage: {car.mileage}</div>}
-                        {car.color && <div>Color: {car.color}</div>}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 align-top">
+                  <TableRow key={car.id}>
+                    <TableCell>
+                      <div className="font-medium">{car.brand} {car.model}</div>
+                    </TableCell>
+                    <TableCell>{car.engineType}</TableCell>
+                    <TableCell>{car.year || "—"}</TableCell>
+                    <TableCell>{car.mileage || "—"}</TableCell>
+                    <TableCell>{car.color || "—"}</TableCell>
+                    <TableCell>
                       <div className="font-medium">
-                        {car.last_price ? `£${car.last_price.toLocaleString()}` : "Not set"}
+                        {car.last_price ? `£${car.last_price.toLocaleString()}` : "—"}
                       </div>
                       {car.cheapest_price && car.cheapest_price < (car.last_price || Infinity) && (
                         <div className="text-sm text-green-600 dark:text-green-400">
                           Found at £{car.cheapest_price.toLocaleString()}
                         </div>
                       )}
-                    </td>
-                    <td className="px-4 py-4 align-top">
+                    </TableCell>
+                    <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
                         {car.tags && car.tags.length > 0 ? (
                           car.tags.map((tag) => (
@@ -145,11 +150,11 @@ export function TrackedCarsTable({
                             />
                           ))
                         ) : (
-                          <span className="text-sm text-muted-foreground">No tags</span>
+                          <span className="text-sm text-muted-foreground">Not registered</span>
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 text-right align-top">
+                    </TableCell>
+                    <TableCell className="text-right">
                       <div className="flex flex-col items-end space-y-2">
                         <Button 
                           variant="ghost"
@@ -177,11 +182,11 @@ export function TrackedCarsTable({
                           Remove
                         </Button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         </div>
       )}
