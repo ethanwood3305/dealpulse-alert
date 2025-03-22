@@ -49,7 +49,10 @@ const Dashboard = () => {
     addTag,
     removeTag,
     updateCarDetails,
-    refreshCars
+    refreshCars,
+    triggerScraping,
+    isScrapingCar,
+    getListingsForCar
   } = useTrackedCars(user?.id);
 
   const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars);
@@ -292,6 +295,9 @@ const Dashboard = () => {
             onRemoveTag={handleRemoveTag}
             onUpdateDetails={handleUpdateCarDetails}
             carsLimit={userSubscription?.urls_limit}
+            onTriggerScraping={triggerScraping}
+            isScrapingCar={isScrapingCar}
+            getListingsForCar={getListingsForCar}
           />
         </div>
       </main>

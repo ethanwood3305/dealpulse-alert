@@ -144,6 +144,7 @@ export type Database = {
       }
       tracked_urls: {
         Row: {
+          cheapest_price: number | null
           created_at: string
           id: string
           last_checked: string | null
@@ -154,6 +155,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cheapest_price?: number | null
           created_at?: string
           id?: string
           last_checked?: string | null
@@ -164,6 +166,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cheapest_price?: number | null
           created_at?: string
           id?: string
           last_checked?: string | null

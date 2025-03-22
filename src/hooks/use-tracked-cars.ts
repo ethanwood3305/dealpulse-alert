@@ -29,9 +29,28 @@ export interface AddCarParams {
   initialTags?: string[];
 }
 
+export interface ScrapedListing {
+  id: string;
+  tracked_car_id: string;
+  dealer_name: string;
+  url: string;
+  title: string;
+  price: number;
+  mileage: number;
+  year: number;
+  color: string;
+  location: string;
+  lat: number;
+  lng: number;
+  is_cheapest: boolean;
+  created_at: string;
+}
+
 export const useTrackedCars = (userId: string | undefined) => {
   const [trackedCars, setTrackedCars] = useState<TrackedCar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [scrapedListings, setScrapedListings] = useState<Record<string, ScrapedListing[]>>({});
+  const [isScrapingCar, setIsScrapingCar] = useState(false);
 
   const fetchTrackedCars = async (userId: string) => {
     try {
@@ -79,7 +98,7 @@ export const useTrackedCars = (userId: string | undefined) => {
           year,
           color,
           tags: item.tags || [],
-          cheapest_price: item.last_price
+          cheapest_price: item.cheapest_price || item.last_price
         };
       }) || [];
       
@@ -93,6 +112,77 @@ export const useTrackedCars = (userId: string | undefined) => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchScrapedListings = async (carId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('scraped_vehicle_listings')
+        .select('*')
+        .eq('tracked_car_id', carId)
+        .order('price', { ascending: true });
+        
+      if (error) {
+        throw error;
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching scraped listings:", error);
+      return [];
+    }
+  };
+
+  const triggerScraping = async (carId: string) => {
+    try {
+      setIsScrapingCar(true);
+      
+      const { error } = await supabase.functions.invoke('car-dealer-scraper', {
+        body: { vehicle_id: carId }
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Scraping Started",
+        description: "We're searching for similar vehicles. This may take a moment."
+      });
+      
+      // Wait a bit to allow scraping to complete
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Fetch the scraped listings
+      const listings = await fetchScrapedListings(carId);
+      
+      setScrapedListings(prev => ({
+        ...prev,
+        [carId]: listings
+      }));
+      
+      // Refresh the car data to get the updated cheapest price
+      if (userId) {
+        await fetchTrackedCars(userId);
+      }
+      
+      toast({
+        title: "Vehicle Search Complete",
+        description: `Found ${listings.length} similar vehicles from dealers.`
+      });
+      
+      return listings;
+    } catch (error: any) {
+      console.error("Error triggering car scraping:", error);
+      toast({
+        title: "Error",
+        description: "Failed to search for similar vehicles. Please try again later.",
+        variant: "destructive"
+      });
+      return [];
+    } finally {
+      setIsScrapingCar(false);
     }
   };
 
@@ -316,6 +406,10 @@ export const useTrackedCars = (userId: string | undefined) => {
     addTag,
     removeTag,
     updateCarDetails,
-    refreshCars: () => userId && fetchTrackedCars(userId)
+    refreshCars: () => userId && fetchTrackedCars(userId),
+    scrapedListings,
+    triggerScraping,
+    isScrapingCar,
+    getListingsForCar: (carId: string) => scrapedListings[carId] || []
   };
 };

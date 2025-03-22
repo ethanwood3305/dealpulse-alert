@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useSubscription } from '@/hooks/use-subscription';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import { ScrapedListing } from '@/hooks/use-tracked-cars';
 
 const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
@@ -60,6 +60,7 @@ const RadiusMap = () => {
   const [user, setUser] = useState<any>(null);
   const [dealerLocation, setDealerLocation] = useState<[number, number] | null>(null);
   const [dealerPostcodeLoaded, setDealerPostcodeLoaded] = useState(false);
+  const [scrapedListings, setScrapedListings] = useState<ScrapedListing[]>([]);
   
   const { userSubscription } = useSubscription(user?.id);
   
@@ -426,6 +427,43 @@ const RadiusMap = () => {
     }
   };
   
+  // When car is selected and map is ready, load scraped listings
+  useEffect(() => {
+    if (selectedCarId && map.current && map.current.loaded()) {
+      fetchScrapedListings(selectedCarId);
+    }
+  }, [selectedCarId, map.current?.loaded()]);
+  
+  const fetchScrapedListings = async (carId: string) => {
+    try {
+      setIsLoading(true);
+      
+      const { data, error } = await supabase
+        .from('scraped_vehicle_listings')
+        .select('*')
+        .eq('tracked_car_id', carId);
+        
+      if (error) throw error;
+      
+      setScrapedListings(data || []);
+      
+      // If we have listings and dealer location, show them on the map
+      if (data && data.length > 0 && dealerLocation) {
+        console.log(`Found ${data.length} scraped listings for car ${carId}`);
+        addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), data);
+      }
+    } catch (error) {
+      console.error('Error fetching scraped listings:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load scraped vehicle listings."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const searchWithDealerLocation = async () => {
     if (!dealerLocation || !targetPrice) {
       toast({
@@ -448,11 +486,17 @@ const RadiusMap = () => {
           essential: true
         });
         
-        const dealerResults = await searchDealerVehicles(dealerLocation);
-        setSearchResults(dealerResults);
-        
-        // Add dealer marker and radius circles
-        addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), dealerResults);
+        // If we have a selected car, use the scraped listings
+        if (selectedCarId) {
+          await fetchScrapedListings(selectedCarId);
+        } else {
+          // For the case where no car is selected
+          const dealerResults = await searchDealerVehicles(dealerLocation);
+          setSearchResults(dealerResults);
+          
+          // Add dealer marker and radius circles
+          addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), dealerResults);
+        }
         
         toast({
           title: "Map Updated",
@@ -474,7 +518,7 @@ const RadiusMap = () => {
   const addDealerMarkerAndCircles = (
     center: [number, number], 
     price: number, 
-    dealerResults: any[] = []
+    listings: any[] = []
   ) => {
     if (!map.current) return;
     
@@ -521,14 +565,14 @@ const RadiusMap = () => {
       .addTo(map.current);
     
     // Add radius circles
-    if (map.current.loaded()) {
+    if (map.current?.loaded()) {
       console.log('Map is loaded, adding circles');
-      addCircles(map.current, center, price, dealerResults);
+      addCircles(map.current, center, price, listings);
     } else {
       console.log('Map not loaded yet, waiting for load event');
-      map.current.once('load', () => {
+      map.current?.once('load', () => {
         console.log('Map loaded, now adding circles');
-        addCircles(map.current!, center, price, dealerResults);
+        addCircles(map.current!, center, price, listings);
       });
     }
   };
@@ -537,7 +581,7 @@ const RadiusMap = () => {
     map: Map, 
     center: [number, number], 
     price: number, 
-    dealerResults: any[] = []
+    listings: any[] = []
   ) => {
     console.log('Adding circles to map at', center, 'with price', price);
     
@@ -655,8 +699,8 @@ const RadiusMap = () => {
     
     const allVehicles = [...trackedCars];
     
-    if (dealerResults && dealerResults.length > 0) {
-      allVehicles.push(...dealerResults);
+    if (listings && listings.length > 0) {
+      allVehicles.push(...listings);
     }
     
     const filteredCars = selectedCar 
@@ -770,89 +814,4 @@ const RadiusMap = () => {
                     />
                   </div>
                   
-                  {userSubscription?.dealer_postcode && (
-                    <Button
-                      className="w-full"
-                      onClick={() => searchWithDealerLocation()}
-                      disabled={isLoading || !!mapError || !mapboxToken || !dealerLocation}
-                    >
-                      <MapPin className="mr-2 h-4 w-4" /> Search Using Dealer Location
-                    </Button>
-                  )}
-                  
-                  {selectedCar && (
-                    <div className="border rounded-md p-3 mt-4 bg-purple-50 dark:bg-purple-900/10">
-                      <h3 className="font-medium mb-2">Selected Vehicle</h3>
-                      <p><strong>Brand:</strong> {selectedCar.brand}</p>
-                      <p><strong>Model:</strong> {selectedCar.model}</p>
-                      <p><strong>Engine:</strong> {selectedCar.engineType}</p>
-                      {selectedCar.year && <p><strong>Year:</strong> {selectedCar.year}</p>}
-                      {selectedCar.mileage && <p><strong>Mileage:</strong> {selectedCar.mileage}</p>}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Showing similar vehicles matching this specification
-                      </p>
-                    </div>
-                  )}
-                  
-                  <div className="border rounded-md p-3 space-y-2 mt-4">
-                    <h3 className="font-medium">Map Legend</h3>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-[#9b87f5]"></div>
-                      <span className="text-sm">Best Price Zone (≤10% below target)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-[#7E69AB]"></div>
-                      <span className="text-sm">Competitive Price Zone (at target)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-[#ef4444]"></div>
-                      <span className="text-sm">Higher Price Zone (above target)</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {searchResults.length > 0 && (
-                <div className="mt-4 p-4 border rounded-md bg-white dark:bg-gray-800">
-                  <h3 className="font-medium mb-2">Search Results</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Found {searchResults.length} vehicles matching your criteria
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            <div className="flex-1">
-              <div 
-                ref={mapContainer} 
-                className="h-[70vh] min-h-[500px] rounded-md border overflow-hidden"
-              >
-                {isMapLoading && !mapError && (
-                  <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
-                    <div className="flex flex-col items-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">Loading map...</p>
-                    </div>
-                  </div>
-                )}
-                
-                {mapError && (
-                  <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-4">
-                    <div className="max-w-md text-center">
-                      <p className="text-destructive font-medium mb-2">Map Error</p>
-                      <p className="text-sm text-muted-foreground">{mapError}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <Footer />
-    </div>
-  );
-};
-
-export default RadiusMap;
+                  {userSubscription?.dealer_post
