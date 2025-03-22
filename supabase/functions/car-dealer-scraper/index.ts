@@ -1,4 +1,6 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
+import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -93,8 +95,8 @@ async function scrapeForVehicle(supabase, vehicleId) {
     const carDetails = parseVehicleDetails(vehicle);
     console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.year || ''}`);
 
-    // Generate simulated scraped listings for demo purposes
-    const scrapedListings = await simulateScrapedListings(carDetails);
+    // Scrape real listings alongside simulated ones
+    const scrapedListings = await getVehicleListings(carDetails);
     
     // Delete any existing listings for this vehicle
     await supabase
@@ -180,17 +182,137 @@ function findCheapestListing(listings) {
   }, null);
 }
 
-// In a real implementation, this would scrape actual websites
-// For demo purposes, we're generating simulated results
+async function getVehicleListings(carDetails) {
+  console.log(`Getting listings for ${carDetails.brand} ${carDetails.model}`);
+  
+  const allListings = [];
+  
+  // First try to get real results from AutoTrader
+  try {
+    const autoTraderResults = await scrapeAutoTrader(carDetails, dealerSites[0].baseUrl);
+    if (autoTraderResults.length > 0) {
+      console.log(`Found ${autoTraderResults.length} actual results from AutoTrader`);
+      allListings.push(...autoTraderResults);
+    }
+  } catch (error) {
+    console.error('Error scraping AutoTrader:', error);
+  }
+  
+  // Then add simulated results from other sites to ensure we have enough data
+  if (allListings.length < 5) {
+    const simulatedResults = await simulateScrapedListings(carDetails);
+    console.log(`Added ${simulatedResults.length} simulated results from other sites`);
+    allListings.push(...simulatedResults);
+  }
+  
+  return allListings;
+}
+
+async function scrapeAutoTrader(carDetails, baseUrl) {
+  const searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}&model=${encodeURIComponent(carDetails.model)}`;
+  console.log(`Scraping AutoTrader: ${searchUrl}`);
+
+  try {
+    const res = await fetch(searchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; EdgeFunctionScraper/1.0)'
+      }
+    });
+    
+    if (!res.ok) {
+      console.error(`Failed to fetch from AutoTrader: ${res.status} ${res.statusText}`);
+      return [];
+    }
+    
+    const html = await res.text();
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    if (!doc) {
+      console.error('Failed to parse AutoTrader HTML');
+      return [];
+    }
+
+    const results = [];
+    console.log('Parsing AutoTrader listings...');
+
+    // Generate random UK postcodes for locations
+    const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD'];
+    
+    const listings = doc.querySelectorAll('.search-page__result');
+    console.log(`Found ${listings.length} listing elements`);
+    
+    for (const el of listings) {
+      try {
+        const title = el.querySelector('.product-card-details__title')?.textContent?.trim();
+        const priceText = el.querySelector('.product-card-pricing__price')?.textContent?.replace(/[^0-9]/g, '');
+        const price = priceText ? parseInt(priceText) : null;
+        
+        // Try to find mileage in different possible locations
+        let mileageText = el.querySelector('.listing-key-specs li')?.textContent?.replace(/[^0-9]/g, '');
+        if (!mileageText) {
+          mileageText = el.querySelector('[data-testid="mileage"]')?.textContent?.replace(/[^0-9]/g, '');
+        }
+        const mileage = mileageText ? parseInt(mileageText) : carDetails.mileage || 30000;
+        
+        // Try to extract year from title or other elements
+        let year = carDetails.year;
+        if (!year && title) {
+          const yearMatch = title.match(/\b(20\d\d|19\d\d)\b/);
+          if (yearMatch) {
+            year = parseInt(yearMatch[1]);
+          }
+        }
+        
+        const urlSuffix = el.querySelector('a.product-card-link')?.getAttribute('href');
+        const url = urlSuffix ? `${baseUrl}${urlSuffix}` : null;
+
+        // Generate random coordinates around UK for the map
+        const postcode = postcodes[Math.floor(Math.random() * postcodes.length)];
+        const lat = 51.5 + (Math.random() * 3) - 1.5;
+        const lng = -0.9 + (Math.random() * 3) - 1.5;
+
+        if (title && price && url) {
+          const isCheapest = price < (carDetails.lastPrice || Infinity);
+          
+          results.push({
+            dealer_name: 'AutoTrader',
+            url,
+            title,
+            price,
+            mileage,
+            year: year || new Date().getFullYear(),
+            color: carDetails.color || 'Unknown',
+            location: postcode,
+            lat,
+            lng,
+            is_cheapest: isCheapest
+          });
+        }
+      } catch (itemErr) {
+        console.error('Error parsing listing item:', itemErr);
+      }
+    }
+
+    console.log(`Successfully extracted ${results.length} results from AutoTrader`);
+    return results;
+  } catch (err) {
+    console.error('Error scraping AutoTrader:', err);
+    return [];
+  }
+}
+
+// Generate simulated scraped listings for the other dealer sites
 async function simulateScrapedListings(carDetails) {
   const { brand, model, engineType, mileage, year, color } = carDetails;
   
-  // Generate between 5-20 results
-  const resultCount = Math.floor(Math.random() * 15) + 5;
+  // Generate between 5-15 results
+  const resultCount = Math.floor(Math.random() * 10) + 5;
   const results = [];
   
+  // Skip AutoTrader as we're using real scraping for that
+  const simulatedDealerSites = dealerSites.slice(1);
+  
   for (let i = 0; i < resultCount; i++) {
-    const dealerSite = dealerSites[Math.floor(Math.random() * dealerSites.length)];
+    const dealerSite = simulatedDealerSites[Math.floor(Math.random() * simulatedDealerSites.length)];
     
     // Calculate mileage variation (±20%)
     const baseMileage = mileage || 30000;
