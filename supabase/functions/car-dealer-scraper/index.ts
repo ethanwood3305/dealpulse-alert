@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
@@ -178,7 +177,7 @@ function parseVehicleDetails(vehicle) {
     }
   }
   
-  const properColor = color ? color.charAt(0).toUpperCase() + color.slice(1).toLowerCase() : null;
+  const properColor = color ? properCase(color) : null;
   
   return {
     brand,
@@ -222,17 +221,14 @@ async function getVehicleListings(carDetails) {
   return allListings;
 }
 
-// Helper function to properly capitalize words
 function properCase(text) {
   if (!text) return '';
   
-  // Special case for certain acronyms that should be all caps
   const allCapsWords = ['bmw', 'vw', 'amg', 'st', 'rs', 'gti', 'tdi', 'fsi', 'tsi'];
   if (allCapsWords.includes(text.toLowerCase())) {
     return text.toUpperCase();
   }
   
-  // Words that should not be capitalized, like prepositions or articles
   const lowerCaseWords = ['and', 'or', 'the', 'in', 'on', 'at', 'for', 'with', 'by', 'of'];
   
   return text.split(' ').map((word, index) => {
@@ -248,7 +244,6 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   const minMileage = Math.max(0, targetMileage - 5000);
   const maxMileage = targetMileage + 5000;
   
-  // Format brand and model with proper case
   const formattedBrand = properCase(carDetails.brand);
   const formattedModel = properCase(carDetails.model);
   const formattedTrim = carDetails.trim ? properCase(carDetails.trim) : '';
@@ -270,7 +265,6 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   }
   
   if (carDetails.color) {
-    // Properly capitalize the color
     const formattedColor = properCase(carDetails.color);
     searchUrl += `&colour=${encodeURIComponent(formattedColor.toLowerCase())}`;
   }
@@ -335,7 +329,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
           }
         }
         
-        const color = colorText.charAt(0).toUpperCase() + colorText.slice(1).toLowerCase();
+        const color = properCase(colorText);
         
         let location = 'Unknown';
         let locationEl = el.querySelector('[data-testid="seller-location"]');
@@ -382,7 +376,6 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
 async function simulateScrapedListings(carDetails) {
   const { brand, model, engineType, mileage, year, color, trim } = carDetails;
   
-  // Format brand, model and trim with proper case
   const formattedBrand = properCase(brand);
   const formattedModel = properCase(model);
   const formattedTrim = trim ? properCase(trim) : '';
@@ -443,4 +436,3 @@ async function simulateScrapedListings(carDetails) {
   
   return results;
 }
-
