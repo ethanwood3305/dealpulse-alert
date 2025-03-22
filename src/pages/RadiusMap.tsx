@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase, getMapboxToken } from "@/integrations/supabase/client";
@@ -116,13 +115,29 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
           const model = urlParts[1] || 'Unknown Model';
           const engineType = urlParts[2] || 'Unknown Engine';
           
+          // Extract mileage, year, and other parameters from URL
+          let mileage = undefined;
+          let year = undefined;
+          
+          if (urlParts[3]) {
+            const params = urlParts[3].split('&');
+            params.forEach(param => {
+              if (param.includes('mil=')) {
+                mileage = param.split('mil=')[1];
+              }
+              if (param.includes('year=')) {
+                year = param.split('year=')[1];
+              }
+            });
+          }
+          
           setSelectedCar({
             id: data.id,
             brand: brand,
             model: model, 
             engineType: engineType,
-            mileage: data.mileage,
-            year: data.year,
+            mileage: mileage,
+            year: year,
             last_price: data.last_price,
             last_checked: data.last_checked,
             created_at: data.created_at,
