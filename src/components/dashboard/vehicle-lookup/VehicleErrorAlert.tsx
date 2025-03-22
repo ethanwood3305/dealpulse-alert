@@ -8,6 +8,22 @@ interface VehicleErrorAlertProps {
 }
 
 export const VehicleErrorAlert = ({ error, errorCode }: VehicleErrorAlertProps) => {
+  // Determine the display message based on the error code
+  const getErrorTitle = () => {
+    switch (errorCode) {
+      case "VEHICLE_NOT_FOUND":
+        return "Vehicle not found";
+      case "SERVICE_UNAVAILABLE":
+        return "Service unavailable";
+      case "TIMEOUT":
+        return "Service timed out";
+      case "INVALID_REGISTRATION":
+        return "Invalid registration";
+      default:
+        return "Registration lookup failed";
+    }
+  };
+
   return (
     <Alert variant={
       errorCode === "VEHICLE_NOT_FOUND" ? "default" : 
@@ -20,20 +36,17 @@ export const VehicleErrorAlert = ({ error, errorCode }: VehicleErrorAlertProps) 
       ) : (
         <AlertCircle className="h-4 w-4" />
       )}
-      <AlertTitle>
-        {errorCode === "VEHICLE_NOT_FOUND" 
-          ? "Vehicle not found" 
-          : errorCode === "SERVICE_UNAVAILABLE"
-          ? "Service unavailable"
-          : errorCode === "TIMEOUT"
-          ? "Service timed out"
-          : "Lookup failed"}
-      </AlertTitle>
+      <AlertTitle>{getErrorTitle()}</AlertTitle>
       <AlertDescription>
         {error}
         {errorCode === "VEHICLE_NOT_FOUND" && (
           <p className="mt-2 text-sm">
             Please check the registration number and try again. Make sure it's a valid UK registration.
+          </p>
+        )}
+        {errorCode === "INVALID_REGISTRATION" && (
+          <p className="mt-2 text-sm">
+            The registration number format is invalid. Please enter a valid UK vehicle registration.
           </p>
         )}
         {errorCode === "SERVICE_UNAVAILABLE" && (

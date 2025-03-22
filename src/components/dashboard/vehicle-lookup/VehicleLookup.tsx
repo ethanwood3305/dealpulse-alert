@@ -1,6 +1,8 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useTrackedCars, AddCarParams } from "@/hooks/use-tracked-cars";
@@ -17,6 +19,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
+  const [mileage, setMileage] = useState<string>('');
   const { addCar } = useTrackedCars(userId);
 
   const handleLookup = async (registration: string) => {
@@ -25,6 +28,15 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     setErrorCode(null);
     setVehicleDetails(null);
     setDiagnosticInfo(null);
+
+    // Validate registration format
+    const regPattern = /^[A-Z0-9]{2,8}$/i;
+    if (!regPattern.test(registration.replace(/\s+/g, ''))) {
+      setError('Registration number format is invalid');
+      setErrorCode('INVALID_REGISTRATION');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       console.log("Starting vehicle lookup for registration:", registration);
@@ -51,6 +63,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         setError(data.error);
         if (data.code) {
           setErrorCode(data.code);
+        } else {
+          setErrorCode('LOOKUP_FAILED');
         }
         return;
       }
@@ -66,6 +80,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       } else {
         console.error("No vehicle data in response");
         setError('No vehicle data returned');
+        setErrorCode('LOOKUP_FAILED');
       }
     } catch (err: any) {
       console.error('Vehicle lookup error:', err);
@@ -81,6 +96,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         });
       } else {
         setError(err.message || 'An error occurred during vehicle lookup');
+        setErrorCode('LOOKUP_FAILED');
         
         toast({
           title: "Lookup Failed",
@@ -104,7 +120,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         engineType: vehicleDetails.fuelType,
         color: vehicleDetails.color,
         year: vehicleDetails.year,
-        mileage: vehicleDetails.weight
+        mileage: mileage || '0' // Use entered mileage instead of weight
       };
 
       const success = await addCar(carParams);
@@ -117,6 +133,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         
         // Reset form
         setVehicleDetails(null);
+        setMileage('');
         
         if (onCarAdded) {
           onCarAdded();
@@ -157,10 +174,23 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           )}
 
           {vehicleDetails && !isLoading && (
-            <VehicleResultCard 
-              vehicleDetails={vehicleDetails} 
-              onAddCar={handleAddCar} 
-            />
+            <>
+              <div className="mb-4">
+                <Label htmlFor="mileage">Mileage</Label>
+                <Input
+                  id="mileage"
+                  placeholder="Enter current mileage"
+                  type="number"
+                  value={mileage}
+                  onChange={(e) => setMileage(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <VehicleResultCard 
+                vehicleDetails={vehicleDetails} 
+                onAddCar={handleAddCar} 
+              />
+            </>
           )}
         </div>
       </CardContent>

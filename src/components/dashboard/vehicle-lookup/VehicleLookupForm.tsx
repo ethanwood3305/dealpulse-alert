@@ -14,7 +14,9 @@ export const VehicleLookupForm = ({ onSubmit, isLoading }: VehicleLookupFormProp
   const [registration, setRegistration] = useState('');
 
   const handleSubmit = () => {
-    if (!registration.trim()) {
+    const regClean = registration.trim().toUpperCase();
+    
+    if (!regClean) {
       toast({
         title: "Error",
         description: "Please enter a registration number",
@@ -23,7 +25,18 @@ export const VehicleLookupForm = ({ onSubmit, isLoading }: VehicleLookupFormProp
       return;
     }
     
-    onSubmit(registration.trim());
+    // Basic format validation
+    const regPattern = /^[A-Z0-9]{2,8}$/i;
+    if (!regPattern.test(regClean.replace(/\s+/g, ''))) {
+      toast({
+        title: "Invalid Registration",
+        description: "Please enter a valid UK registration number",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    onSubmit(regClean);
   };
 
   return (
