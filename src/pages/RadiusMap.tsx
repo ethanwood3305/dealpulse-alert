@@ -192,6 +192,15 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
     try {
       setIsLoading(true);
       
+      if (!carId) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No car ID provided. Please select a car first."
+        });
+        return;
+      }
+      
       const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
         car_id: carId
       });
@@ -204,6 +213,12 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
       if (data && data.length > 0 && dealerLocation) {
         console.log(`Found ${data.length} scraped listings for car ${carId}`);
         addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), data);
+      } else if (data && data.length > 0 && !dealerLocation) {
+        toast({
+          title: "Warning",
+          description: "Dealer location not provided. Map view may be limited.",
+          variant: "destructive"
+        });
       }
     } catch (error) {
       console.error('Error fetching scraped listings:', error);

@@ -30,7 +30,7 @@ const App = () => {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
-        <Route path="/radius-map" element={<RadiusMap />} />
+        <Route path="/radius-map" element={<RadiusMap carId="default-car-id" targetPrice="0" />} />
         <Route path="/changelog" element={<Changelog />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
