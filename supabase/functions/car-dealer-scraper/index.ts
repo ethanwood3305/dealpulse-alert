@@ -243,15 +243,18 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   const minMileage = Math.max(0, targetMileage - 5000);
   const maxMileage = targetMileage + 5000;
   
-  // Build the search URL with mileage constraints
-  let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}&model=${encodeURIComponent(carDetails.model)}`;
+  // Build the search URL with correct parameters
+  let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}`;
   
-  // Add trim if available - note that on AutoTrader this is "aggregatedTrim"
+  // Add model without the trim
+  searchUrl += `&model=${encodeURIComponent(carDetails.model)}`;
+  
+  // Add trim as separate aggregatedTrim parameter if available
   if (carDetails.trim) {
     searchUrl += `&aggregatedTrim=${encodeURIComponent(carDetails.trim)}`;
   }
   
-  // Add mileage parameters if we have a target mileage
+  // Add mileage parameters with exact ranges
   if (targetMileage) {
     searchUrl += `&minimum-mileage=${minMileage}&maximum-mileage=${maxMileage}`;
   }
@@ -261,13 +264,13 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
     searchUrl += `&year-from=${carDetails.year}&year-to=${carDetails.year}`;
   }
   
-  // Add color if available
+  // Add color if available - ensure it's lowercase
   if (carDetails.color) {
-    searchUrl += `&colour=${encodeURIComponent(carDetails.color)}`;
+    searchUrl += `&colour=${encodeURIComponent(carDetails.color.toLowerCase())}`;
   }
   
-  // Add postcode for location-based search (using a default UK postcode if needed)
-  searchUrl += "&postcode=b31%203xr";
+  // Add postcode for location-based search
+  searchUrl += "&postcode=b31%203xr&sort=relevance";
   
   console.log(`Scraping AutoTrader: ${searchUrl}`);
 
@@ -319,11 +322,11 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         }
         
         // Try to extract color from the title or description
-        let color = carDetails.color || 'Unknown';
+        let color = carDetails.color || 'unknown';
         if (title) {
-          const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange', 'Purple', 'Brown'];
+          const colors = ['red', 'blue', 'black', 'white', 'silver', 'grey', 'green', 'yellow', 'orange', 'purple', 'brown'];
           for (const c of colors) {
-            if (title.includes(c)) {
+            if (title.toLowerCase().includes(c)) {
               color = c;
               break;
             }
@@ -355,7 +358,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
             price,
             mileage,
             year: year || new Date().getFullYear(),
-            color,
+            color: color.toLowerCase(), // Ensure color is lowercase
             location,
             lat,
             lng,
@@ -422,9 +425,9 @@ async function simulateScrapedListings(carDetails) {
     // Mark as cheapest if it's more than 10% below the original price
     const isCheapest = resultPrice < (basePrice * 0.9);
     
-    // Generate vehicle colors if not specified
-    const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange'];
-    const resultColor = color || colors[Math.floor(Math.random() * colors.length)];
+    // Generate vehicle colors if not specified - ensure lowercase
+    const colors = ['red', 'blue', 'black', 'white', 'silver', 'grey', 'green', 'yellow', 'orange'];
+    const resultColor = color ? color.toLowerCase() : colors[Math.floor(Math.random() * colors.length)];
     
     // Include trim in title if available
     const trimText = trim ? ` ${trim}` : '';
