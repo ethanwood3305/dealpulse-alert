@@ -2,8 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Car as CarIcon } from "lucide-react";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { EditVehicleDialog } from "./EditVehicleDialog";
@@ -46,6 +44,7 @@ export function TrackedCarsTable({
   getListingsForCar
 }: TrackedCarsTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editCarId, setEditCarId] = useState<string | null>(null);
 
   const confirmDelete = (id: string) => {
     setDeleteId(id);
@@ -62,6 +61,15 @@ export function TrackedCarsTable({
         closeDeleteDialog();
       }
     }
+  };
+
+  const getCarToEdit = () => {
+    if (!editCarId) return null;
+    return trackedCars.find(car => car.id === editCarId) || null;
+  };
+
+  const handleAddTag = (carId: string, tag: string) => {
+    onAddTag(carId, tag);
   };
 
   return (
@@ -137,11 +145,13 @@ export function TrackedCarsTable({
                     </td>
                     <td className="px-4 py-4 text-right align-top">
                       <div className="flex flex-col items-end space-y-2">
-                        <EditVehicleDialog
-                          car={car}
-                          onUpdate={onUpdateDetails}
-                          onAddTag={(tag) => onAddTag(car.id, tag)}
-                        />
+                        <Button 
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditCarId(car.id)}
+                        >
+                          Edit
+                        </Button>
                         {onTriggerScraping && getListingsForCar && (
                           <ScrapeButton 
                             car={car}
@@ -186,6 +196,15 @@ export function TrackedCarsTable({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {getCarToEdit() && (
+        <EditVehicleDialog
+          car={getCarToEdit()!}
+          open={!!editCarId}
+          onOpenChange={(open) => !open && setEditCarId(null)}
+          onSave={onUpdateDetails}
+        />
+      )}
     </div>
   );
 }

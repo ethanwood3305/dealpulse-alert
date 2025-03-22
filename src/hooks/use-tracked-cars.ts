@@ -115,26 +115,24 @@ export const useTrackedCars = (userId: string | undefined) => {
     }
   };
 
-  const fetchScrapedListings = async (carId: string) => {
+  const fetchScrapedListings = async (carId: string): Promise<ScrapedListing[]> => {
     try {
-      const { data, error } = await supabase
-        .from('scraped_vehicle_listings')
-        .select('*')
-        .eq('tracked_car_id', carId)
-        .order('price', { ascending: true });
+      const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
+        car_id: carId
+      });
         
       if (error) {
         throw error;
       }
       
-      return data || [];
+      return data as ScrapedListing[] || [];
     } catch (error) {
       console.error("Error fetching scraped listings:", error);
       return [];
     }
   };
 
-  const triggerScraping = async (carId: string) => {
+  const triggerScraping = async (carId: string): Promise<ScrapedListing[]> => {
     try {
       setIsScrapingCar(true);
       
@@ -157,6 +155,7 @@ export const useTrackedCars = (userId: string | undefined) => {
       // Fetch the scraped listings
       const listings = await fetchScrapedListings(carId);
       
+      // Update the scrapedListings state with typesafe data
       setScrapedListings(prev => ({
         ...prev,
         [carId]: listings
