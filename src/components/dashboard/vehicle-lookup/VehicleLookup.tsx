@@ -21,7 +21,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
   const [mileage, setMileage] = useState<string>('');
   const [price, setPrice] = useState<string>('');
-  const { addCar } = useTrackedCars(userId);
+  const { addCar, trackedCars } = useTrackedCars(userId);
 
   const handleLookup = async (registration: string) => {
     setIsLoading(true);
@@ -32,10 +32,29 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
     // Validate registration format
     const regPattern = /^[A-Z0-9]{2,8}$/i;
-    if (!regPattern.test(registration.replace(/\s+/g, ''))) {
+    const cleanRegistration = registration.replace(/\s+/g, '').toUpperCase();
+    
+    if (!regPattern.test(cleanRegistration)) {
       setError('Registration number format is invalid');
       setErrorCode('INVALID_REGISTRATION');
       setIsLoading(false);
+      return;
+    }
+
+    // Check if the registration already exists as a tag for this user
+    const regExists = trackedCars.some(car => 
+      car.tags && car.tags.some(tag => tag.toUpperCase() === cleanRegistration)
+    );
+
+    if (regExists) {
+      setError('This registration is already tracked in your account');
+      setErrorCode('REGISTRATION_EXISTS');
+      setIsLoading(false);
+      toast({
+        title: "Registration already exists",
+        description: "You are already tracking a vehicle with this registration number.",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -44,7 +63,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       
       const { data, error } = await supabase.functions.invoke('vehicle-lookup', {
         method: 'POST',
-        body: { registration }
+        body: { registration: cleanRegistration }
       });
 
       console.log("Vehicle lookup response received:", data);
@@ -86,7 +105,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         setVehicleDetails({
           ...data.vehicle,
           // Store the original registration for use as a tag
-          originalRegistration: registration.toUpperCase().replace(/\s+/g, '')
+          originalRegistration: cleanRegistration
         });
         toast({
           title: "Vehicle Found",
