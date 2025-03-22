@@ -222,18 +222,21 @@ const Dashboard = () => {
             isPro={userSubscription?.plan !== 'free'}
           />
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
-            <SubscriptionCard 
-              plan={userSubscription?.plan}
-              urls_limit={userSubscription?.urls_limit}
-              trackedUrlsCount={trackedCars.length}
-              onRefreshSubscription={manuallyRefreshSubscription}
-            />
-            
-            <QuickActionsCard 
-              canAddMoreCars={canAddMoreCars}
-              onAddCarClick={scrollToAddCarForm}
-            />
+          <div className="flex flex-col md:flex-row gap-6 mb-10">
+            <div className="flex-1">
+              <SubscriptionCard 
+                plan={userSubscription?.plan}
+                urls_limit={userSubscription?.urls_limit}
+                trackedUrlsCount={trackedCars.length}
+                onRefreshSubscription={manuallyRefreshSubscription}
+              />
+            </div>
+            <div className="w-full md:w-auto">
+              <QuickActionsCard 
+                canAddMoreCars={canAddMoreCars}
+                onAddCarClick={scrollToAddCarForm}
+              />
+            </div>
           </div>
           
           <div className="mb-10">
