@@ -33,7 +33,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
   const [searchParams] = useSearchParams();
   const urlCarId = searchParams.get('carId') || carId;
 
-  // Get the current user
   useEffect(() => {
     const getUserData = async () => {
       const { data } = await supabase.auth.getUser();
@@ -58,14 +57,12 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       if (!user) return;
       
       try {
-        // Get dealer postcode from user subscription
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .rpc('get_user_subscription', { user_uuid: user.id });
 
         if (subscriptionError) throw subscriptionError;
         
         if (subscriptionData && subscriptionData.length > 0 && subscriptionData[0].dealer_postcode) {
-          // We have the dealer postcode, now convert it to coordinates
           const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${subscriptionData[0].dealer_postcode}.json?access_token=${mapboxToken}`);
           const data = await response.json();
           
@@ -77,7 +74,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
               postcode: subscriptionData[0].dealer_postcode
             });
             
-            // Update the map center
             setLng(coordinates[0]);
             setLat(coordinates[1]);
           }
@@ -110,14 +106,12 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
           
         if (error) throw error;
         
-        // Transform tracked_urls data into TrackedCar format
         if (data) {
           const urlParts = data.url.split('/');
           const brand = urlParts[0] || 'Unknown Brand';
           const model = urlParts[1] || 'Unknown Model';
           const engineType = urlParts[2] || 'Unknown Engine';
           
-          // Extract mileage, year, and other parameters from URL
           let mileage = undefined;
           let year = undefined;
           
@@ -166,7 +160,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       zoom: zoom
     });
 
-    // Add navigation controls
     map.current.addControl(
       new mapboxgl.NavigationControl(),
       'top-right'
@@ -181,7 +174,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     });
   }, [mapboxToken]);
 
-  // Update map when dealer location changes
   useEffect(() => {
     if (map.current && (dealerLocation || dealerLocationFromDB)) {
       const location = dealerLocation || dealerLocationFromDB;
@@ -198,7 +190,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
   const addDealerMarkerAndCircles = (location: CarLocation, targetPrice: number, listings: ScrapedListing[]) => {
     if (!map.current) return;
 
-    // Remove existing sources and layers
     if (map.current.getLayer('dealer-marker')) {
       map.current.removeLayer('dealer-marker');
     }
@@ -218,46 +209,24 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       map.current.removeSource('radius-10k');
     }
 
-    // Add dealer marker
-    map.current.addSource('dealer', {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          geometry: {
-            type: 'Point',
-            coordinates: [location.lng, location.lat]
-          },
-          properties: {
-            title: 'Dealer Location',
-            icon: 'shop'
-          }
-        }]
-      } as GeoJSON.FeatureCollection<GeoJSON.Geometry>
-    });
+    const markerEl = document.createElement('div');
+    markerEl.className = 'flex items-center justify-center';
+    markerEl.style.width = '30px';
+    markerEl.style.height = '30px';
+    
+    const markerSvg = document.createElement('div');
+    markerSvg.className = 'text-red-600';
+    markerSvg.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>`;
+    markerEl.appendChild(markerSvg);
+    
+    new mapboxgl.Marker(markerEl)
+      .setLngLat([location.lng, location.lat])
+      .setPopup(
+        new mapboxgl.Popup({ offset: 25 })
+          .setHTML(`<h4>Dealer Location</h4><p>${location.postcode}</p>`)
+      )
+      .addTo(map.current);
 
-    map.current.addLayer({
-      id: 'dealer-marker',
-      type: 'symbol',
-      source: 'dealer',
-      layout: {
-        'icon-image': 'shop',
-        'icon-size': 1.5,
-        'text-field': ['get', 'title'],
-        'text-font': [
-          'Open Sans Semibold',
-          'Arial Unicode MS Bold'
-        ],
-        'text-offset': [0, 0.9],
-        'text-anchor': 'top'
-      },
-      paint: {
-        'text-color': '#f00'
-      }
-    });
-
-    // Add radius circles
     const addCircle = (id: string, radiusKm: number, color: string) => {
       const radiusMeters = radiusKm * 1000;
       const steps = 64;
@@ -271,7 +240,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
         const lat = location.lat + innerRadius * Math.sin(angle);
         coordinates.push([lng, lat]);
       }
-      // Close the polygon by repeating the first point
       coordinates.push([...coordinates[0]]);
 
       const circleData: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
@@ -305,7 +273,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     addCircle('radius-5k', 5, '#00f');
     addCircle('radius-10k', 10, '#0f0');
 
-    // Add scraped listings as markers
     listings.forEach(listing => {
       if (listing.lat && listing.lng) {
         const el = document.createElement('div');
@@ -349,13 +316,13 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       
       setScrapedListings(data || []);
       
-      // Determine which location to use
       const locationToUse = dealerLocation || dealerLocationFromDB;
       
-      // If we have listings and a location, show them on the map
+      const currentPrice = selectedCar?.last_price ? parseFloat(selectedCar.last_price.toString()) : parseFloat(targetPrice);
+      
       if (data && data.length > 0 && locationToUse) {
         console.log(`Found ${data.length} scraped listings for car ${urlCarId}`);
-        addDealerMarkerAndCircles(locationToUse, parseFloat(targetPrice), data);
+        addDealerMarkerAndCircles(locationToUse, currentPrice, data);
       } else if (data && data.length > 0 && !locationToUse) {
         toast({
           title: "Warning",
@@ -383,9 +350,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left side - Map info and controls */}
         <div className="w-full lg:w-1/3 space-y-4">
-          {/* Car details card */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -412,7 +377,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
                     Mileage: {selectedCar.mileage ? `${selectedCar.mileage.toLocaleString()} miles` : 'N/A'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Target Price: £{parseFloat(targetPrice).toLocaleString() || '0'}
+                    List Price: £{selectedCar.last_price ? parseFloat(selectedCar.last_price.toString()).toLocaleString() : parseFloat(targetPrice).toLocaleString()}
                   </p>
                 </div>
               ) : (
@@ -430,7 +395,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
             </CardContent>
           </Card>
 
-          {/* Map legend card */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-xl flex items-center gap-2">
@@ -460,7 +424,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
             </CardContent>
           </Card>
 
-          {/* Action button */}
           <Button 
             onClick={fetchScrapedListings} 
             disabled={isLoading} 
@@ -480,7 +443,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
           </Button>
         </div>
 
-        {/* Right side - Map */}
         <div className="w-full lg:w-2/3">
           <Card className="overflow-hidden">
             <div 
