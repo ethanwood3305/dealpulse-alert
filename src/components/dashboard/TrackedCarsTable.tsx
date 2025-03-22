@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -62,10 +61,8 @@ export const TrackedCarsTable = ({
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
-      // Toggle direction if clicking the same field
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      // Set new field and default to ascending
       setSortField(field);
       setSortDirection('asc');
     }
@@ -76,13 +73,13 @@ export const TrackedCarsTable = ({
     
     switch (sortField) {
       case 'brand':
-        return (a.brand?.toLowerCase() || '').localeCompare(b.brand?.toLowerCase() || '') * direction;
+        return ((a.brand || '').toLowerCase()).localeCompare((b.brand || '').toLowerCase()) * direction;
       case 'model':
-        return (a.model?.toLowerCase() || '').localeCompare(b.model?.toLowerCase() || '') * direction;
+        return ((a.model || '').toLowerCase()).localeCompare((b.model || '').toLowerCase()) * direction;
       case 'year':
         if (!a.year && !b.year) return 0;
-        if (!a.year) return direction;
-        if (!b.year) return -direction;
+        if (!a.year) return 1 * direction;
+        if (!b.year) return -1 * direction;
         return (a.year.localeCompare(b.year)) * direction;
       case 'mileage':
         const mileageA = a.mileage ? parseInt(a.mileage) : 0;
@@ -92,9 +89,7 @@ export const TrackedCarsTable = ({
         return ((a.tags?.length || 0) - (b.tags?.length || 0)) * direction;
       case 'created_at':
       default:
-        return new Date(a.created_at).getTime() < new Date(b.created_at).getTime() 
-          ? direction 
-          : -direction;
+        return ((new Date(b.created_at).getTime() - new Date(a.created_at).getTime())) * direction;
     }
   });
 
@@ -133,7 +128,10 @@ export const TrackedCarsTable = ({
         variant="ghost" 
         size="sm" 
         className="ml-1 p-0 h-4"
-        onClick={() => handleSort(field)}
+        onClick={() => {
+          console.log("Sort button clicked for field:", field);
+          handleSort(field);
+        }}
       >
         {isActive && sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : null}
         {isActive && sortDirection === 'desc' ? <ChevronDown className="h-4 w-4" /> : null}
