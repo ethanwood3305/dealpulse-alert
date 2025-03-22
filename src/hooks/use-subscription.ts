@@ -3,7 +3,8 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   fetchSubscriptionData, 
   checkCanAddMoreUrls,
-  generateApiKeyForUser
+  generateApiKeyForUser,
+  updateDealerPostcode
 } from "@/utils/subscription-utils";
 import type { UserSubscription } from "@/types/subscription-types";
 
@@ -63,6 +64,16 @@ export const useSubscription = (userId: string | undefined) => {
     return false;
   };
 
+  const setDealerPostcode = async (postcode: string): Promise<boolean> => {
+    if (!userId) return false;
+    const success = await updateDealerPostcode(userId, postcode);
+    if (success) {
+      setUserSubscription(prev => prev ? {...prev, dealer_postcode: postcode} : null);
+      return true;
+    }
+    return false;
+  };
+
   const refreshSubscription = useCallback(async (maxRetries = 3) => {
     if (!userId) return false;
     
@@ -98,6 +109,7 @@ export const useSubscription = (userId: string | undefined) => {
     userSubscription,
     canAddMoreUrls,
     generateApiKey,
+    setDealerPostcode,
     refreshSubscription,
     lastRefreshed,
     refreshAttempts

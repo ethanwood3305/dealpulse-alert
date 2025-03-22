@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -10,6 +9,7 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
+import { DealerPostcodeCard } from '@/components/dashboard/DealerPostcodeCard';
 import { AddCarForm } from '@/components/dashboard/AddCarForm';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
@@ -38,7 +38,8 @@ const Dashboard = () => {
     canAddMoreUrls: canAddMoreCars, 
     isLoading: isLoadingSubscription,
     refreshSubscription,
-    generateApiKey
+    generateApiKey,
+    setDealerPostcode
   } = useSubscription(user?.id);
   
   const { 
@@ -161,6 +162,15 @@ const Dashboard = () => {
     return success;
   };
 
+  const handleUpdateDealerPostcode = async (postcode: string): Promise<boolean> => {
+    if (!user) return false;
+    const success = await setDealerPostcode(postcode);
+    if (success) {
+      refreshSubscription();
+    }
+    return success;
+  };
+
   const scrollToAddCarForm = () => {
     document.getElementById('add-car-form')?.scrollIntoView({
       behavior: 'smooth'
@@ -234,6 +244,11 @@ const Dashboard = () => {
             <QuickActionsCard 
               canAddMoreCars={canAddMoreCars}
               onAddCarClick={scrollToAddCarForm}
+            />
+            
+            <DealerPostcodeCard 
+              dealerPostcode={userSubscription?.dealer_postcode || null}
+              onUpdatePostcode={handleUpdateDealerPostcode}
             />
           </div>
           

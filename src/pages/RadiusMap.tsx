@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,16 +6,33 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Loader2, Search } from 'lucide-react';
+import { ArrowLeft, Loader2, MapPin, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TrackedCarWithLocation, DealerVehicle } from '@/types/car-types';
 import { supabase, getMapboxToken } from '@/integrations/supabase/client';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import { useSubscription } from '@/hooks/use-subscription';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
 const DEFAULT_ZOOM = 6;
+
+// Function to simulate geocoding a postcode to lat/lng
+const geocodePostcode = async (postcode: string): Promise<[number, number] | null> => {
+  // In a real app, you would use a geocoding API here
+  // For now, we'll simulate by generating random coordinates in the UK
+  if (!postcode || postcode.trim() === '') return null;
+  
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  // Generate random coordinates centered around UK
+  const lat = 51.5 + (Math.random() * 3) - 1.5;
+  const lng = -0.9 + (Math.random() * 3) - 1.5;
+  
+  return [lng, lat];
+};
 
 const RadiusMap = () => {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -32,6 +50,23 @@ const RadiusMap = () => {
   const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [dealerLocation, setDealerLocation] = useState<[number, number] | null>(null);
+  
+  const { userSubscription } = useSubscription(user?.id);
+  
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data?.user) {
+        navigate('/login');
+        return;
+      }
+      setUser(data.user);
+    };
+    
+    checkAuth();
+  }, [navigate]);
   
   useEffect(() => {
     const fetchToken = async () => {
@@ -69,6 +104,21 @@ const RadiusMap = () => {
   }, [location.search]);
   
   useEffect(() => {
+    if (userSubscription?.dealer_postcode) {
+      // If user has a dealer postcode set, use it as the default
+      setPostcode(userSubscription.dealer_postcode);
+      
+      // Geocode the dealer postcode to get coordinates
+      (async () => {
+        const coords = await geocodePostcode(userSubscription.dealer_postcode);
+        if (coords) {
+          setDealerLocation(coords);
+        }
+      })();
+    }
+  }, [userSubscription]);
+  
+  useEffect(() => {
     if (mapContainer.current && !map.current && mapboxToken) {
       console.log('Initializing map with token');
       
@@ -90,6 +140,13 @@ const RadiusMap = () => {
           console.log('Map loaded successfully');
           setIsMapLoading(false);
           setMapError(null);
+          
+          // If we have a dealer location and selected car, search automatically
+          if (dealerLocation && targetPrice && selectedCarId) {
+            setTimeout(() => {
+              searchWithDealerLocation();
+            }, 1000);
+          }
         });
         
         map.current.on('error', (e) => {
@@ -131,7 +188,7 @@ const RadiusMap = () => {
         map.current = null;
       }
     };
-  }, [mapboxToken]);
+  }, [mapboxToken, dealerLocation, targetPrice, selectedCarId]);
   
   useEffect(() => {
     if (mapboxToken) {
@@ -225,11 +282,13 @@ const RadiusMap = () => {
         const foundCar = carsWithLocations.find(car => car.id === selectedCarId);
         if (foundCar && foundCar.location) {
           setSelectedCar(foundCar);
-          setPostcode(foundCar.location.postcode);
           
-          setTimeout(() => {
-            searchPostcode(foundCar.location?.postcode || '', targetPrice);
-          }, 1000);
+          // If we have a dealer postcode, use that instead of the car's postcode
+          if (userSubscription?.dealer_postcode) {
+            setPostcode(userSubscription.dealer_postcode);
+          } else {
+            setPostcode(foundCar.location.postcode);
+          }
         }
       }
     } catch (error) {
@@ -250,7 +309,7 @@ const RadiusMap = () => {
     return `${prefix}${number} ${suffix}XX`;
   };
   
-  const searchDealerVehicles = async () => {
+  const searchDealerVehicles = async (centerCoords: [number, number]) => {
     if (!selectedCar) return [];
     
     setIsLoading(true);
@@ -259,14 +318,23 @@ const RadiusMap = () => {
       const dealerCount = Math.floor(Math.random() * 50) + 50;
       const results = [];
       
+      // Use the center coordinates to generate vehicles in a radius
       for (let i = 0; i < dealerCount; i++) {
-        const priceDeviation = (Math.random() * 0.3) - 0.15;
+        // Random distance from center (in degrees, roughly)
+        const distance = Math.random() * 0.5; // Up to ~50km
+        const angle = Math.random() * Math.PI * 2; // Random angle
+        
+        // Calculate coordinates based on distance and angle
+        const lat = centerCoords[1] + (Math.sin(angle) * distance);
+        const lng = centerCoords[0] + (Math.cos(angle) * distance);
+        
+        // Price deviation increases with distance from dealer
+        const distanceFactor = distance * 1.5; // Higher distance = higher price
+        const priceDeviation = (Math.random() * 0.2) + (distanceFactor * 0.1);
+        
         const marketPrice = selectedCar.priceComparison?.targetPrice 
           ? selectedCar.priceComparison.targetPrice * (1 + priceDeviation)
           : (parseFloat(targetPrice) || 20000) * (1 + priceDeviation);
-        
-        const lat = 51.5 + (Math.random() * 3) - 1.5;
-        const lng = -1.9 + (Math.random() * 4) - 2;
         
         const postcode = generateRandomPostcode();
         
@@ -322,6 +390,49 @@ const RadiusMap = () => {
     }
   };
   
+  const searchWithDealerLocation = async () => {
+    if (!dealerLocation || !targetPrice) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Dealer location or target price is missing."
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      if (map.current) {
+        map.current.flyTo({
+          center: dealerLocation,
+          zoom: 8.5,
+          essential: true
+        });
+        
+        const dealerResults = await searchDealerVehicles(dealerLocation);
+        setSearchResults(dealerResults);
+        
+        // Add dealer marker and radius circles
+        addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), dealerResults);
+        
+        toast({
+          title: "Map Updated",
+          description: `Showing price radius for your dealer location`
+        });
+      }
+    } catch (error) {
+      console.error('Error searching with dealer location:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to search with dealer location."
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const searchPostcode = async (postcodeValue = postcode, targetPriceValue = targetPrice) => {
     if (!postcodeValue.trim()) {
       toast({
@@ -346,51 +457,32 @@ const RadiusMap = () => {
     try {
       console.log('Searching postcode:', postcodeValue, 'with target price:', targetPriceValue);
       
-      const lat = 51.5 + Math.random() * 2;
-      const lng = -1.9 + Math.random() * 3;
+      // Geocode the postcode to get coordinates
+      const coords = await geocodePostcode(postcodeValue);
+      
+      if (!coords) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to geocode the postcode."
+        });
+        return;
+      }
       
       if (map.current) {
         console.log('Map is available, updating view');
         
         map.current.flyTo({
-          center: [lng, lat],
-          zoom: 10,
+          center: coords,
+          zoom: 8.5,
           essential: true
         });
         
-        const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
-        existingMarkers.forEach(marker => marker.remove());
-        
-        if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
-        if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
-        if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
-        
-        const markerEl = document.createElement('div');
-        markerEl.className = 'marker';
-        markerEl.style.width = '20px';
-        markerEl.style.height = '20px';
-        markerEl.style.borderRadius = '50%';
-        markerEl.style.backgroundColor = '#8B5CF6';
-        markerEl.style.border = '2px solid white';
-        
-        new mapboxgl.Marker(markerEl)
-          .setLngLat([lng, lat])
-          .setPopup(new mapboxgl.Popup().setHTML(`<p><strong>Postcode:</strong> ${postcodeValue}</p>`))
-          .addTo(map.current);
-          
-        const dealerResults = await searchDealerVehicles();
+        const dealerResults = await searchDealerVehicles(coords);
         setSearchResults(dealerResults);
         
-        if (map.current.loaded()) {
-          console.log('Map is loaded, adding circles');
-          addCircles(map.current, [lng, lat], parseFloat(targetPriceValue), dealerResults);
-        } else {
-          console.log('Map not loaded yet, waiting for load event');
-          map.current.once('load', () => {
-            console.log('Map loaded, now adding circles');
-            addCircles(map.current!, [lng, lat], parseFloat(targetPriceValue), dealerResults);
-          });
-        }
+        // Add dealer marker and radius circles
+        addDealerMarkerAndCircles(coords, parseFloat(targetPriceValue), dealerResults);
         
         toast({
           title: "Map Updated",
@@ -416,7 +508,67 @@ const RadiusMap = () => {
     }
   };
   
-  const addCircles = (map: Map, center: [number, number], price: number, dealerResults: any[] = []) => {
+  const addDealerMarkerAndCircles = (
+    center: [number, number], 
+    price: number, 
+    dealerResults: any[] = []
+  ) => {
+    if (!map.current) return;
+    
+    // Remove existing markers and layers
+    const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
+    existingMarkers.forEach(marker => marker.remove());
+    
+    if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
+    if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
+    if (map.current.getLayer('high-price-radius')) map.current.removeLayer('high-price-radius');
+    if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
+    
+    // Add dealer marker
+    const dealerMarkerEl = document.createElement('div');
+    dealerMarkerEl.className = 'dealer-marker';
+    dealerMarkerEl.style.width = '30px';
+    dealerMarkerEl.style.height = '30px';
+    dealerMarkerEl.style.borderRadius = '50%';
+    dealerMarkerEl.style.backgroundColor = '#6E59A5';
+    dealerMarkerEl.style.border = '3px solid white';
+    dealerMarkerEl.style.display = 'flex';
+    dealerMarkerEl.style.alignItems = 'center';
+    dealerMarkerEl.style.justifyContent = 'center';
+    dealerMarkerEl.style.color = 'white';
+    dealerMarkerEl.style.fontWeight = 'bold';
+    dealerMarkerEl.style.fontSize = '16px';
+    dealerMarkerEl.innerHTML = '🏬';
+    
+    new mapboxgl.Marker(dealerMarkerEl)
+      .setLngLat(center)
+      .setPopup(new mapboxgl.Popup().setHTML(`
+        <div class="p-2">
+          <h3 class="font-bold">Dealer Location</h3>
+          <p><strong>Postcode:</strong> ${postcode}</p>
+        </div>
+      `))
+      .addTo(map.current);
+    
+    // Add radius circles
+    if (map.current.loaded()) {
+      console.log('Map is loaded, adding circles');
+      addCircles(map.current, center, price, dealerResults);
+    } else {
+      console.log('Map not loaded yet, waiting for load event');
+      map.current.once('load', () => {
+        console.log('Map loaded, now adding circles');
+        addCircles(map.current!, center, price, dealerResults);
+      });
+    }
+  };
+  
+  const addCircles = (
+    map: Map, 
+    center: [number, number], 
+    price: number, 
+    dealerResults: any[] = []
+  ) => {
     console.log('Adding circles to map at', center, 'with price', price);
     
     map.addSource('radius-source', {
@@ -424,6 +576,7 @@ const RadiusMap = () => {
       data: {
         type: 'FeatureCollection',
         features: [
+          // Best price radius (innermost)
           {
             type: 'Feature',
             properties: {},
@@ -432,6 +585,16 @@ const RadiusMap = () => {
               coordinates: center
             }
           },
+          // Competitive price radius (middle)
+          {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'Point',
+              coordinates: center
+            }
+          },
+          // Higher price radius (outermost)
           {
             type: 'Feature',
             properties: {},
@@ -444,6 +607,28 @@ const RadiusMap = () => {
       }
     });
     
+    // Higher price zone (outermost, red tint)
+    map.addLayer({
+      id: 'high-price-radius',
+      type: 'circle',
+      source: 'radius-source',
+      paint: {
+        'circle-radius': {
+          stops: [
+            [0, 0],
+            [20, 5000000]
+          ],
+          base: 2
+        },
+        'circle-color': '#ef4444',
+        'circle-opacity': 0.1,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ef4444'
+      },
+      filter: ['==', '$index', 2]
+    });
+    
+    // Competitive price zone (middle, purple)
     map.addLayer({
       id: 'competitive-radius',
       type: 'circle',
@@ -464,6 +649,7 @@ const RadiusMap = () => {
       filter: ['==', '$index', 1]
     });
     
+    // Best price zone (innermost, brighter purple)
     map.addLayer({
       id: 'best-price-radius',
       type: 'circle',
@@ -477,7 +663,7 @@ const RadiusMap = () => {
           base: 2
         },
         'circle-color': '#9b87f5',
-        'circle-opacity': 0.2,
+        'circle-opacity': 0.3,
         'circle-stroke-width': 2,
         'circle-stroke-color': '#9b87f5'
       },
@@ -523,7 +709,7 @@ const RadiusMap = () => {
         markerEl.style.color = 'white';
         markerEl.style.fontWeight = 'bold';
         markerEl.style.fontSize = '16px';
-        markerEl.innerHTML = car.id.includes('dealer-') ? '🏬' : '🚗';
+        markerEl.innerHTML = car.id.includes('dealer-') ? '🚗' : '🚗';
         
         if (selectedCarId && car.id === selectedCarId) {
           markerEl.style.border = '3px solid yellow';
@@ -618,6 +804,17 @@ const RadiusMap = () => {
                     {isLoading ? 'Searching...' : <><Search className="mr-2 h-4 w-4" /> Search</>}
                   </Button>
                   
+                  {userSubscription?.dealer_postcode && (
+                    <Button
+                      className="w-full mt-2"
+                      variant="outline"
+                      onClick={() => searchWithDealerLocation()}
+                      disabled={isLoading || !!mapError || !mapboxToken || !dealerLocation}
+                    >
+                      <MapPin className="mr-2 h-4 w-4" /> Use Dealer Location
+                    </Button>
+                  )}
+                  
                   {selectedCar && (
                     <div className="border rounded-md p-3 mt-4 bg-purple-50 dark:bg-purple-900/10">
                       <h3 className="font-medium mb-2">Selected Vehicle</h3>
@@ -648,11 +845,11 @@ const RadiusMap = () => {
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex items-center justify-center">🚗</div>
-                      <span className="text-sm">Your tracked vehicle</span>
+                      <span className="text-sm">Vehicle</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center justify-center">🏬</div>
-                      <span className="text-sm">Dealer vehicle</span>
+                      <span className="text-sm">Dealer location</span>
                     </div>
                   </div>
                   
@@ -704,4 +901,3 @@ const RadiusMap = () => {
 };
 
 export default RadiusMap;
-

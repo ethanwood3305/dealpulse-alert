@@ -39,7 +39,8 @@ export async function fetchSubscriptionData(userId: string) {
         plan: subscriptionData[0].plan,
         urls_limit: subscriptionData[0].urls_limit,
         has_api_access: subscriptionData[0].has_api_access || false,
-        api_key: subscriptionData[0].api_key || null
+        api_key: subscriptionData[0].api_key || null,
+        dealer_postcode: subscriptionData[0].dealer_postcode || null
       };
       
       return { success: true, data: subscription };
@@ -100,5 +101,44 @@ export async function generateApiKeyForUser(userId: string): Promise<string | nu
       variant: "destructive"
     });
     return null;
+  }
+}
+
+export async function updateDealerPostcode(userId: string, postcode: string): Promise<boolean> {
+  try {
+    // Validate postcode format
+    if (!postcode || postcode.trim() === '') {
+      toast({
+        title: "Error",
+        description: "Please enter a valid postcode.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    // Update dealer postcode in the subscriptions table
+    const { error } = await supabase
+      .from('subscriptions')
+      .update({ dealer_postcode: postcode.trim() })
+      .eq('user_id', userId);
+    
+    if (error) {
+      throw error;
+    }
+    
+    toast({
+      title: "Dealer Postcode Updated",
+      description: "Your dealer postcode has been updated successfully."
+    });
+    
+    return true;
+  } catch (error: any) {
+    console.error("[subscription-utils] Error updating dealer postcode:", error);
+    toast({
+      title: "Error",
+      description: "Failed to update dealer postcode. Please try again later.",
+      variant: "destructive"
+    });
+    return false;
   }
 }
