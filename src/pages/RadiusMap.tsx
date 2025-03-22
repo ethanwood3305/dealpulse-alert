@@ -1,10 +1,9 @@
-
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { toast } from '@/components/ui/use-toast';
 import { ArrowLeft, Loader2, MapPin, Search } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -48,7 +47,6 @@ const RadiusMap = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const [postcode, setPostcode] = useState('');
   const [targetPrice, setTargetPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isMapLoading, setIsMapLoading] = useState(true);
@@ -116,7 +114,6 @@ const RadiusMap = () => {
   useEffect(() => {
     if (userSubscription?.dealer_postcode && !dealerPostcodeLoaded) {
       console.log('Found dealer postcode in subscription:', userSubscription.dealer_postcode);
-      setPostcode(userSubscription.dealer_postcode);
       setDealerPostcodeLoaded(true);
       
       // Geocode the dealer postcode to get coordinates
@@ -323,9 +320,9 @@ const RadiusMap = () => {
           
           // If we have a dealer postcode, use that instead of the car's postcode
           if (userSubscription?.dealer_postcode) {
-            setPostcode(userSubscription.dealer_postcode);
+            
           } else {
-            setPostcode(foundCar.location.postcode);
+            
           }
         }
       }
@@ -473,81 +470,6 @@ const RadiusMap = () => {
     }
   };
   
-  const searchPostcode = async (postcodeValue = postcode, targetPriceValue = targetPrice) => {
-    if (!postcodeValue.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter a postcode."
-      });
-      return;
-    }
-    
-    if (!targetPriceValue.trim() || isNaN(parseFloat(targetPriceValue))) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Please enter a valid target price."
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      console.log('Searching postcode:', postcodeValue, 'with target price:', targetPriceValue);
-      
-      // Geocode the postcode to get coordinates
-      const coords = await geocodePostcode(postcodeValue);
-      
-      if (!coords) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to geocode the postcode."
-        });
-        return;
-      }
-      
-      if (map.current) {
-        console.log('Map is available, updating view');
-        
-        map.current.flyTo({
-          center: coords,
-          zoom: 8.5,
-          essential: true
-        });
-        
-        const dealerResults = await searchDealerVehicles(coords);
-        setSearchResults(dealerResults);
-        
-        // Add dealer marker and radius circles
-        addDealerMarkerAndCircles(coords, parseFloat(targetPriceValue), dealerResults);
-        
-        toast({
-          title: "Map Updated",
-          description: `Showing price radius for postcode ${postcodeValue}`
-        });
-      } else {
-        console.error('Map is not available');
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Map is not available. Please try refreshing the page."
-        });
-      }
-    } catch (error) {
-      console.error('Error searching postcode:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to search for the postcode."
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
   const addDealerMarkerAndCircles = (
     center: [number, number], 
     price: number, 
@@ -592,7 +514,7 @@ const RadiusMap = () => {
       .setPopup(new mapboxgl.Popup().setHTML(`
         <div class="p-2">
           <h3 class="font-bold">Dealer Location</h3>
-          <p><strong>Postcode:</strong> ${postcode}</p>
+          <p><strong>Postcode:</strong> ${userSubscription?.dealer_postcode || 'Unknown'}</p>
         </div>
       `))
       .addTo(map.current);
@@ -672,9 +594,9 @@ const RadiusMap = () => {
       paint: {
         'circle-radius': {
           stops: [
-            [5, 10000],
-            [10, 100000],
-            [15, 500000]
+            [5, 20000],    // At zoom level 5, radius is 20,000 pixels
+            [8, 60000],    // At zoom level 8, radius is 60,000 pixels
+            [12, 150000]   // At zoom level 12, radius is 150,000 pixels
           ],
           base: 2
         },
@@ -694,9 +616,9 @@ const RadiusMap = () => {
       paint: {
         'circle-radius': {
           stops: [
-            [5, 5000],
-            [10, 50000],
-            [15, 300000]
+            [5, 12000],    // At zoom level 5, radius is 12,000 pixels
+            [8, 35000],    // At zoom level 8, radius is 35,000 pixels
+            [12, 80000]    // At zoom level 12, radius is 80,000 pixels
           ],
           base: 2
         },
@@ -716,9 +638,9 @@ const RadiusMap = () => {
       paint: {
         'circle-radius': {
           stops: [
-            [5, 2500],
-            [10, 25000],
-            [15, 150000]
+            [5, 5000],     // At zoom level 5, radius is 5,000 pixels
+            [8, 15000],    // At zoom level 8, radius is 15,000 pixels
+            [12, 40000]    // At zoom level 12, radius is 40,000 pixels
           ],
           base: 2
         },
@@ -835,15 +757,6 @@ const RadiusMap = () => {
                   <CardTitle>Price Radius Search</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="postcode">Postcode</Label>
-                    <Input 
-                      id="postcode" 
-                      placeholder="e.g. SW1A 1AA" 
-                      value={postcode}
-                      onChange={(e) => setPostcode(e.target.value)}
-                    />
-                  </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="targetPrice">Target Price (£)</Label>
@@ -856,22 +769,13 @@ const RadiusMap = () => {
                     />
                   </div>
                   
-                  <Button 
-                    className="w-full" 
-                    onClick={() => searchPostcode()}
-                    disabled={isLoading || !!mapError || !mapboxToken}
-                  >
-                    {isLoading ? 'Searching...' : <><Search className="mr-2 h-4 w-4" /> Search</>}
-                  </Button>
-                  
                   {userSubscription?.dealer_postcode && (
                     <Button
-                      className="w-full mt-2"
-                      variant="outline"
+                      className="w-full"
                       onClick={() => searchWithDealerLocation()}
                       disabled={isLoading || !!mapError || !mapboxToken || !dealerLocation}
                     >
-                      <MapPin className="mr-2 h-4 w-4" /> Use Dealer Location
+                      <MapPin className="mr-2 h-4 w-4" /> Search Using Dealer Location
                     </Button>
                   )}
                   
@@ -896,69 +800,4 @@ const RadiusMap = () => {
                       <span className="text-sm">Best Price Zone (≤10% below target)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-[#7E69AB]"></div>
-                      <span className="text-sm">Competitive Zone (at or below target)</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-red-500"></div>
-                      <span className="text-sm">Above Target Price</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <div className="flex items-center justify-center">🚗</div>
-                      <span className="text-sm">Vehicle</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center justify-center">🏬</div>
-                      <span className="text-sm">Dealer location</span>
-                    </div>
-                  </div>
-                  
-                  {!mapboxToken && (
-                    <div className="border border-yellow-500 rounded-md p-3 bg-yellow-50 dark:bg-yellow-900/10">
-                      <h3 className="font-medium text-yellow-700 mb-2">Loading Mapbox Token</h3>
-                      <p className="text-sm text-yellow-700">
-                        Attempting to fetch the Mapbox token from Supabase...
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="flex-1 rounded-lg overflow-hidden border border-border shadow-sm" style={{ height: "600px", position: "relative" }}>
-              <div ref={mapContainer} id="map" className="w-full h-full rounded-lg" />
-              {isMapLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                  <div className="flex flex-col items-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    <span className="mt-2">Loading map...</span>
-                  </div>
-                </div>
-              )}
-              {mapError && !isMapLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80">
-                  <div className="flex flex-col items-center text-center p-6 max-w-md">
-                    <div className="text-destructive mb-4 text-4xl">⚠️</div>
-                    <h3 className="text-lg font-bold mb-2">Map Error</h3>
-                    <p className="mb-4">{mapError}</p>
-                    <Button 
-                      onClick={() => window.location.reload()}
-                      variant="default"
-                    >
-                      Refresh Page
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <Footer />
-    </div>
-  );
-};
-
-export default RadiusMap;
-
+                      <div className="w-4 h-4 rounded-full bg-[#7E
