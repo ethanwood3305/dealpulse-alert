@@ -37,14 +37,6 @@ export const VehicleResultCard = ({ vehicleDetails, onAddCar }: VehicleResultCar
           <p className="text-muted-foreground">Engine Size</p>
           <p className="font-medium">{vehicleDetails.engineSize}</p>
         </div>
-        <div>
-          <p className="text-muted-foreground">MOT Status</p>
-          <p className="font-medium">{vehicleDetails.motStatus}</p>
-        </div>
-        <div>
-          <p className="text-muted-foreground">Tax Status</p>
-          <p className="font-medium">{vehicleDetails.taxStatus}</p>
-        </div>
         
         {vehicleDetails.doorCount && (
           <div>
