@@ -52,6 +52,7 @@ const RadiusMap = () => {
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
   const [dealerLocation, setDealerLocation] = useState<[number, number] | null>(null);
+  const [dealerPostcodeLoaded, setDealerPostcodeLoaded] = useState(false);
   
   const { userSubscription } = useSubscription(user?.id);
   
@@ -103,20 +104,29 @@ const RadiusMap = () => {
     }
   }, [location.search]);
   
+  // Load dealer postcode from subscription and geocode it
   useEffect(() => {
-    if (userSubscription?.dealer_postcode) {
-      // If user has a dealer postcode set, use it as the default
+    if (userSubscription?.dealer_postcode && !dealerPostcodeLoaded) {
+      console.log('Found dealer postcode in subscription:', userSubscription.dealer_postcode);
       setPostcode(userSubscription.dealer_postcode);
+      setDealerPostcodeLoaded(true);
       
       // Geocode the dealer postcode to get coordinates
       (async () => {
-        const coords = await geocodePostcode(userSubscription.dealer_postcode);
-        if (coords) {
-          setDealerLocation(coords);
+        try {
+          const coords = await geocodePostcode(userSubscription.dealer_postcode);
+          if (coords) {
+            console.log('Geocoded dealer postcode to coordinates:', coords);
+            setDealerLocation(coords);
+          } else {
+            console.warn('Failed to geocode dealer postcode:', userSubscription.dealer_postcode);
+          }
+        } catch (error) {
+          console.error('Error geocoding dealer postcode:', error);
         }
       })();
     }
-  }, [userSubscription]);
+  }, [userSubscription, dealerPostcodeLoaded]);
   
   useEffect(() => {
     if (mapContainer.current && !map.current && mapboxToken) {
