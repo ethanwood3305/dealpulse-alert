@@ -24,12 +24,24 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
   const [mapboxToken, setMapboxToken] = useState('');
   const [dealerLocationFromDB, setDealerLocationFromDB] = useState<CarLocation | null>(null);
   const [selectedCar, setSelectedCar] = useState<Partial<TrackedCar> | null>(null);
+  const [user, setUser] = useState<{ id: string } | null>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [lng, setLng] = useState(-0.128);
   const [lat, setLat] = useState(51.507);
   const [zoom, setZoom] = useState(9);
   const navigate = useNavigate();
+
+  // Get the current user
+  useEffect(() => {
+    const getUserData = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        setUser(data.user);
+      }
+    };
+    getUserData();
+  }, []);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -42,10 +54,12 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
 
   useEffect(() => {
     const fetchDealerLocation = async () => {
+      if (!user) return;
+      
       try {
         // Get dealer postcode from user subscription
         const { data: subscriptionData, error: subscriptionError } = await supabase
-          .rpc('get_user_subscription', {});
+          .rpc('get_user_subscription', { user_uuid: user.id });
 
         if (subscriptionError) throw subscriptionError;
         
@@ -58,7 +72,8 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
             const coordinates = data.features[0].center;
             setDealerLocationFromDB({
               lng: coordinates[0],
-              lat: coordinates[1]
+              lat: coordinates[1],
+              postcode: subscriptionData[0].dealer_postcode
             });
             
             // Update the map center
@@ -76,32 +91,51 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       }
     };
     
-    if (mapboxToken) {
+    if (mapboxToken && user) {
       fetchDealerLocation();
     }
-  }, [mapboxToken]);
+  }, [mapboxToken, user]);
 
   useEffect(() => {
     const fetchCarDetails = async () => {
-      if (!carId || carId === 'default-car-id') return;
+      if (!carId || carId === 'default-car-id' || !user) return;
       
       try {
         const { data, error } = await supabase
-          .from('tracked_cars')
+          .from('tracked_urls')
           .select('*')
           .eq('id', carId)
           .single();
           
         if (error) throw error;
         
-        setSelectedCar(data);
+        // Transform tracked_urls data into TrackedCar format
+        if (data) {
+          const urlParts = data.url.split('/');
+          const brand = urlParts[0] || 'Unknown Brand';
+          const model = urlParts[1] || 'Unknown Model';
+          const engineType = urlParts[2] || 'Unknown Engine';
+          
+          setSelectedCar({
+            id: data.id,
+            brand: brand,
+            model: model, 
+            engineType: engineType,
+            mileage: data.mileage,
+            year: data.year,
+            last_price: data.last_price,
+            last_checked: data.last_checked,
+            created_at: data.created_at,
+            tags: data.tags || []
+          });
+        }
       } catch (error) {
         console.error('Error fetching car details:', error);
       }
     };
     
     fetchCarDetails();
-  }, [carId]);
+  }, [carId, user]);
 
   useEffect(() => {
     if (!mapboxToken) return;
@@ -355,9 +389,9 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
             <CardContent>
               {selectedCar ? (
                 <div className="space-y-2">
-                  <p className="font-medium">{selectedCar.year} {selectedCar.make} {selectedCar.model}</p>
+                  <p className="font-medium">{selectedCar.year} {selectedCar.brand} {selectedCar.model}</p>
                   <p className="text-sm text-muted-foreground">
-                    Engine: {selectedCar.engine_type || 'N/A'} | 
+                    Engine: {selectedCar.engineType || 'N/A'} | 
                     Mileage: {selectedCar.mileage ? `${selectedCar.mileage.toLocaleString()} miles` : 'N/A'}
                   </p>
                   <p className="text-sm text-muted-foreground">
