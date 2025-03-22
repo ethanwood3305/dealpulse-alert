@@ -76,18 +76,25 @@ export const TrackedCarsTable = ({
     
     switch (sortField) {
       case 'brand':
-        return (a.brand || '').localeCompare(b.brand || '') * direction;
+        return (a.brand?.toLowerCase() || '').localeCompare(b.brand?.toLowerCase() || '') * direction;
       case 'model':
-        return (a.model || '').localeCompare(b.model || '') * direction;
+        return (a.model?.toLowerCase() || '').localeCompare(b.model?.toLowerCase() || '') * direction;
       case 'year':
-        return ((a.year || '0').localeCompare(b.year || '0')) * direction;
+        if (!a.year && !b.year) return 0;
+        if (!a.year) return direction;
+        if (!b.year) return -direction;
+        return (a.year.localeCompare(b.year)) * direction;
       case 'mileage':
-        return ((parseInt(a.mileage || '0') - parseInt(b.mileage || '0'))) * direction;
+        const mileageA = a.mileage ? parseInt(a.mileage) : 0;
+        const mileageB = b.mileage ? parseInt(b.mileage) : 0;
+        return (mileageA - mileageB) * direction;
       case 'tags':
         return ((a.tags?.length || 0) - (b.tags?.length || 0)) * direction;
       case 'created_at':
       default:
-        return (new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) * (sortDirection === 'asc' ? -1 : 1);
+        return new Date(a.created_at).getTime() < new Date(b.created_at).getTime() 
+          ? direction 
+          : -direction;
     }
   });
 
@@ -125,7 +132,7 @@ export const TrackedCarsTable = ({
       <Button 
         variant="ghost" 
         size="sm" 
-        className="ml-2 px-0 h-4"
+        className="ml-1 p-0 h-4"
         onClick={() => handleSort(field)}
       >
         {isActive && sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : null}
@@ -146,30 +153,40 @@ export const TrackedCarsTable = ({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="flex items-center">
-                  Brand
-                  <SortButton field="brand" />
+                <TableHead>
+                  <div className="flex items-center">
+                    Brand
+                    <SortButton field="brand" />
+                  </div>
                 </TableHead>
-                <TableHead className="flex items-center">
-                  Model
-                  <SortButton field="model" />
+                <TableHead>
+                  <div className="flex items-center">
+                    Model
+                    <SortButton field="model" />
+                  </div>
                 </TableHead>
                 <TableHead>Engine Type</TableHead>
-                <TableHead className="flex items-center">
-                  Year
-                  <SortButton field="year" />
+                <TableHead>
+                  <div className="flex items-center">
+                    Year
+                    <SortButton field="year" />
+                  </div>
                 </TableHead>
                 <TableHead>Color</TableHead>
-                <TableHead className="flex items-center">
-                  Mileage
-                  <SortButton field="mileage" />
+                <TableHead>
+                  <div className="flex items-center">
+                    Mileage
+                    <SortButton field="mileage" />
+                  </div>
                 </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Price</TableHead>
                 <TableHead>Last Checked</TableHead>
-                <TableHead className="flex items-center">
-                  Tags
-                  <SortButton field="tags" />
+                <TableHead>
+                  <div className="flex items-center">
+                    Tags
+                    <SortButton field="tags" />
+                  </div>
                 </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -227,36 +244,38 @@ export const TrackedCarsTable = ({
                         onRemoveTag={onRemoveTag}
                       />
                     </TableCell>
-                    <TableCell className="text-right flex items-center justify-end space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleViewOnMap(car)}
-                        title="View on radius map"
-                      >
-                        <MapPinIcon className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <TrashIcon className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete this tracked vehicle and remove all associated data.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(car.id)}>
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end space-x-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleViewOnMap(car)}
+                          title="View on radius map"
+                        >
+                          <MapPinIcon className="h-4 w-4" />
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this tracked vehicle and remove all associated data.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(car.id)}>
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
