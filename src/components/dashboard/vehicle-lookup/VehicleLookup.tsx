@@ -160,7 +160,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         year: vehicleDetails.year,
         mileage: mileage || '0',
         price: price || undefined,
-        initialTags: [regTag] // Add registration as initial tag
+        initialTags: [regTag], // Add registration as initial tag
+        trim: vehicleDetails.trim // Add trim
       };
 
       const success = await addCar(carParams);
@@ -168,7 +169,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       if (success) {
         toast({
           title: "Vehicle Added",
-          description: `${vehicleDetails.make} ${vehicleDetails.model} has been added to your tracked vehicles.`
+          description: `${vehicleDetails.make} ${vehicleDetails.model} ${vehicleDetails.trim || ''} has been added to your tracked vehicles.`.trim()
         });
         
         // Reset form

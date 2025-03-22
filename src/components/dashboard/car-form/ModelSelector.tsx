@@ -63,7 +63,9 @@ export const ModelSelector = ({
             disabled={!selectedBrand || isAddingCar || !canAddMoreCars || isLoadingModels}
             onValueChange={(value) => {
               field.onChange(value);
+              // Reset engineType and trim when model changes
               form.setValue("engineType", "");
+              form.setValue("trim", ""); // Reset trim field if it exists
             }} 
             value={field.value}
           >

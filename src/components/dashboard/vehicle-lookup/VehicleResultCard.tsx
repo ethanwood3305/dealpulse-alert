@@ -13,6 +13,7 @@ export const VehicleResultCard = ({ vehicleDetails, onAddCar }: VehicleResultCar
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-lg">
           {vehicleDetails.make} {vehicleDetails.model}
+          {vehicleDetails.trim && ` ${vehicleDetails.trim}`}
         </h3>
         <span className="bg-primary/10 text-primary font-mono px-2 py-1 rounded text-sm">
           {vehicleDetails.registration}
@@ -73,6 +74,12 @@ export const VehicleResultCard = ({ vehicleDetails, onAddCar }: VehicleResultCar
           <div>
             <p className="text-muted-foreground">Listed Price (£)</p>
             <p className="font-medium">{vehicleDetails.price}</p>
+          </div>
+        )}
+        {vehicleDetails.trim && (
+          <div>
+            <p className="text-muted-foreground">Trim</p>
+            <p className="font-medium">{vehicleDetails.trim}</p>
           </div>
         )}
       </div>

@@ -33,6 +33,7 @@ export interface TrackedCar {
   bodyStyle?: string;
   transmission?: string;
   weight?: string;
+  trim?: string;
 }
 
 export interface DealerVehicle extends TrackedCarWithLocation {

@@ -153,10 +153,7 @@ serve(async (req) => {
         const model = smmtDetails.Range || vehicleInfo.Model?.split(' ')[0] || 'Unknown';
         
         // Get proper trim (from SMMT Classification Details if available)
-        const trim = classificationDetails?.Smmt?.Trim || 
-                    (vehicleInfo.Model?.includes(' ') ? 
-                     vehicleInfo.Model.split(' ').slice(1).join(' ') : 
-                     'Unknown');
+        const trim = classificationDetails?.Smmt?.Trim || null;
         
         // Properly capitalize color (first letter uppercase, rest lowercase)
         const color = vehicleInfo.Colour ? 

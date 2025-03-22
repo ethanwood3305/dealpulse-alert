@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -17,6 +18,7 @@ export interface TrackedCar {
   created_at: string;
   tags: string[];
   url: string;
+  trim?: string;
 }
 
 export interface AddCarParams {
@@ -28,6 +30,7 @@ export interface AddCarParams {
   color?: string;
   price?: string;
   initialTags?: string[];
+  trim?: string;
 }
 
 export { type ScrapedListing };
@@ -59,6 +62,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         let mileage;
         let year;
         let color;
+        let trim;
         
         if (urlParts[3]) {
           const params = urlParts[3].split('&');
@@ -72,6 +76,9 @@ export const useTrackedCars = (userId: string | undefined) => {
             if (param.includes('color=')) {
               color = param.split('color=')[1];
             }
+            if (param.includes('trim=')) {
+              trim = param.split('trim=')[1];
+            }
           });
         }
         
@@ -83,6 +90,7 @@ export const useTrackedCars = (userId: string | undefined) => {
           mileage,
           year,
           color,
+          trim,
           tags: item.tags || [],
           cheapest_price: item.cheapest_price || item.last_price
         };
@@ -179,8 +187,9 @@ export const useTrackedCars = (userId: string | undefined) => {
       const yearParam = car.year ? `year=${car.year}` : '';
       const colorParam = car.color ? `color=${car.color}` : '';
       const priceParam = car.price ? `price=${car.price}` : '';
+      const trimParam = car.trim ? `trim=${car.trim}` : '';
       
-      const params = [mileageParam, yearParam, colorParam, priceParam]
+      const params = [mileageParam, yearParam, colorParam, priceParam, trimParam]
         .filter(Boolean)
         .join('&');
       
@@ -249,8 +258,9 @@ export const useTrackedCars = (userId: string | undefined) => {
       const yearParam = carToUpdate.year ? `year=${carToUpdate.year}` : '';
       const colorParam = carToUpdate.color ? `color=${carToUpdate.color}` : '';
       const priceParam = price ? `price=${price}` : '';
+      const trimParam = carToUpdate.trim ? `trim=${carToUpdate.trim}` : '';
       
-      const params = [mileageParam, yearParam, colorParam, priceParam]
+      const params = [mileageParam, yearParam, colorParam, priceParam, trimParam]
         .filter(Boolean)
         .join('&');
       

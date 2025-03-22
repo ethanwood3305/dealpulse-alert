@@ -110,6 +110,7 @@ export function TrackedCarsTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>Make/Model</TableHead>
+                  <TableHead>Trim</TableHead>
                   <TableHead>Engine</TableHead>
                   <TableHead>Year</TableHead>
                   <TableHead>Mileage</TableHead>
@@ -125,6 +126,7 @@ export function TrackedCarsTable({
                     <TableCell>
                       <div className="font-medium">{car.brand} {car.model}</div>
                     </TableCell>
+                    <TableCell>{car.trim || "—"}</TableCell>
                     <TableCell>{car.engineType}</TableCell>
                     <TableCell>{car.year || "—"}</TableCell>
                     <TableCell>{car.mileage || "—"}</TableCell>
