@@ -234,7 +234,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
     const results = [];
     console.log('Parsing AutoTrader listings...');
 
-    // Generate random UK postcodes for locations
+    // Real UK postcodes for locations
     const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD'];
     
     const listings = doc.querySelectorAll('.search-page__result');
@@ -262,11 +262,18 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
           }
         }
         
+        // Try to find location in the listing
+        let location = postcodes[Math.floor(Math.random() * postcodes.length)];
+        let locationEl = el.querySelector('[data-testid="seller-location"]');
+        if (locationEl && locationEl.textContent) {
+          location = locationEl.textContent.trim();
+        }
+        
         const urlSuffix = el.querySelector('a.product-card-link')?.getAttribute('href');
         const url = urlSuffix ? `${baseUrl}${urlSuffix}` : null;
 
-        // Generate random coordinates around UK for the map
-        const postcode = postcodes[Math.floor(Math.random() * postcodes.length)];
+        // Calculate coordinates for the map (we still need these for the map UI)
+        // In a real implementation, we would use geocoding to get proper coordinates for the listed locations
         const lat = 51.5 + (Math.random() * 3) - 1.5;
         const lng = -0.9 + (Math.random() * 3) - 1.5;
 
@@ -281,7 +288,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
             mileage,
             year: year || new Date().getFullYear(),
             color: carDetails.color || 'Unknown',
-            location: postcode,
+            location,
             lat,
             lng,
             is_cheapest: isCheapest
@@ -311,6 +318,14 @@ async function simulateScrapedListings(carDetails) {
   // Skip AutoTrader as we're using real scraping for that
   const simulatedDealerSites = dealerSites.slice(1);
   
+  // Real UK postcodes
+  const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD', 
+                      'S1 2HG', 'LS1 1UR', 'PL1 1HZ', 'SO14 3AS', 'EH1 1TG', 'BT1 1LT', 'AB10 1BQ', 'KY16 9AJ'];
+  
+  // UK cities that match the postcodes
+  const cities = ['Birmingham', 'Manchester', 'London', 'London', 'Glasgow', 'Liverpool', 'Newcastle', 'Cardiff', 'Bristol',
+                  'Sheffield', 'Leeds', 'Plymouth', 'Southampton', 'Edinburgh', 'Belfast', 'Aberdeen', 'St. Andrews'];
+  
   for (let i = 0; i < resultCount; i++) {
     const dealerSite = simulatedDealerSites[Math.floor(Math.random() * simulatedDealerSites.length)];
     
@@ -324,9 +339,10 @@ async function simulateScrapedListings(carDetails) {
     const priceVariation = basePrice * (Math.random() * 0.3 - 0.15); // ±15%
     const resultPrice = Math.round(basePrice + priceVariation);
     
-    // Generate random UK postcode
-    const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD'];
-    const postcode = postcodes[Math.floor(Math.random() * postcodes.length)];
+    // Get a realistic postcode and city
+    const postCodeIndex = Math.floor(Math.random() * postcodes.length);
+    const postcode = postcodes[postCodeIndex];
+    const city = cities[postCodeIndex];
     
     // Generate random coordinates around UK
     const lat = 51.5 + (Math.random() * 3) - 1.5;
@@ -340,14 +356,14 @@ async function simulateScrapedListings(carDetails) {
     const resultColor = color || colors[Math.floor(Math.random() * colors.length)];
     
     results.push({
-      dealer_name: `${dealerSite.name} ${Math.floor(Math.random() * 1000)}`,
+      dealer_name: `${dealerSite.name} ${city}`,
       url: `${dealerSite.baseUrl}/cars/${brand}/${model}/${Math.floor(Math.random() * 100000)}`,
       title: `${year || ''} ${brand} ${model} ${engineType} ${resultColor}`,
       price: resultPrice,
       mileage: resultMileage,
       year: year ? parseInt(year) : (2010 + Math.floor(Math.random() * 12)),
       color: resultColor,
-      location: postcode,
+      location: `${city}, ${postcode}`,
       lat,
       lng,
       is_cheapest: isCheapest

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase, getMapboxToken } from "@/integrations/supabase/client";
@@ -273,6 +274,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     addCircle('radius-5k', 5, '#00f');
     addCircle('radius-10k', 10, '#0f0');
 
+    // Add markers for listings
     listings.forEach(listing => {
       if (listing.lat && listing.lng) {
         const el = document.createElement('div');
@@ -285,9 +287,9 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
         new mapboxgl.Marker(el)
           .setLngLat([listing.lng, listing.lat])
           .setPopup(
-            new mapboxgl.Popup({ offset: 25 }) // add popups
+            new mapboxgl.Popup({ offset: 25 })
               .setHTML(
-                `<h4>${listing.title}</h4><p>Price: $${listing.price}</p>`
+                `<h4>${listing.title}</h4><p>Price: £${listing.price.toLocaleString()}</p><p>Location: ${listing.location || 'Unknown'}</p>`
               )
           )
           .addTo(map.current!);
@@ -308,6 +310,29 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
         return;
       }
       
+      // First trigger the scraper to get fresh listings
+      const { error: scraperError } = await supabase.functions.invoke('car-dealer-scraper', {
+        body: { vehicle_id: urlCarId }
+      });
+      
+      if (scraperError) {
+        console.error('Error running car scraper:', scraperError);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to scrape latest vehicle listings."
+        });
+      } else {
+        toast({
+          title: "Scraping Started",
+          description: "We're searching for similar vehicles. This may take a moment."
+        });
+      }
+      
+      // Wait a moment for scraping to complete
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
+      // Now fetch the scraped listings
       const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
         car_id: urlCarId
       });
@@ -377,7 +402,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
                     Mileage: {selectedCar.mileage ? `${selectedCar.mileage.toLocaleString()} miles` : 'N/A'}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    List Price: £{selectedCar.last_price ? parseFloat(selectedCar.last_price.toString()).toLocaleString() : parseFloat(targetPrice).toLocaleString()}
+                    List Price: £{selectedCar.last_price ? parseFloat(selectedCar.last_price.toString()).toLocaleString() : 'N/A'}
                   </p>
                 </div>
               ) : (
