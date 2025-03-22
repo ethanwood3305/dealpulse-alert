@@ -16,6 +16,7 @@ export interface VehicleDetails {
   bodyStyle?: string;
   transmission?: string;
   weight?: string;
+  price?: string;
 }
 
 export interface VehicleLookupProps {

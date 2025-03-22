@@ -20,6 +20,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
   const [mileage, setMileage] = useState<string>('');
+  const [price, setPrice] = useState<string>('');
   const { addCar } = useTrackedCars(userId);
 
   const handleLookup = async (registration: string) => {
@@ -139,6 +140,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         color: vehicleDetails.color,
         year: vehicleDetails.year,
         mileage: mileage || '0',
+        price: price || undefined,
         initialTags: [regTag] // Add registration as initial tag
       };
 
@@ -153,6 +155,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         // Reset form
         setVehicleDetails(null);
         setMileage('');
+        setPrice('');
         
         if (onCarAdded) {
           onCarAdded();
@@ -194,16 +197,29 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
           {vehicleDetails && !isLoading && (
             <>
-              <div className="mb-4">
-                <Label htmlFor="mileage">Mileage</Label>
-                <Input
-                  id="mileage"
-                  placeholder="Enter current mileage"
-                  type="number"
-                  value={mileage}
-                  onChange={(e) => setMileage(e.target.value)}
-                  className="mt-1"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <Label htmlFor="mileage">Mileage</Label>
+                  <Input
+                    id="mileage"
+                    placeholder="Enter current mileage"
+                    type="number"
+                    value={mileage}
+                    onChange={(e) => setMileage(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="price">Target Price (£)</Label>
+                  <Input
+                    id="price"
+                    placeholder="Enter target price"
+                    type="number"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
               </div>
               <VehicleResultCard 
                 vehicleDetails={vehicleDetails} 

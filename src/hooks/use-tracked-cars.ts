@@ -25,6 +25,7 @@ export interface AddCarParams {
   mileage?: string;
   year?: string;
   color?: string;
+  price?: string;
   initialTags?: string[];
 }
 
@@ -109,19 +110,29 @@ export const useTrackedCars = (userId: string | undefined) => {
       const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
       const yearParam = car.year ? `year=${car.year}` : '';
       const colorParam = car.color ? `color=${car.color}` : '';
+      const priceParam = car.price ? `price=${car.price}` : '';
       
-      const params = [mileageParam, yearParam, colorParam]
+      const params = [mileageParam, yearParam, colorParam, priceParam]
         .filter(Boolean)
         .join('&');
       
       const carUrl = `${car.brand}/${car.model}/${car.engineType}${params ? `/${params}` : ''}`;
+      
+      let lastPrice = null;
+      if (car.price) {
+        lastPrice = parseInt(car.price, 10);
+        if (isNaN(lastPrice)) {
+          lastPrice = null;
+        }
+      }
       
       const { data, error } = await supabase
         .from('tracked_urls')
         .insert({
           user_id: userId,
           url: carUrl,
-          tags: car.initialTags || []
+          tags: car.initialTags || [],
+          last_price: lastPrice
         })
         .select();
         

@@ -21,6 +21,7 @@ const carSchema = z.object({
   mileage: z.string().optional(),
   year: z.string().optional(),
   color: z.string().optional(),
+  price: z.string().optional(),
 });
 
 interface AddCarFormProps {
@@ -51,7 +52,8 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       engineType: "",
       mileage: "",
       year: "",
-      color: ""
+      color: "",
+      price: ""
     }
   });
 
@@ -524,6 +526,30 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
                         disabled={isAddingCar || !canAddMoreCars} 
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} 
+              />
+            </div>
+
+            <div className="mt-4">
+              <FormField 
+                control={form.control} 
+                name="price" 
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Target Price (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        placeholder="e.g. 15000" 
+                        {...field} 
+                        disabled={isAddingCar || !canAddMoreCars} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Set a target price to compare with market prices
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )} 

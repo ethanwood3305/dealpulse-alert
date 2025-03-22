@@ -60,6 +60,11 @@ export const QuickActionsCard = ({
           <div className="mt-2 p-3 bg-muted/50 rounded-md">
             <p className="text-sm font-medium">Selected Car:</p>
             <p className="text-sm">{selectedCar.brand} {selectedCar.model}</p>
+            {selectedCar.lastPrice && (
+              <p className="text-sm mt-1">
+                <span className="font-medium">Target Price:</span> £{selectedCar.lastPrice.toLocaleString()}
+              </p>
+            )}
           </div>
         )}
       </CardContent>

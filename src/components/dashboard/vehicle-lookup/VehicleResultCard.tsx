@@ -69,6 +69,12 @@ export const VehicleResultCard = ({ vehicleDetails, onAddCar }: VehicleResultCar
             <p className="font-medium">{vehicleDetails.weight}</p>
           </div>
         )}
+        {vehicleDetails.price && (
+          <div>
+            <p className="text-muted-foreground">Listed Price (£)</p>
+            <p className="font-medium">{vehicleDetails.price}</p>
+          </div>
+        )}
       </div>
       
       <Button onClick={onAddCar} className="w-full">
