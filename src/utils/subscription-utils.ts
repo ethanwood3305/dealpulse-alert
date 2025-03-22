@@ -3,9 +3,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
 import { UserSubscription } from "@/types/subscription-types";
 
+// Disable verbose logging in production
+const isProduction = import.meta.env.PROD;
+const log = (message: string, data?: any) => {
+  if (!isProduction) {
+    if (data) {
+      console.log(message, data);
+    } else {
+      console.log(message);
+    }
+  }
+};
+
 export async function fetchSubscriptionData(userId: string) {
   try {
-    console.log(`[subscription-utils] Fetching subscription data for user: ${userId}`);
+    log(`[subscription-utils] Fetching subscription data for user: ${userId}`);
     
     const { data: subscriptionData, error: subscriptionError } = await supabase.rpc(
       'get_user_subscription', 
@@ -21,7 +33,7 @@ export async function fetchSubscriptionData(userId: string) {
       });
       return { success: false, data: null };
     } else if (subscriptionData && subscriptionData.length > 0) {
-      console.log("[subscription-utils] Subscription data received:", subscriptionData[0]);
+      log("[subscription-utils] Subscription data received:", subscriptionData[0]);
       
       const subscription: UserSubscription = {
         plan: subscriptionData[0].plan,
@@ -32,7 +44,7 @@ export async function fetchSubscriptionData(userId: string) {
       
       return { success: true, data: subscription };
     } else {
-      console.log("[subscription-utils] No subscription data returned");
+      log("[subscription-utils] No subscription data returned");
       return { success: false, data: null };
     }
   } catch (error) {
@@ -52,7 +64,7 @@ export async function checkCanAddMoreUrls(userId: string) {
       console.error("[subscription-utils] Error checking if user can add more URLs:", canAddMoreError);
       return false;
     } else {
-      console.log("[subscription-utils] Can add more URLs:", canAddMoreData);
+      log("[subscription-utils] Can add more URLs:", canAddMoreData);
       return canAddMoreData;
     }
   } catch (error) {

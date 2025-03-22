@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { 
   fetchSubscriptionData, 
   checkCanAddMoreUrls,
@@ -16,9 +16,15 @@ export const useSubscription = (userId: string | undefined) => {
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [refreshAttempts, setRefreshAttempts] = useState(0);
   
+  // Add a fetchInProgress ref to prevent multiple concurrent fetches
+  const fetchInProgress = useRef(false);
+  
   const fetchData = useCallback(async (userId: string) => {
+    // Skip if a fetch is already in progress
+    if (fetchInProgress.current) return false;
+    
     try {
-      console.log(`[useSubscription] Fetching subscription data for user: ${userId}`);
+      fetchInProgress.current = true;
       setIsLoading(true);
       
       const { success, data } = await fetchSubscriptionData(userId);
@@ -28,10 +34,8 @@ export const useSubscription = (userId: string | undefined) => {
         const hasChanged = JSON.stringify(data) !== JSON.stringify(userSubscription);
         
         if (hasChanged) {
-          console.log("[useSubscription] Subscription has changed, updating state");
+          setUserSubscription(data);
         }
-        
-        setUserSubscription(data);
       }
 
       const canAddMore = await checkCanAddMoreUrls(userId);
@@ -39,10 +43,12 @@ export const useSubscription = (userId: string | undefined) => {
       
       setIsLoading(false);
       setLastRefreshed(new Date());
+      fetchInProgress.current = false;
       return true;
     } catch (error) {
       console.error("[useSubscription] Error fetching subscription data:", error);
       setIsLoading(false);
+      fetchInProgress.current = false;
       return false;
     }
   }, [userSubscription]);
@@ -62,34 +68,30 @@ export const useSubscription = (userId: string | undefined) => {
     
     setRefreshAttempts(prev => prev + 1);
     
-    console.log(`[useSubscription] Manually refreshing subscription data with ${maxRetries} retries (attempt #${refreshAttempts + 1})`);
-    
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      console.log(`[useSubscription] Refresh attempt ${attempt} of ${maxRetries}`);
-      
       const success = await fetchData(userId);
       
       if (success) {
-        console.log("[useSubscription] Subscription refreshed successfully");
         return true;
       }
       
       if (attempt < maxRetries) {
         const delay = Math.min(2000 * Math.pow(2, attempt - 1), 10000);
-        console.log(`[useSubscription] Attempt ${attempt} failed, waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }
     
-    console.log("[useSubscription] All refresh attempts failed");
     return false;
   }, [userId, fetchData, refreshAttempts]);
 
   useEffect(() => {
-    if (userId) {
+    if (userId && !fetchInProgress.current) {
       fetchData(userId);
     }
-  }, [userId, fetchData]);
+    
+    // Only fetch data once on mount and userId changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   return {
     isLoading,

@@ -1,3 +1,4 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -121,25 +122,6 @@ export const TrackedCarsTable = ({
     navigate(`/radius-map?car=${encodeURIComponent(car.id)}&targetPrice=${estimatedTargetPrice}`);
   };
 
-  const SortButton = ({ field }: { field: SortField }) => {
-    const isActive = sortField === field;
-    return (
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="ml-1 p-0 h-4"
-        onClick={() => {
-          console.log("Sort button clicked for field:", field);
-          handleSort(field);
-        }}
-      >
-        {isActive && sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : null}
-        {isActive && sortDirection === 'desc' ? <ChevronDown className="h-4 w-4" /> : null}
-        {!isActive ? <ChevronUp className="h-4 w-4 opacity-20" /> : null}
-      </Button>
-    );
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -153,28 +135,72 @@ export const TrackedCarsTable = ({
               <TableRow>
                 <TableHead>
                   <div className="flex items-center">
-                    Brand
-                    <SortButton field="brand" />
+                    <span>Brand</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="ml-1 p-0 h-4"
+                      onClick={() => handleSort('brand')}
+                    >
+                      {sortField === 'brand' && sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4" /> : 
+                        (sortField === 'brand' && sortDirection === 'desc' ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronUp className="h-4 w-4 opacity-20" />)}
+                    </Button>
                   </div>
                 </TableHead>
                 <TableHead>
                   <div className="flex items-center">
-                    Model
-                    <SortButton field="model" />
+                    <span>Model</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="ml-1 p-0 h-4"
+                      onClick={() => handleSort('model')}
+                    >
+                      {sortField === 'model' && sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4" /> : 
+                        (sortField === 'model' && sortDirection === 'desc' ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronUp className="h-4 w-4 opacity-20" />)}
+                    </Button>
                   </div>
                 </TableHead>
                 <TableHead>Engine Type</TableHead>
                 <TableHead>
                   <div className="flex items-center">
-                    Year
-                    <SortButton field="year" />
+                    <span>Year</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="ml-1 p-0 h-4"
+                      onClick={() => handleSort('year')}
+                    >
+                      {sortField === 'year' && sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4" /> : 
+                        (sortField === 'year' && sortDirection === 'desc' ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronUp className="h-4 w-4 opacity-20" />)}
+                    </Button>
                   </div>
                 </TableHead>
                 <TableHead>Color</TableHead>
                 <TableHead>
                   <div className="flex items-center">
-                    Mileage
-                    <SortButton field="mileage" />
+                    <span>Mileage</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="ml-1 p-0 h-4"
+                      onClick={() => handleSort('mileage')}
+                    >
+                      {sortField === 'mileage' && sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4" /> : 
+                        (sortField === 'mileage' && sortDirection === 'desc' ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronUp className="h-4 w-4 opacity-20" />)}
+                    </Button>
                   </div>
                 </TableHead>
                 <TableHead>Status</TableHead>
@@ -182,8 +208,19 @@ export const TrackedCarsTable = ({
                 <TableHead>Last Checked</TableHead>
                 <TableHead>
                   <div className="flex items-center">
-                    Tags
-                    <SortButton field="tags" />
+                    <span>Tags</span>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="ml-1 p-0 h-4"
+                      onClick={() => handleSort('tags')}
+                    >
+                      {sortField === 'tags' && sortDirection === 'asc' ? 
+                        <ChevronUp className="h-4 w-4" /> : 
+                        (sortField === 'tags' && sortDirection === 'desc' ? 
+                          <ChevronDown className="h-4 w-4" /> : 
+                          <ChevronUp className="h-4 w-4 opacity-20" />)}
+                    </Button>
                   </div>
                 </TableHead>
                 <TableHead className="text-right">Actions</TableHead>
