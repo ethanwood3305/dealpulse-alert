@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase, getMapboxToken } from "@/integrations/supabase/client";
-import mapboxgl, { GeoJSONSource } from 'mapbox-gl';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { TrackedCar } from '@/hooks/use-tracked-cars';
 import { CarLocation } from '@/types/car-types';
@@ -51,7 +51,6 @@ const RadiusMap = () => {
 
     map.current.on('move', () => {
       if (map.current) {
-        // Convert to number using parseFloat to fix type errors
         setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
         setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
         setZoom(parseFloat(map.current.getZoom().toFixed(2)));

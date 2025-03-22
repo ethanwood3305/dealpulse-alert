@@ -209,7 +209,19 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw error;
       }
       
-      await fetchTrackedCars(userId);
+      // Immediately trigger scraping for the newly added car
+      if (data && data.length > 0) {
+        // Wait for the fetchTrackedCars to complete so we have the latest data
+        await fetchTrackedCars(userId);
+        
+        // Then trigger scraping in the background
+        triggerScraping(data[0].id).catch(e => 
+          console.error("Error auto-triggering scraping for new car:", e)
+        );
+      } else {
+        await fetchTrackedCars(userId);
+      }
+      
       return true;
     } catch (error: any) {
       toast({
