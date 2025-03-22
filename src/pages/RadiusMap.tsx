@@ -1,32 +1,17 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase, getMapboxToken } from "@/integrations/supabase/client";
-import mapboxgl from 'mapbox-gl';
+import mapboxgl, { GeoJSONSource } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { TrackedCar } from '@/hooks/use-tracked-cars';
 import { CarLocation } from '@/types/car-types';
+import { ScrapedListing } from '@/integrations/supabase/database.types';
 
 interface RadiusMapProps {
   carId: string;
   targetPrice: string;
   dealerLocation?: CarLocation;
-}
-
-interface ScrapedListing {
-  id: string;
-  tracked_car_id: string;
-  dealer_name: string;
-  url: string;
-  title: string;
-  price: number;
-  mileage: number;
-  year: number;
-  color: string;
-  location: string;
-  lat: number;
-  lng: number;
-  is_cheapest: boolean;
-  created_at: string;
 }
 
 const RadiusMap = () => {
@@ -65,9 +50,12 @@ const RadiusMap = () => {
     });
 
     map.current.on('move', () => {
-      setLng(map.current!.getCenter().lng.toFixed(4));
-      setLat(map.current!.getCenter().lat.toFixed(4));
-      setZoom(map.current!.getZoom().toFixed(2));
+      if (map.current) {
+        // Convert to number using parseFloat to fix type errors
+        setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
+        setLat(parseFloat(map.current.getCenter().lat.toFixed(4)));
+        setZoom(parseFloat(map.current.getZoom().toFixed(2)));
+      }
     });
   }, [mapboxToken]);
 
@@ -110,7 +98,7 @@ const RadiusMap = () => {
             icon: 'shop'
           }
         }]
-      }
+      } as GeoJSON.FeatureCollection<GeoJSON.Geometry>
     });
 
     map.current.addLayer({
@@ -140,28 +128,31 @@ const RadiusMap = () => {
       const outerRadius = radiusMeters / (Math.cos(Math.PI * location.lat / 180) * 40075000 / 360);
       const innerRadius = outerRadius;
 
-      const data = {
+      const coordinates: number[][] = [];
+      for (let i = 0; i < steps; i++) {
+        const angle = (i / steps) * Math.PI * 2;
+        const lng = location.lng + outerRadius * Math.cos(angle);
+        const lat = location.lat + innerRadius * Math.sin(angle);
+        coordinates.push([lng, lat]);
+      }
+      // Close the polygon by repeating the first point
+      coordinates.push([...coordinates[0]]);
+
+      const circleData: GeoJSON.FeatureCollection<GeoJSON.Geometry> = {
         type: 'FeatureCollection',
         features: [{
           type: 'Feature',
           geometry: {
             type: 'Polygon',
-            coordinates: [[]]
-          }
+            coordinates: [coordinates]
+          },
+          properties: {}
         }]
       };
 
-      for (let i = 0; i < steps; i++) {
-        const angle = (i / steps) * Math.PI * 2;
-        const lng = location.lng + outerRadius * Math.cos(angle);
-        const lat = location.lat + innerRadius * Math.sin(angle);
-        (data.features[0].geometry as any).coordinates[0].push([lng, lat]);
-      }
-      (data.features[0].geometry as any).coordinates[0].push((data.features[0].geometry as any).coordinates[0][0]);
-
       map.current!.addSource(id, {
         type: 'geojson',
-        data: data
+        data: circleData
       });
 
       map.current!.addLayer({
