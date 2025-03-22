@@ -93,7 +93,7 @@ async function scrapeForVehicle(supabase, vehicleId) {
 
     // Parse vehicle details from URL format
     const carDetails = parseVehicleDetails(vehicle);
-    console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.year || ''}`);
+    console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
 
     // Scrape real listings alongside simulated ones
     const scrapedListings = await getVehicleListings(carDetails);
@@ -149,6 +149,7 @@ function parseVehicleDetails(vehicle) {
   let mileage;
   let year;
   let color;
+  let trim;
   
   if (urlParts[3]) {
     const params = urlParts[3].split('&');
@@ -162,13 +163,41 @@ function parseVehicleDetails(vehicle) {
       if (param.includes('color=')) {
         color = param.split('color=')[1];
       }
+      if (param.includes('trim=')) {
+        trim = param.split('trim=')[1];
+      }
     });
+  }
+  
+  // Extract trim from model name if it might contain trim info
+  if (!trim && model.includes(' ')) {
+    const modelParts = model.split(' ');
+    if (modelParts.length > 1) {
+      // Try to identify common trim designations
+      const possibleTrim = modelParts[modelParts.length - 1];
+      if (possibleTrim.toUpperCase() === possibleTrim || 
+          ['SE', 'LE', 'XL', 'GT', 'RS', 'ST', 'GLX', 'LX', 'EX', 'Sport', 'Zetec', 'Titanium', 'Ghia'].includes(possibleTrim)) {
+        trim = possibleTrim;
+      }
+    }
+  }
+
+  // Check if engineType might contain trim information
+  if (!trim && engineType) {
+    const commonTrims = ['Zetec', 'Titanium', 'ST-Line', 'Vignale', 'Sport', 'SE', 'SE-L'];
+    for (const commonTrim of commonTrims) {
+      if (engineType.includes(commonTrim)) {
+        trim = commonTrim;
+        break;
+      }
+    }
   }
   
   return {
     brand,
     model,
     engineType,
+    trim,
     mileage: mileage ? parseInt(mileage) : null,
     year: year || null,
     color: color || null,
@@ -183,7 +212,7 @@ function findCheapestListing(listings) {
 }
 
 async function getVehicleListings(carDetails) {
-  console.log(`Getting listings for ${carDetails.brand} ${carDetails.model}`);
+  console.log(`Getting listings for ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''}`);
   
   const allListings = [];
   
@@ -217,6 +246,11 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   // Build the search URL with mileage constraints
   let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}&model=${encodeURIComponent(carDetails.model)}`;
   
+  // Add trim if available - note that on AutoTrader this is "aggregatedTrim"
+  if (carDetails.trim) {
+    searchUrl += `&aggregatedTrim=${encodeURIComponent(carDetails.trim)}`;
+  }
+  
   // Add mileage parameters if we have a target mileage
   if (targetMileage) {
     searchUrl += `&minimum-mileage=${minMileage}&maximum-mileage=${maxMileage}`;
@@ -225,6 +259,11 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   // Add year if available
   if (carDetails.year) {
     searchUrl += `&year-from=${carDetails.year}&year-to=${carDetails.year}`;
+  }
+  
+  // Add color if available
+  if (carDetails.color) {
+    searchUrl += `&colour=${encodeURIComponent(carDetails.color)}`;
   }
   
   // Add postcode for location-based search (using a default UK postcode if needed)
@@ -279,6 +318,18 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
           }
         }
         
+        // Try to extract color from the title or description
+        let color = carDetails.color || 'Unknown';
+        if (title) {
+          const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange', 'Purple', 'Brown'];
+          for (const c of colors) {
+            if (title.includes(c)) {
+              color = c;
+              break;
+            }
+          }
+        }
+        
         // Try to find location in the listing
         let location = 'Unknown';
         let locationEl = el.querySelector('[data-testid="seller-location"]');
@@ -304,7 +355,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
             price,
             mileage,
             year: year || new Date().getFullYear(),
-            color: carDetails.color || 'Unknown',
+            color,
             location,
             lat,
             lng,
@@ -326,7 +377,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
 
 // Generate simulated scraped listings for the other dealer sites
 async function simulateScrapedListings(carDetails) {
-  const { brand, model, engineType, mileage, year, color } = carDetails;
+  const { brand, model, engineType, mileage, year, color, trim } = carDetails;
   
   // Generate between 5-15 results
   const resultCount = Math.floor(Math.random() * 10) + 5;
@@ -372,13 +423,16 @@ async function simulateScrapedListings(carDetails) {
     const isCheapest = resultPrice < (basePrice * 0.9);
     
     // Generate vehicle colors if not specified
-    const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green'];
+    const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange'];
     const resultColor = color || colors[Math.floor(Math.random() * colors.length)];
+    
+    // Include trim in title if available
+    const trimText = trim ? ` ${trim}` : '';
     
     results.push({
       dealer_name: `${dealerSite.name} ${city}`,
       url: `${dealerSite.baseUrl}/cars/${brand}/${model}/${Math.floor(Math.random() * 100000)}`,
-      title: `${year || ''} ${brand} ${model} ${engineType} ${resultColor}`,
+      title: `${year || ''} ${brand} ${model}${trimText} ${engineType} ${resultColor}`,
       price: resultPrice,
       mileage: resultMileage,
       year: year ? parseInt(year) : (2010 + Math.floor(Math.random() * 12)),
