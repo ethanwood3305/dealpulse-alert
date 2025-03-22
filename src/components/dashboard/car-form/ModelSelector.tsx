@@ -65,7 +65,9 @@ export const ModelSelector = ({
               field.onChange(value);
               // Reset engineType and trim when model changes
               form.setValue("engineType", "");
-              form.setValue("trim", ""); // Reset trim field if it exists
+              if ("trim" in form.getValues()) {
+                form.setValue("trim", "");
+              }
             }} 
             value={field.value}
           >

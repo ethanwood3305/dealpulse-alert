@@ -9,6 +9,7 @@ export const carSchema = z.object({
   year: z.string().optional(),
   color: z.string().optional(),
   price: z.string().optional(),
+  trim: z.string().optional(),
 });
 
 export type CarFormValues = z.infer<typeof carSchema>;
