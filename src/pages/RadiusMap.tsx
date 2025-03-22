@@ -8,8 +8,8 @@ import { CarLocation } from '@/types/car-types';
 import { ScrapedListing } from '@/integrations/supabase/database.types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, MapPin, Car, PlusCircle, Info, Navigation, Key } from "lucide-react";
-import { useParams, useNavigate } from 'react-router-dom';
+import { Loader2, MapPin, Car, PlusCircle, Info, Key } from "lucide-react";
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 
 interface RadiusMapProps {
   carId?: string;
@@ -30,6 +30,8 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
   const [lat, setLat] = useState(51.507);
   const [zoom, setZoom] = useState(9);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const urlCarId = searchParams.get('carId') || carId;
 
   // Get the current user
   useEffect(() => {
@@ -97,13 +99,13 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
 
   useEffect(() => {
     const fetchCarDetails = async () => {
-      if (!carId || carId === 'default-car-id' || !user) return;
+      if (!urlCarId || urlCarId === 'default-car-id' || !user) return;
       
       try {
         const { data, error } = await supabase
           .from('tracked_urls')
           .select('*')
-          .eq('id', carId)
+          .eq('id', urlCarId)
           .single();
           
         if (error) throw error;
@@ -150,7 +152,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     };
     
     fetchCarDetails();
-  }, [carId, user]);
+  }, [urlCarId, user]);
 
   useEffect(() => {
     if (!mapboxToken) return;
@@ -330,7 +332,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     try {
       setIsLoading(true);
       
-      if (!carId || carId === 'default-car-id') {
+      if (!urlCarId || urlCarId === 'default-car-id') {
         toast({
           variant: "destructive",
           title: "Error",
@@ -340,7 +342,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       }
       
       const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
-        car_id: carId
+        car_id: urlCarId
       });
         
       if (error) throw error;
@@ -352,7 +354,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       
       // If we have listings and a location, show them on the map
       if (data && data.length > 0 && locationToUse) {
-        console.log(`Found ${data.length} scraped listings for car ${carId}`);
+        console.log(`Found ${data.length} scraped listings for car ${urlCarId}`);
         addDealerMarkerAndCircles(locationToUse, parseFloat(targetPrice), data);
       } else if (data && data.length > 0 && !locationToUse) {
         toast({
@@ -455,21 +457,6 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
                   <span className="text-sm">Dealer Location</span>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Map coordinates */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-xl flex items-center gap-2">
-                <Navigation className="h-5 w-5" />
-                Map Coordinates
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Longitude: {lng.toFixed(4)} | Latitude: {lat.toFixed(4)} | Zoom: {zoom.toFixed(2)}
-              </p>
             </CardContent>
           </Card>
 
