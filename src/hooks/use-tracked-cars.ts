@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -12,6 +11,7 @@ export interface TrackedCar {
   year?: string;
   color?: string;
   last_price: number | null;
+  cheapest_price?: number | null;
   last_checked: string | null;
   created_at: string;
   tags: string[];
@@ -83,7 +83,9 @@ export const useTrackedCars = (userId: string | undefined) => {
           mileage,
           year,
           color,
-          tags: item.tags || []
+          tags: item.tags || [],
+          // Add cheapest_price as the same as last_price initially
+          cheapest_price: item.last_price
         };
       }) || [];
       
@@ -132,7 +134,8 @@ export const useTrackedCars = (userId: string | undefined) => {
           user_id: userId,
           url: carUrl,
           tags: car.initialTags || [],
-          last_price: lastPrice
+          last_price: lastPrice,
+          cheapest_price: lastPrice // Initialize cheapest_price with the current price
         })
         .select();
         
@@ -146,6 +149,75 @@ export const useTrackedCars = (userId: string | undefined) => {
       toast({
         title: "Error",
         description: error.message || "Failed to add vehicle. Please try again later.",
+        variant: "destructive"
+      });
+      return false;
+    }
+  };
+
+  const updateCarDetails = async (carId: string, mileage: string, price: string) => {
+    try {
+      if (!userId) return false;
+      
+      // Find the car we're updating
+      const carToUpdate = trackedCars.find(car => car.id === carId);
+      if (!carToUpdate) return false;
+      
+      // Extract existing URL parts
+      const urlParts = carToUpdate.url.split('/');
+      const brand = urlParts[0];
+      const model = urlParts[1];
+      const engineType = urlParts[2];
+      
+      // Create new params string
+      const mileageParam = mileage ? `mil=${mileage}` : '';
+      const yearParam = carToUpdate.year ? `year=${carToUpdate.year}` : '';
+      const colorParam = carToUpdate.color ? `color=${carToUpdate.color}` : '';
+      const priceParam = price ? `price=${price}` : '';
+      
+      const params = [mileageParam, yearParam, colorParam, priceParam]
+        .filter(Boolean)
+        .join('&');
+      
+      const newUrl = `${brand}/${model}/${engineType}${params ? `/${params}` : ''}`;
+      
+      // Convert price to number for the database
+      let lastPrice = null;
+      if (price) {
+        lastPrice = parseFloat(price);
+        if (isNaN(lastPrice)) {
+          lastPrice = null;
+        }
+      }
+      
+      // Determine new cheapest price
+      let cheapestPrice = carToUpdate.cheapest_price;
+      if (lastPrice !== null) {
+        if (cheapestPrice === null || lastPrice < cheapestPrice) {
+          cheapestPrice = lastPrice;
+        }
+      }
+      
+      // Update the car in the database
+      const { error } = await supabase
+        .from('tracked_urls')
+        .update({
+          url: newUrl,
+          last_price: lastPrice,
+          cheapest_price: cheapestPrice
+        })
+        .eq('id', carId);
+        
+      if (error) {
+        throw error;
+      }
+      
+      await fetchTrackedCars(userId);
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update vehicle. Please try again later.",
         variant: "destructive"
       });
       return false;
@@ -264,6 +336,7 @@ export const useTrackedCars = (userId: string | undefined) => {
     deleteCar,
     addTag,
     removeTag,
+    updateCarDetails,
     refreshCars: () => userId && fetchTrackedCars(userId)
   };
 };

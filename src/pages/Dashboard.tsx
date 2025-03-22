@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -47,6 +48,7 @@ const Dashboard = () => {
     deleteCar,
     addTag,
     removeTag,
+    updateCarDetails,
     refreshCars
   } = useTrackedCars(user?.id);
 
@@ -149,6 +151,12 @@ const Dashboard = () => {
   const handleRemoveTag = async (urlId: string, tag: string): Promise<void> => {
     if (!user) return;
     await removeTag(urlId, tag);
+  };
+
+  const handleUpdateCarDetails = async (carId: string, mileage: string, price: string): Promise<boolean> => {
+    if (!user) return false;
+    const success = await updateCarDetails(carId, mileage, price);
+    return success;
   };
 
   const handleGenerateApiKey = async (): Promise<boolean> => {
@@ -282,6 +290,7 @@ const Dashboard = () => {
             onDelete={handleDeleteCar}
             onAddTag={handleAddTag}
             onRemoveTag={handleRemoveTag}
+            onUpdateDetails={handleUpdateCarDetails}
             carsLimit={userSubscription?.urls_limit}
           />
         </div>
