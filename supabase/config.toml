@@ -1,1 +1,12 @@
+
 project_id = "wskiwwfgelypkrufsimz"
+
+[api]
+enabled = true
+[auth]
+enabled = true
+[realtime]
+enabled = true
+
+[functions.manage-dealer-postcode]
+verify_jwt = true

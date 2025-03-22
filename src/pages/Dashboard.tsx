@@ -9,7 +9,6 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
-import { DealerPostcodeCard } from '@/components/dashboard/DealerPostcodeCard';
 import { AddCarForm } from '@/components/dashboard/AddCarForm';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
@@ -38,8 +37,7 @@ const Dashboard = () => {
     canAddMoreUrls: canAddMoreCars, 
     isLoading: isLoadingSubscription,
     refreshSubscription,
-    generateApiKey,
-    setDealerPostcode
+    generateApiKey
   } = useSubscription(user?.id);
   
   const { 
@@ -162,15 +160,6 @@ const Dashboard = () => {
     return success;
   };
 
-  const handleUpdateDealerPostcode = async (postcode: string): Promise<boolean> => {
-    if (!user) return false;
-    const success = await setDealerPostcode(postcode);
-    if (success) {
-      refreshSubscription();
-    }
-    return success;
-  };
-
   const scrollToAddCarForm = () => {
     document.getElementById('add-car-form')?.scrollIntoView({
       behavior: 'smooth'
@@ -233,7 +222,7 @@ const Dashboard = () => {
             isPro={userSubscription?.plan !== 'free'}
           />
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <SubscriptionCard 
               plan={userSubscription?.plan}
               urls_limit={userSubscription?.urls_limit}
@@ -244,11 +233,6 @@ const Dashboard = () => {
             <QuickActionsCard 
               canAddMoreCars={canAddMoreCars}
               onAddCarClick={scrollToAddCarForm}
-            />
-            
-            <DealerPostcodeCard 
-              dealerPostcode={userSubscription?.dealer_postcode || null}
-              onUpdatePostcode={handleUpdateDealerPostcode}
             />
           </div>
           
