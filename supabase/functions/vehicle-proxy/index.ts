@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const corsHeaders = {
@@ -144,12 +145,31 @@ serve(async (req) => {
         const motInfo = data.Response.DataItems.MotHistory || {};
         const taxInfo = data.Response.DataItems.VehicleTaxDetails || {};
         
+        // Get correct model from SMMT Range and trim from Classification Details
+        const smmtDetails = data.Response.DataItems.SmmtDetails || {};
+        const classificationDetails = data.Response.DataItems.ClassificationDetails || {};
+        
+        // Get proper model (Range from SMMT if available, otherwise use model from vehicleInfo)
+        const model = smmtDetails.Range || vehicleInfo.Model?.split(' ')[0] || 'Unknown';
+        
+        // Get proper trim (from SMMT Classification Details if available)
+        const trim = classificationDetails?.Smmt?.Trim || 
+                    (vehicleInfo.Model?.includes(' ') ? 
+                     vehicleInfo.Model.split(' ').slice(1).join(' ') : 
+                     'Unknown');
+        
+        // Properly capitalize color (first letter uppercase, rest lowercase)
+        const color = vehicleInfo.Colour ? 
+                     vehicleInfo.Colour.charAt(0).toUpperCase() + 
+                     vehicleInfo.Colour.slice(1).toLowerCase() : 
+                     'Unknown';
+        
         // Map API data to expected structure
         const vehicleData = {
           registration: vrm,
           make: vehicleInfo.Make || 'Unknown',
-          model: vehicleInfo.Model || 'Unknown',
-          color: vehicleInfo.Colour || 'Unknown',
+          model: model,
+          color: color,
           fuelType: vehicleInfo.FuelType || 'Unknown',
           year: vehicleInfo.YearOfManufacture || 'Unknown',
           engineSize: vehicleInfo.EngineCapacity 
@@ -165,6 +185,7 @@ serve(async (req) => {
           weight: vehicleInfo.GrossVehicleWeight ? 
               `${vehicleInfo.GrossVehicleWeight}` 
               : 'Unknown',
+          trim: trim,
         };
 
         console.log('Vehicle data processed successfully');

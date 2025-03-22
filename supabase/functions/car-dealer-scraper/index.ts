@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
@@ -21,24 +20,20 @@ const dealerSites = [
 ];
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://wskiwwfgelypkrufsimz.supabase.co';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Parse request body
     const requestData = await req.json().catch(() => ({}));
     const vehicleId = requestData.vehicle_id;
     
     console.log(`Car dealer scraper function called - Vehicle ID: ${vehicleId || 'ALL'}`);
 
-    // If a specific vehicle ID is provided, only scrape for that vehicle
     if (vehicleId) {
       await scrapeForVehicle(supabase, vehicleId);
       return new Response(
@@ -47,7 +42,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Otherwise, scrape for all tracked vehicles (used by cron job)
     const { data: trackedCars, error } = await supabase
       .from('tracked_urls')
       .select('*');
@@ -58,7 +52,6 @@ Deno.serve(async (req) => {
 
     console.log(`Found ${trackedCars?.length || 0} tracked cars to process`);
 
-    // Process each tracked car (limit to 50 for performance)
     const carsToProcess = trackedCars?.slice(0, 50) || [];
     for (const car of carsToProcess) {
       await scrapeForVehicle(supabase, car.id);
@@ -79,7 +72,6 @@ Deno.serve(async (req) => {
 
 async function scrapeForVehicle(supabase, vehicleId) {
   try {
-    // Get the vehicle details
     const { data: vehicle, error } = await supabase
       .from('tracked_urls')
       .select('*')
@@ -91,20 +83,16 @@ async function scrapeForVehicle(supabase, vehicleId) {
       return;
     }
 
-    // Parse vehicle details from URL format
     const carDetails = parseVehicleDetails(vehicle);
     console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
 
-    // Scrape real listings alongside simulated ones
     const scrapedListings = await getVehicleListings(carDetails);
     
-    // Delete any existing listings for this vehicle
     await supabase
       .from('scraped_vehicle_listings')
       .delete()
       .eq('tracked_car_id', vehicleId);
 
-    // Insert new listings
     if (scrapedListings.length > 0) {
       const { error: insertError } = await supabase
         .from('scraped_vehicle_listings')
@@ -119,7 +107,6 @@ async function scrapeForVehicle(supabase, vehicleId) {
         console.log(`Successfully inserted ${scrapedListings.length} listings for vehicle ${vehicleId}`);
       }
 
-      // Update the cheapest price for the tracked car
       const cheapestListing = findCheapestListing(scrapedListings);
       if (cheapestListing) {
         const currentCheapestPrice = vehicle.cheapest_price || Infinity;
@@ -169,11 +156,9 @@ function parseVehicleDetails(vehicle) {
     });
   }
   
-  // Extract trim from model name if it might contain trim info
   if (!trim && model.includes(' ')) {
     const modelParts = model.split(' ');
     if (modelParts.length > 1) {
-      // Try to identify common trim designations
       const possibleTrim = modelParts[modelParts.length - 1];
       if (possibleTrim.toUpperCase() === possibleTrim || 
           ['SE', 'LE', 'XL', 'GT', 'RS', 'ST', 'GLX', 'LX', 'EX', 'Sport', 'Zetec', 'Titanium', 'Ghia'].includes(possibleTrim)) {
@@ -182,7 +167,6 @@ function parseVehicleDetails(vehicle) {
     }
   }
 
-  // Check if engineType might contain trim information
   if (!trim && engineType) {
     const commonTrims = ['Zetec', 'Titanium', 'ST-Line', 'Vignale', 'Sport', 'SE', 'SE-L'];
     for (const commonTrim of commonTrims) {
@@ -193,6 +177,8 @@ function parseVehicleDetails(vehicle) {
     }
   }
   
+  const properColor = color ? color.charAt(0).toUpperCase() + color.slice(1).toLowerCase() : null;
+  
   return {
     brand,
     model,
@@ -200,7 +186,7 @@ function parseVehicleDetails(vehicle) {
     trim,
     mileage: mileage ? parseInt(mileage) : null,
     year: year || null,
-    color: color || null,
+    color: properColor,
     lastPrice: vehicle.last_price
   };
 }
@@ -216,7 +202,6 @@ async function getVehicleListings(carDetails) {
   
   const allListings = [];
   
-  // First try to get real results from AutoTrader
   try {
     const autoTraderResults = await scrapeAutoTrader(carDetails, dealerSites[0].baseUrl);
     if (autoTraderResults.length > 0) {
@@ -227,7 +212,6 @@ async function getVehicleListings(carDetails) {
     console.error('Error scraping AutoTrader:', error);
   }
   
-  // Then add simulated results from other sites to ensure we have enough data
   if (allListings.length < 5) {
     const simulatedResults = await simulateScrapedListings(carDetails);
     console.log(`Added ${simulatedResults.length} simulated results from other sites`);
@@ -238,38 +222,30 @@ async function getVehicleListings(carDetails) {
 }
 
 async function scrapeAutoTrader(carDetails, baseUrl) {
-  // Create mileage range - within 5000 miles of the target mileage
   const targetMileage = carDetails.mileage || 30000;
   const minMileage = Math.max(0, targetMileage - 5000);
   const maxMileage = targetMileage + 5000;
   
-  // Build the search URL with correct parameters
   let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}`;
   
-  // Add model without the trim
   searchUrl += `&model=${encodeURIComponent(carDetails.model)}`;
   
-  // Add trim as separate aggregatedTrim parameter if available
   if (carDetails.trim) {
     searchUrl += `&aggregatedTrim=${encodeURIComponent(carDetails.trim)}`;
   }
   
-  // Add mileage parameters with exact ranges
   if (targetMileage) {
     searchUrl += `&minimum-mileage=${minMileage}&maximum-mileage=${maxMileage}`;
   }
   
-  // Add year if available
   if (carDetails.year) {
     searchUrl += `&year-from=${carDetails.year}&year-to=${carDetails.year}`;
   }
   
-  // Add color if available - ensure it's lowercase
   if (carDetails.color) {
     searchUrl += `&colour=${encodeURIComponent(carDetails.color.toLowerCase())}`;
   }
   
-  // Add postcode for location-based search
   searchUrl += "&postcode=b31%203xr&sort=relevance";
   
   console.log(`Scraping AutoTrader: ${searchUrl}`);
@@ -305,14 +281,12 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         const priceText = el.querySelector('.product-card-pricing__price')?.textContent?.replace(/[^0-9]/g, '');
         const price = priceText ? parseInt(priceText) : null;
         
-        // Try to find mileage in different possible locations
         let mileageText = el.querySelector('.listing-key-specs li')?.textContent?.replace(/[^0-9]/g, '');
         if (!mileageText) {
           mileageText = el.querySelector('[data-testid="mileage"]')?.textContent?.replace(/[^0-9]/g, '');
         }
         const mileage = mileageText ? parseInt(mileageText) : carDetails.mileage || 30000;
         
-        // Try to extract year from title or other elements
         let year = carDetails.year;
         if (!year && title) {
           const yearMatch = title.match(/\b(20\d\d|19\d\d)\b/);
@@ -321,19 +295,19 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
           }
         }
         
-        // Try to extract color from the title or description
-        let color = carDetails.color || 'unknown';
+        let colorText = carDetails.color || 'unknown';
         if (title) {
           const colors = ['red', 'blue', 'black', 'white', 'silver', 'grey', 'green', 'yellow', 'orange', 'purple', 'brown'];
           for (const c of colors) {
             if (title.toLowerCase().includes(c)) {
-              color = c;
+              colorText = c;
               break;
             }
           }
         }
         
-        // Try to find location in the listing
+        const color = colorText.charAt(0).toUpperCase() + colorText.slice(1).toLowerCase();
+        
         let location = 'Unknown';
         let locationEl = el.querySelector('[data-testid="seller-location"]');
         if (locationEl && locationEl.textContent) {
@@ -343,8 +317,6 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         const urlSuffix = el.querySelector('a.product-card-link')?.getAttribute('href');
         const url = urlSuffix ? `${baseUrl}${urlSuffix}` : null;
 
-        // Calculate coordinates for the map (approximate based on UK postcodes)
-        // In a real implementation, we would geocode the actual location
         const lat = 51.5 + (Math.random() * 3) - 1.5;
         const lng = -0.9 + (Math.random() * 3) - 1.5;
 
@@ -358,7 +330,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
             price,
             mileage,
             year: year || new Date().getFullYear(),
-            color: color.toLowerCase(), // Ensure color is lowercase
+            color,
             location,
             lat,
             lng,
@@ -378,26 +350,20 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   }
 }
 
-// Generate simulated scraped listings for the other dealer sites
 async function simulateScrapedListings(carDetails) {
   const { brand, model, engineType, mileage, year, color, trim } = carDetails;
   
-  // Generate between 5-15 results
   const resultCount = Math.floor(Math.random() * 10) + 5;
   const results = [];
   
-  // Skip AutoTrader as we're using real scraping for that
   const simulatedDealerSites = dealerSites.slice(1);
   
-  // Real UK postcodes
   const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD', 
                       'S1 2HG', 'LS1 1UR', 'PL1 1HZ', 'SO14 3AS', 'EH1 1TG', 'BT1 1LT', 'AB10 1BQ', 'KY16 9AJ'];
   
-  // UK cities that match the postcodes
   const cities = ['Birmingham', 'Manchester', 'London', 'London', 'Glasgow', 'Liverpool', 'Newcastle', 'Cardiff', 'Bristol',
                   'Sheffield', 'Leeds', 'Plymouth', 'Southampton', 'Edinburgh', 'Belfast', 'Aberdeen', 'St. Andrews'];
   
-  // Calculate mileage range (±5000 miles)
   const targetMileage = mileage || 30000;
   const minMileage = Math.max(0, targetMileage - 5000);
   const maxMileage = targetMileage + 5000;
@@ -405,31 +371,24 @@ async function simulateScrapedListings(carDetails) {
   for (let i = 0; i < resultCount; i++) {
     const dealerSite = simulatedDealerSites[Math.floor(Math.random() * simulatedDealerSites.length)];
     
-    // Calculate mileage within the range
     const resultMileage = Math.floor(Math.random() * (maxMileage - minMileage + 1)) + minMileage;
     
-    // Calculate price based on mileage and random variation
     const basePrice = (carDetails.lastPrice || 10000);
-    const priceVariation = basePrice * (Math.random() * 0.3 - 0.15); // ±15%
+    const priceVariation = basePrice * (Math.random() * 0.3 - 0.15);
     const resultPrice = Math.round(basePrice + priceVariation);
     
-    // Get a realistic postcode and city
     const postCodeIndex = Math.floor(Math.random() * postcodes.length);
     const postcode = postcodes[postCodeIndex];
     const city = cities[postCodeIndex];
     
-    // Generate random coordinates around UK
     const lat = 51.5 + (Math.random() * 3) - 1.5;
     const lng = -0.9 + (Math.random() * 3) - 1.5;
     
-    // Mark as cheapest if it's more than 10% below the original price
     const isCheapest = resultPrice < (basePrice * 0.9);
     
-    // Generate vehicle colors if not specified - ensure lowercase
-    const colors = ['red', 'blue', 'black', 'white', 'silver', 'grey', 'green', 'yellow', 'orange'];
-    const resultColor = color ? color.toLowerCase() : colors[Math.floor(Math.random() * colors.length)];
+    const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange'];
+    const resultColor = color || colors[Math.floor(Math.random() * colors.length)];
     
-    // Include trim in title if available
     const trimText = trim ? ` ${trim}` : '';
     
     results.push({

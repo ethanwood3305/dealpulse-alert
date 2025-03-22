@@ -29,6 +29,7 @@ export const ModelSelector = ({
   const [filteredModels, setFilteredModels] = useState<{id: string, name: string}[]>(models);
 
   useEffect(() => {
+    // This ensures the models are properly filtered when the search term changes
     if (modelSearchTerm.trim() === "") {
       setFilteredModels(models);
     } else {
