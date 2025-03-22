@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -800,4 +801,58 @@ const RadiusMap = () => {
                       <span className="text-sm">Best Price Zone (≤10% below target)</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 rounded-full bg-[#7E
+                      <div className="w-4 h-4 rounded-full bg-[#7E69AB]"></div>
+                      <span className="text-sm">Competitive Price Zone (at target)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 rounded-full bg-[#ef4444]"></div>
+                      <span className="text-sm">Higher Price Zone (above target)</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {searchResults.length > 0 && (
+                <div className="mt-4 p-4 border rounded-md bg-white dark:bg-gray-800">
+                  <h3 className="font-medium mb-2">Search Results</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Found {searchResults.length} vehicles matching your criteria
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex-1">
+              <div 
+                ref={mapContainer} 
+                className="h-[70vh] min-h-[500px] rounded-md border overflow-hidden"
+              >
+                {isMapLoading && !mapError && (
+                  <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800">
+                    <div className="flex flex-col items-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Loading map...</p>
+                    </div>
+                  </div>
+                )}
+                
+                {mapError && (
+                  <div className="h-full flex items-center justify-center bg-gray-100 dark:bg-gray-800 p-4">
+                    <div className="max-w-md text-center">
+                      <p className="text-destructive font-medium mb-2">Map Error</p>
+                      <p className="text-sm text-muted-foreground">{mapError}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <Footer />
+    </div>
+  );
+};
+
+export default RadiusMap;
