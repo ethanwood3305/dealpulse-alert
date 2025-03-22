@@ -1,12 +1,13 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Car as CarIcon } from "lucide-react";
+import { Trash2, Car as CarIcon, MapPin, Edit } from "lucide-react";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { EditVehicleDialog } from "./EditVehicleDialog";
-import { ScrapeButton } from "./ScrapeButton";
 import { ScrapedListing } from "@/integrations/supabase/database.types";
+import { useNavigate } from "react-router-dom";
 
 interface TrackedCarsTableProps {
   trackedCars: TrackedCar[];
@@ -45,6 +46,7 @@ export function TrackedCarsTable({
 }: TrackedCarsTableProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCarId, setEditCarId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const confirmDelete = (id: string) => {
     setDeleteId(id);
@@ -70,6 +72,10 @@ export function TrackedCarsTable({
 
   const handleAddTag = (carId: string, tag: string) => {
     onAddTag(carId, tag);
+  };
+  
+  const navigateToMap = (carId: string) => {
+    navigate(`/radius-map?carId=${carId}`);
   };
 
   return (
@@ -150,16 +156,17 @@ export function TrackedCarsTable({
                           size="sm"
                           onClick={() => setEditCarId(car.id)}
                         >
+                          <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        {onTriggerScraping && getListingsForCar && (
-                          <ScrapeButton 
-                            car={car}
-                            listings={getListingsForCar(car.id)}
-                            onTriggerScraping={onTriggerScraping}
-                            isScrapingCar={isScrapingCar || false}
-                          />
-                        )}
+                        <Button 
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigateToMap(car.id)}
+                        >
+                          <MapPin className="h-4 w-4 mr-1" />
+                          Map
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
