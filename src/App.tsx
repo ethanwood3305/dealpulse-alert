@@ -13,6 +13,7 @@ import Pricing from "@/pages/Pricing";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import RadiusMap from "@/pages/RadiusMap";
+import Changelog from "@/pages/Changelog";
 import './App.css';
 
 const App = () => {
@@ -30,6 +31,7 @@ const App = () => {
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/radius-map" element={<RadiusMap />} />
+        <Route path="/changelog" element={<Changelog />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </ThemeProvider>
