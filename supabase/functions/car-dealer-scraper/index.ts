@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
@@ -221,17 +222,43 @@ async function getVehicleListings(carDetails) {
   return allListings;
 }
 
+// Helper function to properly capitalize words
+function properCase(text) {
+  if (!text) return '';
+  
+  // Special case for certain acronyms that should be all caps
+  const allCapsWords = ['bmw', 'vw', 'amg', 'st', 'rs', 'gti', 'tdi', 'fsi', 'tsi'];
+  if (allCapsWords.includes(text.toLowerCase())) {
+    return text.toUpperCase();
+  }
+  
+  // Words that should not be capitalized, like prepositions or articles
+  const lowerCaseWords = ['and', 'or', 'the', 'in', 'on', 'at', 'for', 'with', 'by', 'of'];
+  
+  return text.split(' ').map((word, index) => {
+    if (index > 0 && lowerCaseWords.includes(word.toLowerCase())) {
+      return word.toLowerCase();
+    }
+    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  }).join(' ');
+}
+
 async function scrapeAutoTrader(carDetails, baseUrl) {
   const targetMileage = carDetails.mileage || 30000;
   const minMileage = Math.max(0, targetMileage - 5000);
   const maxMileage = targetMileage + 5000;
   
-  let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(carDetails.brand)}`;
+  // Format brand and model with proper case
+  const formattedBrand = properCase(carDetails.brand);
+  const formattedModel = properCase(carDetails.model);
+  const formattedTrim = carDetails.trim ? properCase(carDetails.trim) : '';
   
-  searchUrl += `&model=${encodeURIComponent(carDetails.model)}`;
+  let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(formattedBrand)}`;
   
-  if (carDetails.trim) {
-    searchUrl += `&aggregatedTrim=${encodeURIComponent(carDetails.trim)}`;
+  searchUrl += `&model=${encodeURIComponent(formattedModel)}`;
+  
+  if (formattedTrim) {
+    searchUrl += `&aggregatedTrim=${encodeURIComponent(formattedTrim)}`;
   }
   
   if (targetMileage) {
@@ -243,7 +270,9 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   }
   
   if (carDetails.color) {
-    searchUrl += `&colour=${encodeURIComponent(carDetails.color.toLowerCase())}`;
+    // Properly capitalize the color
+    const formattedColor = properCase(carDetails.color);
+    searchUrl += `&colour=${encodeURIComponent(formattedColor.toLowerCase())}`;
   }
   
   searchUrl += "&postcode=b31%203xr&sort=relevance";
@@ -353,6 +382,12 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
 async function simulateScrapedListings(carDetails) {
   const { brand, model, engineType, mileage, year, color, trim } = carDetails;
   
+  // Format brand, model and trim with proper case
+  const formattedBrand = properCase(brand);
+  const formattedModel = properCase(model);
+  const formattedTrim = trim ? properCase(trim) : '';
+  const formattedEngineType = properCase(engineType);
+  
   const resultCount = Math.floor(Math.random() * 10) + 5;
   const results = [];
   
@@ -387,14 +422,14 @@ async function simulateScrapedListings(carDetails) {
     const isCheapest = resultPrice < (basePrice * 0.9);
     
     const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange'];
-    const resultColor = color || colors[Math.floor(Math.random() * colors.length)];
+    const resultColor = color ? properCase(color) : colors[Math.floor(Math.random() * colors.length)];
     
-    const trimText = trim ? ` ${trim}` : '';
+    const trimText = formattedTrim ? ` ${formattedTrim}` : '';
     
     results.push({
       dealer_name: `${dealerSite.name} ${city}`,
-      url: `${dealerSite.baseUrl}/cars/${brand}/${model}/${Math.floor(Math.random() * 100000)}`,
-      title: `${year || ''} ${brand} ${model}${trimText} ${engineType} ${resultColor}`,
+      url: `${dealerSite.baseUrl}/cars/${formattedBrand}/${formattedModel}/${Math.floor(Math.random() * 100000)}`,
+      title: `${year || ''} ${formattedBrand} ${formattedModel}${trimText} ${formattedEngineType} ${resultColor}`,
       price: resultPrice,
       mileage: resultMileage,
       year: year ? parseInt(year) : (2010 + Math.floor(Math.random() * 12)),
@@ -408,3 +443,4 @@ async function simulateScrapedListings(carDetails) {
   
   return results;
 }
+
