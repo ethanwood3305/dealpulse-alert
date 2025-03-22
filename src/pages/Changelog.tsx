@@ -39,6 +39,10 @@ const changelogData: ChangelogEntry[] = [
         type: "added",
         description: "Added 'Coming Soon' badge to 'View Car Trends' button",
       },
+      {
+        type: "changed",
+        description: "Rebranded from DealPulse to Carparison",
+      },
     ],
   },
   {
@@ -67,7 +71,7 @@ const changelogData: ChangelogEntry[] = [
     changes: [
       {
         type: "added",
-        description: "Launch of DealPulse with core auto dealership price monitoring functionality",
+        description: "Launch of Carparison with core auto dealership price monitoring functionality",
       },
       {
         type: "added",
@@ -97,7 +101,7 @@ const Changelog = () => {
         <div className="max-w-3xl mx-auto">
           <h1 className="text-3xl font-bold mb-2">Changelog</h1>
           <p className="text-muted-foreground mb-8">
-            Track all the updates and improvements we've made to DealPulse
+            Track all the updates and improvements we've made to Carparison
           </p>
 
           <div className="space-y-8">

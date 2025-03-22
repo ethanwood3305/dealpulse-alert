@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -56,7 +55,7 @@ const About = () => {
                 Revolutionizing Auto Dealership Intelligence
               </h1>
               <p className="text-lg text-muted-foreground mb-8">
-                DealPulse was born from a vision to transform how dealerships compete in today's digital marketplace, offering unparalleled pricing insights that drive business growth.
+                Carparison was born from a vision to transform how dealerships compete in today's digital marketplace, offering unparalleled pricing insights that drive business growth.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
                 <Button size="lg" className="rounded-full gap-2">
@@ -77,7 +76,7 @@ const About = () => {
               <div>
                 <h2 className="text-3xl font-bold mb-6">Our Mission</h2>
                 <p className="text-muted-foreground mb-6">
-                  At DealPulse, we're committed to empowering auto dealerships with real-time competitive intelligence. Our mission is to level the playing field by providing dealerships of all sizes with enterprise-grade pricing analytics that were previously only accessible to industry giants.
+                  At Carparison, we're committed to empowering auto dealerships with real-time competitive intelligence. Our mission is to level the playing field by providing dealerships of all sizes with enterprise-grade pricing analytics that were previously only accessible to industry giants.
                 </p>
                 <p className="text-muted-foreground mb-6">
                   We believe that by giving dealerships clear visibility into market pricing trends, we help them make smarter decisions, optimize their inventory, and ultimately increase their bottom line while providing better value to consumers.
@@ -119,7 +118,7 @@ const About = () => {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-3xl font-bold mb-6">Our Core Values</h2>
               <p className="text-muted-foreground">
-                These principles guide everything we do at DealPulse, from product development to customer service.
+                These principles guide everything we do at Carparison, from product development to customer service.
               </p>
             </div>
             
@@ -166,7 +165,7 @@ const About = () => {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-3xl font-bold mb-6">Our Leadership Team</h2>
               <p className="text-muted-foreground">
-                Meet the experienced professionals who are driving DealPulse's mission forward.
+                Meet the experienced professionals who are driving Carparison's mission forward.
               </p>
             </div>
             
@@ -182,7 +181,7 @@ const About = () => {
                   name: "Bradley",
                   title: "Co-Founder & Automotive Expert",
                   image: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=987&q=80",
-                  bio: "With over 20 years in the automotive industry as a former car dealership salesman, Bradley brings unparalleled industry insight to DealPulse's strategic direction."
+                  bio: "With over 20 years in the automotive industry as a former car dealership salesman, Bradley brings unparalleled industry insight to Carparison's strategic direction."
                 }
               ].map((person, index) => (
                 <motion.div 
@@ -217,7 +216,7 @@ const About = () => {
             <div className="text-center max-w-3xl mx-auto mb-16">
               <h2 className="text-3xl font-bold mb-6">What Sets Us Apart</h2>
               <p className="text-muted-foreground">
-                DealPulse offers a comprehensive suite of tools designed specifically for the unique challenges of automobile dealerships.
+                Carparison offers a comprehensive suite of tools designed specifically for the unique challenges of automobile dealerships.
               </p>
             </div>
             
@@ -273,7 +272,7 @@ const About = () => {
                 <div>
                   <h2 className="text-3xl font-bold mb-4">Ready to transform your dealership?</h2>
                   <p className="mb-6 opacity-90">
-                    Join hundreds of successful dealerships that are already leveraging DealPulse to stay competitive and increase their profits.
+                    Join hundreds of successful dealerships that are already leveraging Carparison to stay competitive and increase their profits.
                   </p>
                   <Button size="lg" variant="secondary" className="rounded-full gap-2">
                     Schedule a Demo <ArrowRight className="h-4 w-4" />
