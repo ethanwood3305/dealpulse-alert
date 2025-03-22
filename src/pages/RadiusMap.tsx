@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +20,16 @@ const DEFAULT_ZOOM = 6;
 // Function to simulate geocoding a postcode to lat/lng
 const geocodePostcode = async (postcode: string): Promise<[number, number] | null> => {
   // In a real app, you would use a geocoding API here
-  // For now, we'll simulate by generating random coordinates in the UK
   if (!postcode || postcode.trim() === '') return null;
+  
+  // For demonstration purposes, return specific coordinates for known postcodes
+  const normalizedPostcode = postcode.trim().toUpperCase();
+  
+  // Specific coordinates for B31 3XR (Birmingham)
+  if (normalizedPostcode === 'B31 3XR') {
+    console.log('Using hard-coded coordinates for B31 3XR (Birmingham)');
+    return [-1.9605, 52.4054]; // Coordinates for Birmingham B31
+  }
   
   // Simulate API call delay
   await new Promise(resolve => setTimeout(resolve, 500));
@@ -118,6 +125,15 @@ const RadiusMap = () => {
           if (coords) {
             console.log('Geocoded dealer postcode to coordinates:', coords);
             setDealerLocation(coords);
+            
+            // If map is already initialized, fly to the dealer location
+            if (map.current) {
+              map.current.flyTo({
+                center: coords,
+                zoom: 8.5,
+                essential: true
+              });
+            }
           } else {
             console.warn('Failed to geocode dealer postcode:', userSubscription.dealer_postcode);
           }
@@ -414,6 +430,8 @@ const RadiusMap = () => {
     
     try {
       if (map.current) {
+        console.log('Using dealer location for search:', dealerLocation);
+        
         map.current.flyTo({
           center: dealerLocation,
           zoom: 8.5,
