@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -814,4 +815,134 @@ const RadiusMap = () => {
                     />
                   </div>
                   
-                  {userSubscription?.dealer_post
+                  {userSubscription?.dealer_postcode && (
+                    <div className="space-y-2">
+                      <Label>Dealer Postcode</Label>
+                      <div className="flex items-center gap-2">
+                        <div className="border rounded p-2 bg-muted flex-1">
+                          {userSubscription.dealer_postcode}
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={searchWithDealerLocation}
+                          disabled={isLoading || !dealerLocation}
+                        >
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                          ) : (
+                            <Search className="h-4 w-4 mr-1" />
+                          )}
+                          Search
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!userSubscription?.dealer_postcode && (
+                    <div className="text-sm text-muted-foreground">
+                      <p>Set your dealer postcode in subscription settings to use price radius search.</p>
+                    </div>
+                  )}
+                  
+                  {isLoading && (
+                    <div className="flex justify-center items-center py-4">
+                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                      <span>Searching...</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              
+              {selectedCar && (
+                <Card className="mt-4">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Selected Vehicle</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      <div className="text-sm font-medium">{selectedCar.brand} {selectedCar.model}</div>
+                      <div className="text-sm">{selectedCar.engineType}</div>
+                      {selectedCar.year && <div className="text-sm">Year: {selectedCar.year}</div>}
+                      {selectedCar.mileage && <div className="text-sm">Mileage: {selectedCar.mileage}</div>}
+                      <div className="text-sm">Target Price: £{parseFloat(targetPrice).toLocaleString()}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {mapError && (
+                <Card className="mt-4 border-red-200 bg-red-50 dark:bg-red-900/10">
+                  <CardHeader>
+                    <CardTitle className="text-lg text-red-600">Map Error</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-sm text-red-600">
+                      {mapError}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+            
+            <div className="flex-1 h-[600px] relative">
+              {isMapLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+                  <Loader2 className="h-8 w-8 animate-spin mr-2" />
+                  <span>Loading map...</span>
+                </div>
+              )}
+              <div 
+                ref={mapContainer} 
+                className="w-full h-full rounded-lg border shadow-sm overflow-hidden"
+              />
+            </div>
+          </div>
+          
+          {searchResults.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-xl font-bold mb-4">Search Results</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {searchResults.map((result) => (
+                  <Card key={result.id}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-lg">{result.brand} {result.model}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="font-medium">Price:</span>
+                          <span>£{result.priceComparison.marketPrice.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Year:</span>
+                          <span>{result.year}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Mileage:</span>
+                          <span>{result.mileage}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Dealer:</span>
+                          <span>{result.dealerName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Location:</span>
+                          <span>{result.location.postcode}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <Footer />
+    </div>
+  );
+};
+
+export default RadiusMap;
