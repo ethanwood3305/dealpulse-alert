@@ -18,6 +18,7 @@ export const VehicleErrorAlert = ({ error, errorCode }: VehicleErrorAlertProps) 
       case "TIMEOUT":
         return "Service timed out";
       case "INVALID_REGISTRATION":
+      case "API_ERROR":
         return "Invalid registration";
       default:
         return "Registration lookup failed";
@@ -44,7 +45,7 @@ export const VehicleErrorAlert = ({ error, errorCode }: VehicleErrorAlertProps) 
             Please check the registration number and try again. Make sure it's a valid UK registration.
           </p>
         )}
-        {errorCode === "INVALID_REGISTRATION" && (
+        {(errorCode === "INVALID_REGISTRATION" || errorCode === "API_ERROR") && (
           <p className="mt-2 text-sm">
             The registration number format is invalid. Please enter a valid UK vehicle registration.
           </p>

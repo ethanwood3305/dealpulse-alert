@@ -50,7 +50,9 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       
       if (error) {
         console.error("Supabase function error:", error);
-        throw new Error(error.message || 'Failed to lookup vehicle');
+        setError("Registration lookup failed. Please try again.");
+        setErrorCode('LOOKUP_FAILED');
+        return;
       }
 
       if (data.diagnostic) {
@@ -60,11 +62,20 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
 
       if (data.error) {
         console.error("Error from Vehicle API:", data.error);
-        setError(data.error);
-        if (data.code) {
-          setErrorCode(data.code);
+        
+        // Handle specific error cases
+        if (data.code === "API_ERROR" && data.apiResponse && 
+            (data.apiResponse.StatusCode === "KeyInvalid" || 
+             (data.error && data.error.includes("not recognised as a valid vehicle registration")))) {
+          setError("Invalid registration provided.");
+          setErrorCode("API_ERROR");
         } else {
-          setErrorCode('LOOKUP_FAILED');
+          setError(data.error);
+          if (data.code) {
+            setErrorCode(data.code);
+          } else {
+            setErrorCode('LOOKUP_FAILED');
+          }
         }
         return;
       }
@@ -79,7 +90,7 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         });
       } else {
         console.error("No vehicle data in response");
-        setError('No vehicle data returned');
+        setError('Registration lookup failed. Please try again.');
         setErrorCode('LOOKUP_FAILED');
       }
     } catch (err: any) {
@@ -95,12 +106,12 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
           variant: "destructive"
         });
       } else {
-        setError(err.message || 'An error occurred during vehicle lookup');
+        setError("Registration lookup failed. Please try again.");
         setErrorCode('LOOKUP_FAILED');
         
         toast({
           title: "Lookup Failed",
-          description: err.message || "Failed to lookup vehicle details",
+          description: "Failed to lookup vehicle details. Please try again.",
           variant: "destructive"
         });
       }
