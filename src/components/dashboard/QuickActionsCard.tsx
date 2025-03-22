@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PlusCircle, Car } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 interface QuickActionsCardProps {
   canAddMoreCars: boolean;
@@ -46,15 +47,23 @@ export const QuickActionsCard = ({
           <PlusCircle className="mr-2 h-4 w-4" />
           Add New Car
         </Button>
-        <Button 
-          variant="outline" 
-          className="w-full justify-start"
-          onClick={handleViewTrends}
-          disabled={!selectedCar}
-        >
-          <Car className="mr-2 h-4 w-4" />
-          View Car Trends
-        </Button>
+        <div className="relative">
+          <Button 
+            variant="outline" 
+            className="w-full justify-start"
+            onClick={handleViewTrends}
+            disabled={!selectedCar}
+          >
+            <Car className="mr-2 h-4 w-4" />
+            View Car Trends
+          </Button>
+          <Badge 
+            variant="outline" 
+            className="absolute -top-2 -right-2 bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300 text-xs"
+          >
+            Coming Soon
+          </Badge>
+        </div>
         
         {selectedCar && (
           <div className="mt-2 p-3 bg-muted/50 rounded-md">

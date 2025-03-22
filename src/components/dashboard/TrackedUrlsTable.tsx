@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -50,7 +49,6 @@ export const TrackedUrlsTable = ({
     );
   }
 
-  // Sort URLs by creation date (newest first)
   const sortedUrls = [...trackedUrls].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
@@ -103,7 +101,7 @@ export const TrackedUrlsTable = ({
                   <TableCell>
                     {isActive ? (
                       url.last_price ? (
-                        <span className="font-mono">${url.last_price.toFixed(2)}</span>
+                        <span className="font-mono">£{url.last_price.toFixed(2)}</span>
                       ) : (
                         <span className="text-muted-foreground">Pending</span>
                       )

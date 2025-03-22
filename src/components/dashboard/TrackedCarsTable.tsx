@@ -252,7 +252,7 @@ export const TrackedCarsTable = ({
                     <TableCell>
                       {isActive ? (
                         car.last_price ? (
-                          <span className="font-mono">${car.last_price.toFixed(2)}</span>
+                          <span className="font-mono">£{car.last_price.toFixed(2)}</span>
                         ) : (
                           <span className="text-muted-foreground">Pending</span>
                         )
