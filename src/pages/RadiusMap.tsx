@@ -7,22 +7,29 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { TrackedCar } from '@/hooks/use-tracked-cars';
 import { CarLocation } from '@/types/car-types';
 import { ScrapedListing } from '@/integrations/supabase/database.types';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Loader2, MapPin, Car, PlusCircle, Info, Navigation, Key } from "lucide-react";
+import { useParams, useNavigate } from 'react-router-dom';
 
 interface RadiusMapProps {
-  carId: string;
-  targetPrice: string;
+  carId?: string;
+  targetPrice?: string;
   dealerLocation?: CarLocation;
 }
 
-const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
+const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation }: RadiusMapProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [scrapedListings, setScrapedListings] = useState<ScrapedListing[]>([]);
   const [mapboxToken, setMapboxToken] = useState('');
+  const [dealerLocationFromDB, setDealerLocationFromDB] = useState<CarLocation | null>(null);
+  const [selectedCar, setSelectedCar] = useState<Partial<TrackedCar> | null>(null);
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const [lng, setLng] = useState(-70.9);
-  const [lat, setLat] = useState(42.35);
+  const [lng, setLng] = useState(-0.128);
+  const [lat, setLat] = useState(51.507);
   const [zoom, setZoom] = useState(9);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -34,8 +41,70 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
   }, []);
 
   useEffect(() => {
-    if (!mapboxToken) return;
+    const fetchDealerLocation = async () => {
+      try {
+        // Get dealer postcode from user subscription
+        const { data: subscriptionData, error: subscriptionError } = await supabase
+          .rpc('get_user_subscription', {});
 
+        if (subscriptionError) throw subscriptionError;
+        
+        if (subscriptionData && subscriptionData.length > 0 && subscriptionData[0].dealer_postcode) {
+          // We have the dealer postcode, now convert it to coordinates
+          const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${subscriptionData[0].dealer_postcode}.json?access_token=${mapboxToken}`);
+          const data = await response.json();
+          
+          if (data.features && data.features.length > 0) {
+            const coordinates = data.features[0].center;
+            setDealerLocationFromDB({
+              lng: coordinates[0],
+              lat: coordinates[1]
+            });
+            
+            // Update the map center
+            setLng(coordinates[0]);
+            setLat(coordinates[1]);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching dealer location:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to fetch dealer location."
+        });
+      }
+    };
+    
+    if (mapboxToken) {
+      fetchDealerLocation();
+    }
+  }, [mapboxToken]);
+
+  useEffect(() => {
+    const fetchCarDetails = async () => {
+      if (!carId || carId === 'default-car-id') return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('tracked_cars')
+          .select('*')
+          .eq('id', carId)
+          .single();
+          
+        if (error) throw error;
+        
+        setSelectedCar(data);
+      } catch (error) {
+        console.error('Error fetching car details:', error);
+      }
+    };
+    
+    fetchCarDetails();
+  }, [carId]);
+
+  useEffect(() => {
+    if (!mapboxToken) return;
     if (map.current) return; // map already initialized
     if (!mapContainer.current) return;
 
@@ -46,6 +115,12 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
       zoom: zoom
     });
 
+    // Add navigation controls
+    map.current.addControl(
+      new mapboxgl.NavigationControl(),
+      'top-right'
+    );
+
     map.current.on('move', () => {
       if (map.current) {
         setLng(parseFloat(map.current.getCenter().lng.toFixed(4)));
@@ -54,6 +129,20 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
       }
     });
   }, [mapboxToken]);
+
+  // Update map when dealer location changes
+  useEffect(() => {
+    if (map.current && (dealerLocation || dealerLocationFromDB)) {
+      const location = dealerLocation || dealerLocationFromDB;
+      if (location) {
+        map.current.flyTo({
+          center: [location.lng, location.lat],
+          zoom: 10,
+          essential: true
+        });
+      }
+    }
+  }, [dealerLocation, dealerLocationFromDB, map.current]);
 
   const addDealerMarkerAndCircles = (location: CarLocation, targetPrice: number, listings: ScrapedListing[]) => {
     if (!map.current) return;
@@ -192,7 +281,7 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
     try {
       setIsLoading(true);
       
-      if (!carId) {
+      if (!carId || carId === 'default-car-id') {
         toast({
           variant: "destructive",
           title: "Error",
@@ -209,15 +298,23 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
       
       setScrapedListings(data || []);
       
-      // If we have listings and dealer location, show them on the map
-      if (data && data.length > 0 && dealerLocation) {
+      // Determine which location to use
+      const locationToUse = dealerLocation || dealerLocationFromDB;
+      
+      // If we have listings and a location, show them on the map
+      if (data && data.length > 0 && locationToUse) {
         console.log(`Found ${data.length} scraped listings for car ${carId}`);
-        addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), data);
-      } else if (data && data.length > 0 && !dealerLocation) {
+        addDealerMarkerAndCircles(locationToUse, parseFloat(targetPrice), data);
+      } else if (data && data.length > 0 && !locationToUse) {
         toast({
           title: "Warning",
           description: "Dealer location not provided. Map view may be limited.",
           variant: "destructive"
+        });
+      } else if (data && data.length === 0) {
+        toast({
+          title: "No Listings Found",
+          description: "No scraped listings found for this car."
         });
       }
     } catch (error) {
@@ -233,15 +330,129 @@ const RadiusMap = ({ carId, targetPrice, dealerLocation }: RadiusMapProps) => {
   };
 
   return (
-    <div>
-      <div className="sidebar">
-        Longitude: {lng} | Latitude: {lat} | Zoom: {zoom}
-      </div>
-      <div ref={mapContainer} className="map-container" style={{ height: '400px' }} />
-      <div>
-        <button onClick={fetchScrapedListings} disabled={isLoading}>
-          {isLoading ? 'Loading...' : 'Load Scraped Listings'}
-        </button>
+    <div className="container mx-auto py-6 space-y-6">
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left side - Map info and controls */}
+        <div className="w-full lg:w-1/3 space-y-4">
+          {/* Car details card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Car className="h-5 w-5" />
+                  Selected Vehicle
+                </CardTitle>
+                {selectedCar && (
+                  <Button variant="outline" size="sm" onClick={() => navigate('/dashboard')}>
+                    Change
+                  </Button>
+                )}
+              </div>
+              <CardDescription>
+                {selectedCar ? 'View price radius for this vehicle' : 'Please select a car to view price radius'}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {selectedCar ? (
+                <div className="space-y-2">
+                  <p className="font-medium">{selectedCar.year} {selectedCar.make} {selectedCar.model}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Engine: {selectedCar.engine_type || 'N/A'} | 
+                    Mileage: {selectedCar.mileage ? `${selectedCar.mileage.toLocaleString()} miles` : 'N/A'}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Target Price: £{parseFloat(targetPrice).toLocaleString() || '0'}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-center py-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/dashboard')}
+                    className="flex items-center gap-2"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Select a car
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Map legend card */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Map Legend
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-sm">5km Radius (Inner Circle)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                  <span className="text-sm">10km Radius (Outer Circle)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                  <span className="text-sm">Competitor Listings</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-red-600" />
+                  <span className="text-sm">Dealer Location</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Map coordinates */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xl flex items-center gap-2">
+                <Navigation className="h-5 w-5" />
+                Map Coordinates
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Longitude: {lng.toFixed(4)} | Latitude: {lat.toFixed(4)} | Zoom: {zoom.toFixed(2)}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Action button */}
+          <Button 
+            onClick={fetchScrapedListings} 
+            disabled={isLoading} 
+            className="w-full"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Info className="mr-2 h-4 w-4" />
+                Load Listings
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Right side - Map */}
+        <div className="w-full lg:w-2/3">
+          <Card className="overflow-hidden">
+            <div 
+              ref={mapContainer} 
+              className="map-container w-full h-[600px] bg-gray-100 rounded-md" 
+            />
+          </Card>
+        </div>
       </div>
     </div>
   );
