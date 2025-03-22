@@ -10,12 +10,12 @@ interface QuickActionsCardProps {
 
 export const QuickActionsCard = ({ canAddMoreCars, onAddCarClick }: QuickActionsCardProps) => {
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader>
         <CardTitle>Quick Actions</CardTitle>
         <CardDescription>Common tasks and actions</CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+      <CardContent className="grid gap-2 sm:grid-cols-1">
         <Button 
           variant="outline" 
           className="w-full justify-start"
