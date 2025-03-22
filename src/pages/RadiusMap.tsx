@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,7 +29,7 @@ const geocodePostcode = async (postcode: string): Promise<[number, number] | nul
   // Specific coordinates for B31 3XR (Birmingham)
   if (normalizedPostcode === 'B31 3XR') {
     console.log('Using hard-coded coordinates for B31 3XR (Birmingham)');
-    return [-1.9605, 52.4054]; // Coordinates for Birmingham B31
+    return [-1.9605, 52.4054]; // Correct coordinates for Birmingham B31
   }
   
   // Simulate API call delay
@@ -133,6 +134,13 @@ const RadiusMap = () => {
                 zoom: 8.5,
                 essential: true
               });
+              
+              // If we have a car and target price, auto-search with dealer location
+              if (selectedCarId && targetPrice) {
+                setTimeout(() => {
+                  searchWithDealerLocation();
+                }, 1000);
+              }
             }
           } else {
             console.warn('Failed to geocode dealer postcode:', userSubscription.dealer_postcode);
@@ -142,7 +150,7 @@ const RadiusMap = () => {
         }
       })();
     }
-  }, [userSubscription, dealerPostcodeLoaded]);
+  }, [userSubscription, dealerPostcodeLoaded, selectedCarId, targetPrice]);
   
   useEffect(() => {
     if (mapContainer.current && !map.current && mapboxToken) {
@@ -167,11 +175,20 @@ const RadiusMap = () => {
           setIsMapLoading(false);
           setMapError(null);
           
-          // If we have a dealer location and selected car, search automatically
-          if (dealerLocation && targetPrice && selectedCarId) {
-            setTimeout(() => {
-              searchWithDealerLocation();
-            }, 1000);
+          // If we have a dealer location, fly to it
+          if (dealerLocation) {
+            map.current?.flyTo({
+              center: dealerLocation,
+              zoom: 8.5,
+              essential: true
+            });
+            
+            // If we have a car and target price, auto-search with dealer location
+            if (selectedCarId && targetPrice && dealerLocation) {
+              setTimeout(() => {
+                searchWithDealerLocation();
+              }, 1000);
+            }
           }
         });
         
@@ -598,6 +615,16 @@ const RadiusMap = () => {
     dealerResults: any[] = []
   ) => {
     console.log('Adding circles to map at', center, 'with price', price);
+    
+    // Make sure to remove any existing layers before adding new ones
+    try {
+      if (map.getLayer('high-price-radius')) map.removeLayer('high-price-radius');
+      if (map.getLayer('competitive-radius')) map.removeLayer('competitive-radius');
+      if (map.getLayer('best-price-radius')) map.removeLayer('best-price-radius');
+      if (map.getSource('radius-source')) map.removeSource('radius-source');
+    } catch (e) {
+      console.log('Error removing existing layers, may not exist yet', e);
+    }
     
     map.addSource('radius-source', {
       type: 'geojson',
