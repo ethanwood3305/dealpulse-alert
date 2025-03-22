@@ -107,7 +107,7 @@ serve(async (req) => {
           
           console.log("Starting request to vehicle-proxy");
           
-          // Set a 30-second timeout for the proxy request
+          // Set a 35-second timeout for the proxy request
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 35000);
           

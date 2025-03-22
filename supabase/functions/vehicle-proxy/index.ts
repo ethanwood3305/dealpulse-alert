@@ -65,16 +65,16 @@ serve(async (req) => {
 
     console.log(`Processing VRM lookup for: ${vrm}`);
 
-    // Construct the query params following the sample request format
+    // Construct the request body following the API documentation
     const requestData = {
       v: 2,
       api_nullitems: 1,
       auth_apikey: UKVEHICLEDATA_API_KEY,
       user_tag: "supabase_edge",
       key_VRM: vrm,
-      "key_VehicleData": "Yes",
-      "key_MOTData": "Yes",
-      "key_TaxStatusData": "Yes"
+      key_VehicleData: "Yes",
+      key_MOTData: "Yes",
+      key_TaxStatusData: "Yes"
     };
 
     try {
