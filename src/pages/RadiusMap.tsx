@@ -1,448 +1,213 @@
-
-import { useEffect, useRef, useState } from 'react';
-import mapboxgl, { Map, LngLatLike } from 'mapbox-gl';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { toast } from '@/components/ui/use-toast';
-import { ArrowLeft, Loader2, MapPin, Search } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { TrackedCarWithLocation, DealerVehicle } from '@/types/car-types';
-import { supabase, getMapboxToken } from '@/integrations/supabase/client';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
-import { useSubscription } from '@/hooks/use-subscription';
+import React, { useState, useEffect, useRef } from 'react';
+import { toast } from "@/components/ui/use-toast";
+import { supabase, getMapboxToken } from "@/integrations/supabase/client";
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { ScrapedListing } from '@/hooks/use-tracked-cars';
+import { TrackedCar } from '@/hooks/use-tracked-cars';
+import { CarLocation } from '@/types/car-types';
 
-const DEFAULT_CENTER: LngLatLike = [-1.78, 52.48];
-const DEFAULT_ZOOM = 6;
+interface RadiusMapProps {
+  carId: string;
+  targetPrice: string;
+  dealerLocation?: CarLocation;
+}
 
-// Function to simulate geocoding a postcode to lat/lng
-const geocodePostcode = async (postcode: string): Promise<[number, number] | null> => {
-  // In a real app, you would use a geocoding API here
-  if (!postcode || postcode.trim() === '') return null;
-  
-  // For demonstration purposes, return specific coordinates for known postcodes
-  const normalizedPostcode = postcode.trim().toUpperCase();
-  
-  // Specific coordinates for B31 3XR (Birmingham)
-  if (normalizedPostcode === 'B31 3XR') {
-    console.log('Using hard-coded coordinates for B31 3XR (Birmingham)');
-    return [-1.9605, 52.4054]; // Correct coordinates for Birmingham B31
-  }
-  
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // Generate random coordinates centered around UK
-  const lat = 51.5 + (Math.random() * 3) - 1.5;
-  const lng = -0.9 + (Math.random() * 3) - 1.5;
-  
-  return [lng, lat];
-};
+interface ScrapedListing {
+  id: string;
+  tracked_car_id: string;
+  dealer_name: string;
+  url: string;
+  title: string;
+  price: number;
+  mileage: number;
+  year: number;
+  color: string;
+  location: string;
+  lat: number;
+  lng: number;
+  is_cheapest: boolean;
+  created_at: string;
+}
 
 const RadiusMap = () => {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<Map | null>(null);
-  const navigate = useNavigate();
-  const location = useLocation();
-  
-  const [targetPrice, setTargetPrice] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isMapLoading, setIsMapLoading] = useState(true);
-  const [mapError, setMapError] = useState<string | null>(null);
-  const [trackedCars, setTrackedCars] = useState<TrackedCarWithLocation[]>([]);
-  const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
-  const [selectedCar, setSelectedCar] = useState<TrackedCarWithLocation | null>(null);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [mapboxToken, setMapboxToken] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
-  const [dealerLocation, setDealerLocation] = useState<[number, number] | null>(null);
-  const [dealerPostcodeLoaded, setDealerPostcodeLoaded] = useState(false);
   const [scrapedListings, setScrapedListings] = useState<ScrapedListing[]>([]);
-  
-  const { userSubscription } = useSubscription(user?.id);
-  
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (error || !data?.user) {
-        navigate('/login');
-        return;
-      }
-      setUser(data.user);
-    };
-    
-    checkAuth();
-  }, [navigate]);
-  
+  const [mapboxToken, setMapboxToken] = useState('');
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const [lng, setLng] = useState(-70.9);
+  const [lat, setLat] = useState(42.35);
+  const [zoom, setZoom] = useState(9);
+  const [carId, setCarId] = useState('your_car_id'); // Replace with actual car ID
+  const [targetPrice, setTargetPrice] = useState('20000'); // Replace with actual target price
+  const [dealerLocation, setDealerLocation] = useState<CarLocation | null>(null); // Replace with actual dealer location
+
   useEffect(() => {
     const fetchToken = async () => {
-      try {
-        const token = await getMapboxToken();
-        console.log('Fetched Mapbox token:', token ? 'Available' : 'Not available');
-        setMapboxToken(token);
-        
-        if (!token) {
-          setMapError('Failed to load Mapbox token from Supabase');
-          setIsMapLoading(false);
-        }
-      } catch (error) {
-        console.error('Error fetching Mapbox token:', error);
-        setMapError('Failed to load Mapbox token');
-        setIsMapLoading(false);
-      }
+      const token = await getMapboxToken();
+      setMapboxToken(token);
+      mapboxgl.accessToken = token;
     };
-    
     fetchToken();
   }, []);
-  
+
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const carId = params.get('car');
-    const price = params.get('targetPrice');
-    
-    if (carId) {
-      setSelectedCarId(carId);
+    if (!mapboxToken) return;
+
+    if (map.current) return; // map already initialized
+    if (!mapContainer.current) return;
+
+    map.current = new mapboxgl.Map({
+      container: mapContainer.current,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [lng, lat],
+      zoom: zoom
+    });
+
+    map.current.on('move', () => {
+      setLng(map.current!.getCenter().lng.toFixed(4));
+      setLat(map.current!.getCenter().lat.toFixed(4));
+      setZoom(map.current!.getZoom().toFixed(2));
+    });
+  }, [mapboxToken]);
+
+  const addDealerMarkerAndCircles = (location: CarLocation, targetPrice: number, listings: ScrapedListing[]) => {
+    if (!map.current) return;
+
+    // Remove existing sources and layers
+    if (map.current.getLayer('dealer-marker')) {
+      map.current.removeLayer('dealer-marker');
     }
-    
-    if (price) {
-      setTargetPrice(price);
+    if (map.current.getSource('dealer')) {
+      map.current.removeSource('dealer');
     }
-  }, [location.search]);
-  
-  // Load dealer postcode from subscription and geocode it
-  useEffect(() => {
-    if (userSubscription?.dealer_postcode && !dealerPostcodeLoaded) {
-      console.log('Found dealer postcode in subscription:', userSubscription.dealer_postcode);
-      setDealerPostcodeLoaded(true);
-      
-      // Geocode the dealer postcode to get coordinates
-      (async () => {
-        try {
-          const coords = await geocodePostcode(userSubscription.dealer_postcode);
-          if (coords) {
-            console.log('Geocoded dealer postcode to coordinates:', coords);
-            setDealerLocation(coords);
-          } else {
-            console.warn('Failed to geocode dealer postcode:', userSubscription.dealer_postcode);
+    if (map.current.getLayer('radius-5k')) {
+      map.current.removeLayer('radius-5k');
+    }
+    if (map.current.getSource('radius-5k')) {
+      map.current.removeSource('radius-5k');
+    }
+    if (map.current.getLayer('radius-10k')) {
+      map.current.removeLayer('radius-10k');
+    }
+    if (map.current.getSource('radius-10k')) {
+      map.current.removeSource('radius-10k');
+    }
+
+    // Add dealer marker
+    map.current.addSource('dealer', {
+      type: 'geojson',
+      data: {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: [location.lng, location.lat]
+          },
+          properties: {
+            title: 'Dealer Location',
+            icon: 'shop'
           }
-        } catch (error) {
-          console.error('Error geocoding dealer postcode:', error);
+        }]
+      }
+    });
+
+    map.current.addLayer({
+      id: 'dealer-marker',
+      type: 'symbol',
+      source: 'dealer',
+      layout: {
+        'icon-image': 'shop',
+        'icon-size': 1.5,
+        'text-field': ['get', 'title'],
+        'text-font': [
+          'Open Sans Semibold',
+          'Arial Unicode MS Bold'
+        ],
+        'text-offset': [0, 0.9],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'text-color': '#f00'
+      }
+    });
+
+    // Add radius circles
+    const addCircle = (id: string, radiusKm: number, color: string) => {
+      const radiusMeters = radiusKm * 1000;
+      const steps = 64;
+      const outerRadius = radiusMeters / (Math.cos(Math.PI * location.lat / 180) * 40075000 / 360);
+      const innerRadius = outerRadius;
+
+      const data = {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[]]
+          }
+        }]
+      };
+
+      for (let i = 0; i < steps; i++) {
+        const angle = (i / steps) * Math.PI * 2;
+        const lng = location.lng + outerRadius * Math.cos(angle);
+        const lat = location.lat + innerRadius * Math.sin(angle);
+        (data.features[0].geometry as any).coordinates[0].push([lng, lat]);
+      }
+      (data.features[0].geometry as any).coordinates[0].push((data.features[0].geometry as any).coordinates[0][0]);
+
+      map.current!.addSource(id, {
+        type: 'geojson',
+        data: data
+      });
+
+      map.current!.addLayer({
+        id: id,
+        type: 'fill',
+        source: id,
+        paint: {
+          'fill-color': color,
+          'fill-opacity': 0.1
         }
-      })();
-    }
-  }, [userSubscription, dealerPostcodeLoaded]);
-  
-  // Initialize map when mapbox token is available
-  useEffect(() => {
-    if (mapContainer.current && !map.current && mapboxToken) {
-      console.log('Initializing map with token');
-      
-      try {
-        mapboxgl.accessToken = mapboxToken;
-        
-        map.current = new mapboxgl.Map({
-          container: mapContainer.current,
-          style: 'mapbox://styles/mapbox/streets-v12',
-          center: DEFAULT_CENTER,
-          zoom: DEFAULT_ZOOM,
-        });
-        
-        console.log('Map initialization started');
-        
-        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-        
-        map.current.on('load', () => {
-          console.log('Map loaded successfully');
-          setIsMapLoading(false);
-          setMapError(null);
-          
-          // If we have a dealer location, fly to it
-          if (dealerLocation) {
-            console.log('Flying to dealer location:', dealerLocation);
-            map.current?.flyTo({
-              center: dealerLocation,
-              zoom: 8.5,
-              essential: true
-            });
-          }
-        });
-        
-        map.current.on('error', (e) => {
-          console.error('Mapbox error:', e);
-          const errorMessage = e.error && e.error.message 
-            ? e.error.message 
-            : 'There was an error loading the map. Please try refreshing the page.';
-          
-          setMapError(errorMessage);
-          setIsMapLoading(false);
-          
-          if (errorMessage.includes('API key')) {
-            setMapError('Invalid Mapbox API key. Please check the configuration.');
-          }
-          
-          toast({
-            title: "Map Error",
-            description: errorMessage,
-            variant: "destructive"
-          });
-        });
-      } catch (error: any) {
-        console.error('Error initializing map:', error);
-        const errorMessage = error.message || 'Failed to initialize the map';
-        setMapError(errorMessage);
-        setIsMapLoading(false);
-        toast({
-          title: "Map Error",
-          description: errorMessage,
-          variant: "destructive" 
-        });
-      }
-    }
-    
-    return () => {
-      if (map.current) {
-        console.log('Removing map');
-        map.current.remove();
-        map.current = null;
-      }
+      });
     };
-  }, [mapboxToken]);
-  
-  // When both dealer location and map are ready, perform auto-search if car is selected
-  useEffect(() => {
-    if (map.current && dealerLocation && selectedCarId && targetPrice) {
-      console.log('All conditions met for auto-search. Executing searchWithDealerLocation.');
-      
-      // Wait for the map to be fully loaded before performing search
-      if (map.current.loaded()) {
-        searchWithDealerLocation();
-      } else {
-        map.current.once('load', () => {
-          searchWithDealerLocation();
-        });
+
+    addCircle('radius-5k', 5, '#00f');
+    addCircle('radius-10k', 10, '#0f0');
+
+    // Add scraped listings as markers
+    listings.forEach(listing => {
+      if (listing.lat && listing.lng) {
+        const el = document.createElement('div');
+        el.className = 'marker';
+        el.style.width = '10px';
+        el.style.height = '10px';
+        el.style.borderRadius = '50%';
+        el.style.backgroundColor = 'red';
+
+        new mapboxgl.Marker(el)
+          .setLngLat([listing.lng, listing.lat])
+          .setPopup(
+            new mapboxgl.Popup({ offset: 25 }) // add popups
+              .setHTML(
+                `<h4>${listing.title}</h4><p>Price: $${listing.price}</p>`
+              )
+          )
+          .addTo(map.current!);
       }
-    }
-  }, [dealerLocation, map.current, selectedCarId, targetPrice]);
-  
-  useEffect(() => {
-    if (mapboxToken) {
-      fetchTrackedCars();
-    }
-  }, [mapboxToken]);
-  
-  const fetchTrackedCars = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/login');
-        return;
-      }
-      
-      const { data, error } = await supabase
-        .from('tracked_urls')
-        .select('*')
-        .eq('user_id', user.id);
-        
-      if (error) throw error;
-      
-      const carsWithLocations = data.map((car) => {
-        let brand = 'Unknown';
-        let model = 'Unknown';
-        let engineType = '';
-        let mileage = '';
-        let year = '';
-        let color = '';
-        
-        const urlParts = car.url ? car.url.split('/') : [];
-        if (urlParts.length > 0) brand = urlParts[0] || 'Unknown';
-        if (urlParts.length > 1) model = urlParts[1] || 'Unknown';
-        if (urlParts.length > 2) engineType = urlParts[2] || '';
-        
-        if (urlParts.length > 3) {
-          const params = urlParts[3].split('&');
-          params.forEach(param => {
-            if (param.includes('mil=')) {
-              mileage = param.split('mil=')[1];
-            }
-            if (param.includes('year=')) {
-              year = param.split('year=')[1];
-            }
-            if (param.includes('color=')) {
-              color = param.split('color=')[1];
-            }
-          });
-        }
-        
-        const randomPostcode = generateRandomPostcode();
-        const randomLat = 51.5 + Math.random() * 2;
-        const randomLng = -1.9 + Math.random() * 3;
-        
-        const parsedMileage = mileage ? parseInt(mileage) : 10000;
-        const targetPrice = 10000 + parsedMileage * 0.5;
-        const marketPrice = car.last_price || targetPrice * (0.9 + Math.random() * 0.3);
-        
-        const difference = targetPrice - marketPrice;
-        const percentageDifference = (difference / targetPrice) * 100;
-        
-        return {
-          id: car.id,
-          brand,
-          model,
-          engineType,
-          mileage,
-          year,
-          color,
-          last_price: car.last_price,
-          last_checked: car.last_checked,
-          created_at: car.created_at,
-          tags: car.tags || [],
-          location: {
-            postcode: randomPostcode,
-            lat: randomLat,
-            lng: randomLng
-          },
-          priceComparison: {
-            targetPrice,
-            marketPrice,
-            difference,
-            percentageDifference
-          }
-        };
-      });
-      
-      setTrackedCars(carsWithLocations);
-      
-      if (selectedCarId && targetPrice) {
-        const foundCar = carsWithLocations.find(car => car.id === selectedCarId);
-        if (foundCar && foundCar.location) {
-          setSelectedCar(foundCar);
-          
-          // If we have a dealer postcode, use that instead of the car's postcode
-          if (userSubscription?.dealer_postcode) {
-            
-          } else {
-            
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching tracked cars:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to load your tracked cars."
-      });
-    }
+    });
   };
-  
-  const generateRandomPostcode = () => {
-    const prefixes = ['SW', 'NW', 'SE', 'NE', 'W', 'E', 'N', 'S', 'B', 'M', 'L', 'G'];
-    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
-    const number = Math.floor(Math.random() * 20) + 1;
-    const suffix = Math.floor(Math.random() * 9) + 1;
-    return `${prefix}${number} ${suffix}XX`;
-  };
-  
-  const searchDealerVehicles = async (centerCoords: [number, number]) => {
-    if (!selectedCar) return [];
-    
-    setIsLoading(true);
-    
-    try {
-      const dealerCount = Math.floor(Math.random() * 50) + 50;
-      const results = [];
-      
-      // Use the center coordinates to generate vehicles in a radius
-      for (let i = 0; i < dealerCount; i++) {
-        // Random distance from center (in degrees, roughly)
-        const distance = Math.random() * 0.5; // Up to ~50km
-        const angle = Math.random() * Math.PI * 2; // Random angle
-        
-        // Calculate coordinates based on distance and angle
-        const lat = centerCoords[1] + (Math.sin(angle) * distance);
-        const lng = centerCoords[0] + (Math.cos(angle) * distance);
-        
-        // Price deviation increases with distance from dealer
-        const distanceFactor = distance * 1.5; // Higher distance = higher price
-        const priceDeviation = (Math.random() * 0.2) + (distanceFactor * 0.1);
-        
-        const marketPrice = selectedCar.priceComparison?.targetPrice 
-          ? selectedCar.priceComparison.targetPrice * (1 + priceDeviation)
-          : (parseFloat(targetPrice) || 20000) * (1 + priceDeviation);
-        
-        const postcode = generateRandomPostcode();
-        
-        const mileageBase = selectedCar.mileage ? parseInt(selectedCar.mileage) : 30000;
-        const mileageDev = (Math.random() * 0.3) - 0.15;
-        const mileage = Math.round(mileageBase * (1 + mileageDev));
-        
-        const dealerNames = ['AutoWorld', 'CarZone', 'MotorHub', 'DriveTime', 'WheelsDirect', 
-                            'CityMotors', 'PremiumAutos', 'MetroCars', 'CountyAutos', 'ExcellentCars'];
-        const dealerName = dealerNames[Math.floor(Math.random() * dealerNames.length)];
-        
-        results.push({
-          id: `dealer-${i}`,
-          brand: selectedCar.brand,
-          model: selectedCar.model,
-          engineType: selectedCar.engineType,
-          year: selectedCar.year,
-          mileage: mileage.toString(),
-          color: ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey'][Math.floor(Math.random() * 6)],
-          dealerName: `${dealerName} ${['Ltd', 'Motors', 'Group', 'Cars'][Math.floor(Math.random() * 4)]}`,
-          dealerPhone: `0${Math.floor(Math.random() * 10000000000)}`.substring(0, 11),
-          location: {
-            postcode,
-            lat,
-            lng
-          },
-          priceComparison: {
-            targetPrice: selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000,
-            marketPrice,
-            difference: (selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000) - marketPrice,
-            percentageDifference: ((selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000) - marketPrice) / 
-                                (selectedCar.priceComparison?.targetPrice || parseFloat(targetPrice) || 20000) * 100
-          }
-        });
-      }
-      
-      toast({
-        title: "Search Complete",
-        description: `Found ${results.length} vehicles matching your specifications from dealers.`
-      });
-      
-      return results;
-    } catch (error) {
-      console.error('Error searching for dealer vehicles:', error);
-      toast({
-        variant: "destructive",
-        title: "Search Error",
-        description: "Failed to search for vehicles from dealers."
-      });
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  // When car is selected and map is ready, load scraped listings
-  useEffect(() => {
-    if (selectedCarId && map.current && map.current.loaded()) {
-      fetchScrapedListings(selectedCarId);
-    }
-  }, [selectedCarId, map.current?.loaded()]);
-  
+
   const fetchScrapedListings = async (carId: string) => {
     try {
       setIsLoading(true);
       
-      const { data, error } = await supabase
-        .from('scraped_vehicle_listings')
-        .select('*')
-        .eq('tracked_car_id', carId);
+      const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
+        car_id: carId
+      });
         
       if (error) throw error;
       
@@ -464,483 +229,18 @@ const RadiusMap = () => {
       setIsLoading(false);
     }
   };
-  
-  const searchWithDealerLocation = async () => {
-    if (!dealerLocation || !targetPrice) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Dealer location or target price is missing."
-      });
-      return;
-    }
-    
-    setIsLoading(true);
-    
-    try {
-      if (map.current) {
-        console.log('Using dealer location for search:', dealerLocation);
-        
-        map.current.flyTo({
-          center: dealerLocation,
-          zoom: 8.5,
-          essential: true
-        });
-        
-        // If we have a selected car, use the scraped listings
-        if (selectedCarId) {
-          await fetchScrapedListings(selectedCarId);
-        } else {
-          // For the case where no car is selected
-          const dealerResults = await searchDealerVehicles(dealerLocation);
-          setSearchResults(dealerResults);
-          
-          // Add dealer marker and radius circles
-          addDealerMarkerAndCircles(dealerLocation, parseFloat(targetPrice), dealerResults);
-        }
-        
-        toast({
-          title: "Map Updated",
-          description: `Showing price radius for your dealer location`
-        });
-      }
-    } catch (error) {
-      console.error('Error searching with dealer location:', error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to search with dealer location."
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const addDealerMarkerAndCircles = (
-    center: [number, number], 
-    price: number, 
-    listings: any[] = []
-  ) => {
-    if (!map.current) return;
-    
-    console.log('Adding dealer marker and circles at', center, 'with price', price);
-    
-    // Remove existing markers and layers
-    const existingMarkers = document.querySelectorAll('.mapboxgl-marker');
-    existingMarkers.forEach(marker => marker.remove());
-    
-    // Remove existing layers if they exist
-    try {
-      if (map.current.getLayer('high-price-radius')) map.current.removeLayer('high-price-radius');
-      if (map.current.getLayer('competitive-radius')) map.current.removeLayer('competitive-radius');
-      if (map.current.getLayer('best-price-radius')) map.current.removeLayer('best-price-radius');
-      if (map.current.getSource('radius-source')) map.current.removeSource('radius-source');
-    } catch (e) {
-      console.log('Error removing existing layers, may not exist yet', e);
-    }
-    
-    // Add dealer marker
-    const dealerMarkerEl = document.createElement('div');
-    dealerMarkerEl.className = 'dealer-marker';
-    dealerMarkerEl.style.width = '30px';
-    dealerMarkerEl.style.height = '30px';
-    dealerMarkerEl.style.borderRadius = '50%';
-    dealerMarkerEl.style.backgroundColor = '#6E59A5';
-    dealerMarkerEl.style.border = '3px solid white';
-    dealerMarkerEl.style.display = 'flex';
-    dealerMarkerEl.style.alignItems = 'center';
-    dealerMarkerEl.style.justifyContent = 'center';
-    dealerMarkerEl.style.color = 'white';
-    dealerMarkerEl.style.fontWeight = 'bold';
-    dealerMarkerEl.style.fontSize = '16px';
-    dealerMarkerEl.innerHTML = '🏬';
-    
-    new mapboxgl.Marker(dealerMarkerEl)
-      .setLngLat(center)
-      .setPopup(new mapboxgl.Popup().setHTML(`
-        <div class="p-2">
-          <h3 class="font-bold">Dealer Location</h3>
-          <p><strong>Postcode:</strong> ${userSubscription?.dealer_postcode || 'Unknown'}</p>
-        </div>
-      `))
-      .addTo(map.current);
-    
-    // Add radius circles
-    if (map.current?.loaded()) {
-      console.log('Map is loaded, adding circles');
-      addCircles(map.current, center, price, listings);
-    } else {
-      console.log('Map not loaded yet, waiting for load event');
-      map.current?.once('load', () => {
-        console.log('Map loaded, now adding circles');
-        addCircles(map.current!, center, price, listings);
-      });
-    }
-  };
-  
-  const addCircles = (
-    map: Map, 
-    center: [number, number], 
-    price: number, 
-    listings: any[] = []
-  ) => {
-    console.log('Adding circles to map at', center, 'with price', price);
-    
-    // Make sure to remove any existing layers before adding new ones
-    try {
-      if (map.getLayer('high-price-radius')) map.removeLayer('high-price-radius');
-      if (map.getLayer('competitive-radius')) map.removeLayer('competitive-radius');
-      if (map.getLayer('best-price-radius')) map.removeLayer('best-price-radius');
-      if (map.getSource('radius-source')) map.removeSource('radius-source');
-    } catch (e) {
-      console.log('Error removing existing layers, may not exist yet', e);
-    }
-    
-    map.addSource('radius-source', {
-      type: 'geojson',
-      data: {
-        type: 'FeatureCollection',
-        features: [
-          // Best price radius (innermost)
-          {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'Point',
-              coordinates: center
-            }
-          },
-          // Competitive price radius (middle)
-          {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'Point',
-              coordinates: center
-            }
-          },
-          // Higher price radius (outermost)
-          {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'Point',
-              coordinates: center
-            }
-          }
-        ]
-      }
-    });
-    
-    // Higher price zone (outermost, red tint)
-    map.addLayer({
-      id: 'high-price-radius',
-      type: 'circle',
-      source: 'radius-source',
-      paint: {
-        'circle-radius': {
-          stops: [
-            [5, 20000],    // At zoom level 5, radius is 20,000 pixels
-            [8, 60000],    // At zoom level 8, radius is 60,000 pixels
-            [12, 150000]   // At zoom level 12, radius is 150,000 pixels
-          ],
-          base: 2
-        },
-        'circle-color': '#ef4444',
-        'circle-opacity': 0.1,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ef4444'
-      },
-      filter: ['==', '$index', 2]
-    });
-    
-    // Competitive price zone (middle, purple)
-    map.addLayer({
-      id: 'competitive-radius',
-      type: 'circle',
-      source: 'radius-source',
-      paint: {
-        'circle-radius': {
-          stops: [
-            [5, 12000],    // At zoom level 5, radius is 12,000 pixels
-            [8, 35000],    // At zoom level 8, radius is 35,000 pixels
-            [12, 80000]    // At zoom level 12, radius is 80,000 pixels
-          ],
-          base: 2
-        },
-        'circle-color': '#7E69AB',
-        'circle-opacity': 0.2,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#7E69AB'
-      },
-      filter: ['==', '$index', 1]
-    });
-    
-    // Best price zone (innermost, brighter purple)
-    map.addLayer({
-      id: 'best-price-radius',
-      type: 'circle',
-      source: 'radius-source',
-      paint: {
-        'circle-radius': {
-          stops: [
-            [5, 5000],     // At zoom level 5, radius is 5,000 pixels
-            [8, 15000],    // At zoom level 8, radius is 15,000 pixels
-            [12, 40000]    // At zoom level 12, radius is 40,000 pixels
-          ],
-          base: 2
-        },
-        'circle-color': '#9b87f5',
-        'circle-opacity': 0.3,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#9b87f5'
-      },
-      filter: ['==', '$index', 0]
-    });
-    
-    const allVehicles = [...trackedCars];
-    
-    if (listings && listings.length > 0) {
-      allVehicles.push(...listings);
-    }
-    
-    const filteredCars = selectedCar 
-      ? allVehicles.filter(car => 
-          car.brand === selectedCar.brand && 
-          car.model === selectedCar.model && 
-          car.engineType === selectedCar.engineType &&
-          (!selectedCar.year || car.year === selectedCar.year) &&
-          (!selectedCar.mileage || 
-            (car.mileage && 
-             parseInt(car.mileage) >= parseInt(selectedCar.mileage) * 0.7 && 
-             parseInt(car.mileage) <= parseInt(selectedCar.mileage) * 1.3))
-        )
-      : allVehicles;
-    
-    console.log(`Showing ${filteredCars.length} similar cars out of ${allVehicles.length} total cars`);
-    
-    filteredCars.forEach(car => {
-      if (car.location) {
-        const isPriceCompetitive = car.priceComparison && car.priceComparison.marketPrice <= price;
-        const isBestPrice = car.priceComparison && car.priceComparison.marketPrice <= price * 0.9;
-        
-        const markerEl = document.createElement('div');
-        markerEl.className = 'car-marker';
-        markerEl.style.width = '30px';
-        markerEl.style.height = '30px';
-        markerEl.style.borderRadius = '50%';
-        markerEl.style.backgroundColor = isBestPrice ? '#9b87f5' : isPriceCompetitive ? '#7E69AB' : '#ef4444';
-        markerEl.style.border = '2px solid white';
-        markerEl.style.display = 'flex';
-        markerEl.style.alignItems = 'center';
-        markerEl.style.justifyContent = 'center';
-        markerEl.style.color = 'white';
-        markerEl.style.fontWeight = 'bold';
-        markerEl.style.fontSize = '16px';
-        markerEl.innerHTML = car.id.includes('dealer-') ? '🚗' : '🚗';
-        
-        if (selectedCarId && car.id === selectedCarId) {
-          markerEl.style.border = '3px solid yellow';
-          markerEl.style.width = '36px';
-          markerEl.style.height = '36px';
-          markerEl.style.zIndex = '1000';
-        }
-        
-        const isDealerVehicle = 'dealerName' in car && 'dealerPhone' in car;
-        
-        const popupHTML = isDealerVehicle ? 
-          `<div class="p-2">
-            <h3 class="font-bold">${car.brand} ${car.model}</h3>
-            <p><strong>Engine:</strong> ${car.engineType || 'N/A'}</p>
-            <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
-            <p><strong>Mileage:</strong> ${car.mileage ? `${car.mileage} miles` : 'N/A'}</p>
-            <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
-            <p><strong>Dealer:</strong> ${(car as DealerVehicle).dealerName || 'N/A'}</p>
-            <p><strong>Phone:</strong> ${(car as DealerVehicle).dealerPhone || 'N/A'}</p>
-            <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
-          </div>` :
-          `<div class="p-2">
-            <h3 class="font-bold">${car.brand} ${car.model}</h3>
-            <p><strong>Engine:</strong> ${car.engineType || 'N/A'}</p>
-            <p><strong>Year:</strong> ${car.year || 'N/A'}</p>
-            <p><strong>Mileage:</strong> ${car.mileage ? `${car.mileage} miles` : 'N/A'}</p>
-            <p><strong>Price:</strong> £${car.priceComparison?.marketPrice.toLocaleString() || 'N/A'}</p>
-            <p><strong>Target:</strong> £${car.priceComparison?.targetPrice.toLocaleString() || 'N/A'}</p>
-            <p><strong>Difference:</strong> ${car.priceComparison?.percentageDifference.toFixed(1) || 0}%</p>
-            ${car.id === selectedCarId ? '<p class="text-yellow-500 font-bold">★ Selected Vehicle</p>' : ''}
-          </div>`;
-        
-        new mapboxgl.Marker(markerEl)
-          .setLngLat([car.location.lng, car.location.lat])
-          .setPopup(new mapboxgl.Popup().setHTML(popupHTML))
-          .addTo(map);
-      }
-    });
-  };
-  
+
   return (
-    <div className="min-h-screen flex flex-col">
-      <Navbar />
-      
-      <div className="container mx-auto px-4 py-8 flex-1">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center mb-6">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="mr-4"
-              onClick={() => navigate('/dashboard')}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Dashboard
-            </Button>
-            <h1 className="text-2xl font-bold">Car Price Radius Map</h1>
-          </div>
-          
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="w-full md:w-96">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Price Radius Search</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="targetPrice">Target Price (£)</Label>
-                    <Input 
-                      id="targetPrice" 
-                      type="number" 
-                      placeholder="e.g. 25000" 
-                      value={targetPrice}
-                      onChange={(e) => setTargetPrice(e.target.value)}
-                    />
-                  </div>
-                  
-                  {userSubscription?.dealer_postcode && (
-                    <div className="space-y-2">
-                      <Label>Dealer Postcode</Label>
-                      <div className="flex items-center gap-2">
-                        <div className="border rounded p-2 bg-muted flex-1">
-                          {userSubscription.dealer_postcode}
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={searchWithDealerLocation}
-                          disabled={isLoading || !dealerLocation}
-                        >
-                          {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                          ) : (
-                            <Search className="h-4 w-4 mr-1" />
-                          )}
-                          Search
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {!userSubscription?.dealer_postcode && (
-                    <div className="text-sm text-muted-foreground">
-                      <p>Set your dealer postcode in subscription settings to use price radius search.</p>
-                    </div>
-                  )}
-                  
-                  {isLoading && (
-                    <div className="flex justify-center items-center py-4">
-                      <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                      <span>Searching...</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-              
-              {selectedCar && (
-                <Card className="mt-4">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Selected Vehicle</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="text-sm font-medium">{selectedCar.brand} {selectedCar.model}</div>
-                      <div className="text-sm">{selectedCar.engineType}</div>
-                      {selectedCar.year && <div className="text-sm">Year: {selectedCar.year}</div>}
-                      {selectedCar.mileage && <div className="text-sm">Mileage: {selectedCar.mileage}</div>}
-                      <div className="text-sm">Target Price: £{parseFloat(targetPrice).toLocaleString()}</div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              
-              {mapError && (
-                <Card className="mt-4 border-red-200 bg-red-50 dark:bg-red-900/10">
-                  <CardHeader>
-                    <CardTitle className="text-lg text-red-600">Map Error</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-sm text-red-600">
-                      {mapError}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-            
-            <div className="flex-1 h-[600px] relative">
-              {isMapLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-                  <Loader2 className="h-8 w-8 animate-spin mr-2" />
-                  <span>Loading map...</span>
-                </div>
-              )}
-              <div 
-                ref={mapContainer} 
-                className="w-full h-full rounded-lg border shadow-sm overflow-hidden"
-              />
-            </div>
-          </div>
-          
-          {searchResults.length > 0 && (
-            <div className="mt-8">
-              <h2 className="text-xl font-bold mb-4">Search Results</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {searchResults.map((result) => (
-                  <Card key={result.id}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-lg">{result.brand} {result.model}</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span className="font-medium">Price:</span>
-                          <span>£{result.priceComparison.marketPrice.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Year:</span>
-                          <span>{result.year}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Mileage:</span>
-                          <span>{result.mileage}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Dealer:</span>
-                          <span>{result.dealerName}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Location:</span>
-                          <span>{result.location.postcode}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+    <div>
+      <div className="sidebar">
+        Longitude: {lng} | Latitude: {lat} | Zoom: {zoom}
       </div>
-      
-      <Footer />
+      <div ref={mapContainer} className="map-container" style={{ height: '400px' }} />
+      <div>
+        <button onClick={() => fetchScrapedListings(carId)} disabled={isLoading}>
+          {isLoading ? 'Loading...' : 'Load Scraped Listings'}
+        </button>
+      </div>
     </div>
   );
 };

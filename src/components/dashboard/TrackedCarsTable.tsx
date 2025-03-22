@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { EditVehicleDialog } from "./EditVehicleDialog";
 import { ScrapeButton } from "./ScrapeButton";
-import { ScrapedListing } from "@/hooks/use-tracked-cars";
+import { ScrapedListing } from "@/integrations/supabase/database.types";
 
 interface TrackedCarsTableProps {
   trackedCars: TrackedCar[];

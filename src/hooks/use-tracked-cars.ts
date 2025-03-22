@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
+import { ScrapedListing } from '@/integrations/supabase/database.types';
 
 export interface TrackedCar {
   id: string;
@@ -29,22 +30,7 @@ export interface AddCarParams {
   initialTags?: string[];
 }
 
-export interface ScrapedListing {
-  id: string;
-  tracked_car_id: string;
-  dealer_name: string;
-  url: string;
-  title: string;
-  price: number;
-  mileage: number;
-  year: number;
-  color: string;
-  location: string;
-  lat: number;
-  lng: number;
-  is_cheapest: boolean;
-  created_at: string;
-}
+export { type ScrapedListing };
 
 export const useTrackedCars = (userId: string | undefined) => {
   const [trackedCars, setTrackedCars] = useState<TrackedCar[]>([]);
@@ -125,7 +111,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw error;
       }
       
-      return data as ScrapedListing[] || [];
+      return data || [];
     } catch (error) {
       console.error("Error fetching scraped listings:", error);
       return [];

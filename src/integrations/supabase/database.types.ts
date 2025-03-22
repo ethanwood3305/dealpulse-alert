@@ -1,8 +1,8 @@
 
-import { Database } from './types';
+import { Database as SupabaseDatabase } from './types';
 
 // Export table names as a type for better type checking
-export type Tables = keyof Database['public']['Tables'];
+export type Tables = keyof SupabaseDatabase['public']['Tables'];
 
 // Define ScrapedListing type from the database structure
 export interface ScrapedListing {
@@ -22,19 +22,5 @@ export interface ScrapedListing {
   created_at: string;
 }
 
-// Extend Database type to include scraped_vehicle_listings
-declare module './types' {
-  interface Database {
-    public: {
-      Tables: {
-        scraped_vehicle_listings: {
-          Row: ScrapedListing;
-          Insert: Partial<ScrapedListing> & { tracked_car_id: string };
-          Update: Partial<ScrapedListing>;
-        };
-      } & Database['public']['Tables'];
-    };
-  }
-}
-
-export type { Database };
+// Export the Database type
+export type { SupabaseDatabase as Database };

@@ -189,6 +189,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      get_scraped_listings_for_car: {
+        Args: {
+          car_id: string
+        }
+        Returns: {
+          id: string
+          tracked_car_id: string
+          dealer_name: string
+          url: string
+          title: string
+          price: number
+          mileage: number
+          year: number
+          color: string
+          location: string
+          lat: number
+          lng: number
+          is_cheapest: boolean
+          created_at: string
+        }[]
+      }
       get_user_subscription: {
         Args: {
           user_uuid: string
