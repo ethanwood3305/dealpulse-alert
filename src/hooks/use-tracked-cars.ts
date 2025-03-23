@@ -312,6 +312,17 @@ export const useTrackedCars = (userId: string | undefined) => {
     try {
       if (!userId) return false;
       
+      // First, delete any associated scraped listings
+      const { error: scrapedListingsError } = await supabase
+        .from('scraped_vehicle_listings')
+        .delete()
+        .eq('tracked_car_id', id);
+        
+      if (scrapedListingsError) {
+        throw scrapedListingsError;
+      }
+      
+      // Then delete the tracked car
       const { error } = await supabase
         .from('tracked_urls')
         .delete()
