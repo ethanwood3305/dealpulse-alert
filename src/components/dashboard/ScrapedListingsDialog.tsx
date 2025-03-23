@@ -95,7 +95,9 @@ export function ScrapedListingsDialog({
                       </p>
                       {isPriceBetter && (
                         <p className="text-xs text-green-600 dark:text-green-400">
-                          {percentageDiff.toFixed(1)}% cheaper
+                          <a href={listing.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            {percentageDiff.toFixed(1)}% cheaper - View Deal
+                          </a>
                         </p>
                       )}
                     </div>
