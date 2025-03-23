@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Car as CarIcon, MapPin, Edit, ExternalLink } from "lucide-react";
@@ -92,8 +91,12 @@ export function TrackedCarsTable({
     const listings = getListingsForCar(carId);
     if (!listings || listings.length === 0) return '';
     
-    const cheapestListing = listings.find(listing => listing.is_cheapest);
-    return cheapestListing ? cheapestListing.url : '';
+    const cheapestListing = listings.reduce((cheapest, current) => {
+      if (!cheapest) return current;
+      return current.price < cheapest.price ? current : cheapest;
+    }, null as ScrapedListing | null);
+    
+    return cheapestListing?.url || '';
   };
 
   return (
