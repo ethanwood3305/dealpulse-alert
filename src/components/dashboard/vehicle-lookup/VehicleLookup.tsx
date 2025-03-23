@@ -152,6 +152,9 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
       // Add registration as a tag
       const regTag = vehicleDetails.originalRegistration || vehicleDetails.registration.toUpperCase().replace(/\s+/g, '');
       
+      // Get engine size from the vehicle details
+      const engineSize = vehicleDetails.engineSize ? vehicleDetails.engineSize.toString() : undefined;
+      
       const carParams: AddCarParams = {
         brand: vehicleDetails.make,
         model: vehicleDetails.model,
@@ -161,7 +164,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         mileage: mileage || '0',
         price: price || undefined,
         initialTags: [regTag], // Add registration as initial tag
-        trim: vehicleDetails.trim // Add trim
+        trim: vehicleDetails.trim, // Add trim
+        engineSize: engineSize // Add engine size
       };
 
       const success = await addCar(carParams);

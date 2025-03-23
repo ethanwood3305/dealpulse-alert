@@ -18,6 +18,7 @@ export interface TrackedCar {
   tags: string[];
   url: string;
   trim?: string;
+  engineSize?: string;
 }
 
 export interface AddCarParams {
@@ -30,6 +31,7 @@ export interface AddCarParams {
   price?: string;
   initialTags?: string[];
   trim?: string;
+  engineSize?: string;
 }
 
 export { type ScrapedListing };
@@ -62,6 +64,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         let year;
         let color;
         let trim;
+        let engineSize;
         
         if (urlParts[3]) {
           const params = urlParts[3].split('&');
@@ -78,6 +81,9 @@ export const useTrackedCars = (userId: string | undefined) => {
             if (param.includes('trim=')) {
               trim = param.split('trim=')[1];
             }
+            if (param.includes('engine=')) {
+              engineSize = param.split('engine=')[1];
+            }
           });
         }
         
@@ -90,6 +96,7 @@ export const useTrackedCars = (userId: string | undefined) => {
           year,
           color,
           trim,
+          engineSize,
           tags: item.tags || [],
           cheapest_price: item.cheapest_price || item.last_price
         };
@@ -185,8 +192,9 @@ export const useTrackedCars = (userId: string | undefined) => {
       const colorParam = car.color ? `color=${car.color}` : '';
       const priceParam = car.price ? `price=${car.price}` : '';
       const trimParam = car.trim ? `trim=${car.trim}` : '';
+      const engineParam = car.engineSize ? `engine=${car.engineSize}` : '';
       
-      const params = [mileageParam, yearParam, colorParam, priceParam, trimParam]
+      const params = [mileageParam, yearParam, colorParam, priceParam, trimParam, engineParam]
         .filter(Boolean)
         .join('&');
       
@@ -252,8 +260,9 @@ export const useTrackedCars = (userId: string | undefined) => {
       const colorParam = carToUpdate.color ? `color=${carToUpdate.color}` : '';
       const priceParam = price ? `price=${price}` : '';
       const trimParam = carToUpdate.trim ? `trim=${carToUpdate.trim}` : '';
+      const engineParam = carToUpdate.engineSize ? `engine=${carToUpdate.engineSize}` : '';
       
-      const params = [mileageParam, yearParam, colorParam, priceParam, trimParam]
+      const params = [mileageParam, yearParam, colorParam, priceParam, trimParam, engineParam]
         .filter(Boolean)
         .join('&');
       
