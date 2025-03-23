@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Car as CarIcon, MapPin, Edit, ExternalLink } from "lucide-react";
@@ -8,6 +7,7 @@ import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { EditVehicleDialog } from "./EditVehicleDialog";
 import { ScrapedListing } from "@/integrations/supabase/database.types";
 import { useNavigate } from "react-router-dom";
+import { ScrapeButton } from "./ScrapeButton";
 import {
   Table,
   TableBody,
@@ -131,7 +131,10 @@ export function TrackedCarsTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {trackedCars.map((car) => (
+                {trackedCars.map((car) => {
+                  const cheapestUrl = getListingUrl(car.id);
+                  
+                  return (
                   <TableRow key={car.id}>
                     <TableCell>
                       <div className="font-medium">{car.brand} {car.model}</div>
@@ -152,15 +155,22 @@ export function TrackedCarsTable({
                         </div>
                       ) : car.cheapest_price && car.cheapest_price < (car.last_price || Infinity) ? (
                         <div className="text-sm text-red-600 dark:text-red-400">
-                          <a 
-                            href={getListingUrl(car.id)} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="flex items-center hover:underline"
-                          >
-                            Found at £{car.cheapest_price.toLocaleString()}
-                            <ExternalLink className="h-3 w-3 ml-1" />
-                          </a>
+                          {cheapestUrl ? (
+                            <a 
+                              href={cheapestUrl} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center hover:underline"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              Found at £{car.cheapest_price.toLocaleString()}
+                              <ExternalLink className="h-3 w-3 ml-1" />
+                            </a>
+                          ) : (
+                            <span>Found at £{car.cheapest_price.toLocaleString()}</span>
+                          )}
                         </div>
                       ) : null}
                     </TableCell>
@@ -189,6 +199,16 @@ export function TrackedCarsTable({
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
+                        
+                        {onTriggerScraping && getListingsForCar && (
+                          <ScrapeButton
+                            car={car}
+                            listings={getListingsForCar(car.id)}
+                            onTriggerScraping={onTriggerScraping}
+                            isScrapingCar={isScrapingCar || false}
+                          />
+                        )}
+                        
                         <Button 
                           variant="ghost"
                           size="sm"
@@ -209,7 +229,7 @@ export function TrackedCarsTable({
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )})}
               </TableBody>
             </Table>
           </div>
