@@ -312,24 +312,46 @@ export const useTrackedCars = (userId: string | undefined) => {
     try {
       if (!userId) return false;
       
-      // First, delete any associated scraped listings
-      const { error: scrapedListingsError } = await supabase
+      console.log(`Attempting to delete car with ID: ${id}`);
+      
+      // First, check if there are any scraped listings for this car
+      const { data: listingsData, error: listingsCheckError } = await supabase
         .from('scraped_vehicle_listings')
-        .delete()
+        .select('id')
         .eq('tracked_car_id', id);
-        
-      if (scrapedListingsError) {
-        throw scrapedListingsError;
+      
+      if (listingsCheckError) {
+        console.error('Error checking for scraped listings:', listingsCheckError);
+        throw listingsCheckError;
       }
       
-      // Then delete the tracked car
-      const { error } = await supabase
+      // If there are scraped listings, delete them
+      if (listingsData && listingsData.length > 0) {
+        console.log(`Found ${listingsData.length} scraped listings to delete`);
+        
+        const { error: deleteListingsError } = await supabase
+          .from('scraped_vehicle_listings')
+          .delete()
+          .eq('tracked_car_id', id);
+        
+        if (deleteListingsError) {
+          console.error('Error deleting scraped listings:', deleteListingsError);
+          throw deleteListingsError;
+        }
+        
+        console.log('Successfully deleted scraped listings');
+      }
+      
+      // After all scraped listings are deleted, delete the tracked car
+      console.log('Now deleting the tracked car');
+      const { error: deleteCarError } = await supabase
         .from('tracked_urls')
         .delete()
         .eq('id', id);
-        
-      if (error) {
-        throw error;
+      
+      if (deleteCarError) {
+        console.error('Error deleting tracked car:', deleteCarError);
+        throw deleteCarError;
       }
       
       await fetchTrackedCars(userId);
@@ -340,6 +362,7 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       return true;
     } catch (error: any) {
+      console.error('Full error details:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to remove vehicle. Please try again later.",
