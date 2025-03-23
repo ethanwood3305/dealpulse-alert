@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -313,8 +314,8 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       console.log(`Attempting to delete car with ID: ${id}`);
       
-      // IMPORTANT: Use RPC function instead of direct deletion to handle the foreign key constraint
-      const { data, error } = await supabase.rpc('delete_tracked_car_with_listings', {
+      // Call the RPC function that handles deletion of both the car and its listings
+      const { error } = await supabase.rpc('delete_tracked_car_with_listings', {
         car_id: id
       });
       
@@ -323,7 +324,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw error;
       }
       
-      console.log('Successfully deleted car and associated listings:', data);
+      console.log('Successfully deleted car and associated listings');
       
       // Update local state
       await fetchTrackedCars(userId);
