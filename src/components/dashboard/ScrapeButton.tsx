@@ -42,7 +42,7 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
         ) : (
           <Globe className="h-4 w-4 mr-1" />
         )}
-        Find Similar
+        Find Cheapest
       </Button>
       
       <ScrapedListingsDialog

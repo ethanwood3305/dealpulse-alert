@@ -32,7 +32,7 @@ export function ScrapedListingsDialog({
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
-            <span>Similar Vehicles from Dealers</span>
+            <span>Cheapest Similar Vehicle</span>
             <Button 
               variant="outline" 
               size="sm" 
@@ -40,7 +40,7 @@ export function ScrapedListingsDialog({
               disabled={isLoading}
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Refresh Results
+              Refresh Search
             </Button>
           </DialogTitle>
           <DialogDescription>
@@ -53,7 +53,7 @@ export function ScrapedListingsDialog({
               {car.color && <Badge variant="outline">{car.color}</Badge>}
             </div>
             <div className="text-sm mt-2">
-              Showing similar vehicles. Cheaper alternatives are highlighted.
+              Showing the cheapest similar vehicle found.
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -61,7 +61,7 @@ export function ScrapedListingsDialog({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-10">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Searching dealer sites for similar vehicles...</p>
+            <p className="text-muted-foreground">Searching dealer sites for the cheapest similar vehicle...</p>
           </div>
         ) : listings.length === 0 ? (
           <div className="text-center py-10">
@@ -80,9 +80,7 @@ export function ScrapedListingsDialog({
               return (
                 <div 
                   key={listing.id} 
-                  className={`rounded-lg border p-4 transition-colors ${
-                    listing.is_cheapest ? 'bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800' : ''
-                  }`}
+                  className="rounded-lg border p-4 transition-colors bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -90,7 +88,7 @@ export function ScrapedListingsDialog({
                       <p className="text-sm text-muted-foreground">{listing.dealer_name}</p>
                     </div>
                     <div className="text-right">
-                      <p className={`font-bold text-lg ${isPriceBetter ? 'text-green-600 dark:text-green-400' : ''}`}>
+                      <p className="font-bold text-lg text-green-600 dark:text-green-400">
                         £{listing.price.toLocaleString()}
                       </p>
                       {isPriceBetter && (

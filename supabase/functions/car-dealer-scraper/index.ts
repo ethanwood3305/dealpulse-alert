@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
@@ -86,41 +87,48 @@ async function scrapeForVehicle(supabase, vehicleId) {
     const carDetails = parseVehicleDetails(vehicle);
     console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
 
+    // Get vehicle listings from various sources
     const scrapedListings = await getVehicleListings(carDetails);
     
-    await supabase
-      .from('scraped_vehicle_listings')
-      .delete()
-      .eq('tracked_car_id', vehicleId);
-
-    if (scrapedListings.length > 0) {
+    // Find the cheapest listing
+    const cheapestListing = findCheapestListing(scrapedListings);
+    
+    if (cheapestListing) {
+      // Clear previous listings for this car
+      await supabase
+        .from('scraped_vehicle_listings')
+        .delete()
+        .eq('tracked_car_id', vehicleId);
+      
+      // Only insert the cheapest listing
       const { error: insertError } = await supabase
         .from('scraped_vehicle_listings')
-        .insert(scrapedListings.map(listing => ({
-          ...listing,
-          tracked_car_id: vehicleId
-        })));
+        .insert({
+          ...cheapestListing,
+          tracked_car_id: vehicleId,
+          is_cheapest: true
+        });
 
       if (insertError) {
-        console.error('Error inserting scraped listings:', insertError);
+        console.error('Error inserting cheapest listing:', insertError);
       } else {
-        console.log(`Successfully inserted ${scrapedListings.length} listings for vehicle ${vehicleId}`);
+        console.log(`Successfully inserted cheapest listing for vehicle ${vehicleId} at price £${cheapestListing.price}`);
       }
 
-      const cheapestListing = findCheapestListing(scrapedListings);
-      if (cheapestListing) {
-        const currentCheapestPrice = vehicle.cheapest_price || Infinity;
-        const newCheapestPrice = cheapestListing.price;
+      // Update the vehicle's cheapest price if applicable
+      const currentCheapestPrice = vehicle.cheapest_price || Infinity;
+      const newCheapestPrice = cheapestListing.price;
 
-        if (newCheapestPrice < currentCheapestPrice) {
-          await supabase
-            .from('tracked_urls')
-            .update({ cheapest_price: newCheapestPrice })
-            .eq('id', vehicleId);
-          
-          console.log(`Updated cheapest price for vehicle ${vehicleId} to ${newCheapestPrice}`);
-        }
+      if (newCheapestPrice < currentCheapestPrice) {
+        await supabase
+          .from('tracked_urls')
+          .update({ cheapest_price: newCheapestPrice })
+          .eq('id', vehicleId);
+        
+        console.log(`Updated cheapest price for vehicle ${vehicleId} to ${newCheapestPrice}`);
       }
+    } else {
+      console.log(`No listings found for vehicle ${vehicleId}`);
     }
   } catch (error) {
     console.error(`Error processing vehicle ${vehicleId}:`, error);
@@ -192,6 +200,8 @@ function parseVehicleDetails(vehicle) {
 }
 
 function findCheapestListing(listings) {
+  if (!listings || listings.length === 0) return null;
+  
   return listings.reduce((cheapest, current) => {
     return (!cheapest || current.price < cheapest.price) ? current : cheapest;
   }, null);

@@ -139,8 +139,8 @@ export const useTrackedCars = (userId: string | undefined) => {
       }
       
       toast({
-        title: "Scraping Started",
-        description: "We're searching for similar vehicles. This may take a moment."
+        title: "Search Started",
+        description: "We're searching for the cheapest similar vehicle. This may take a moment."
       });
       
       // Wait a bit to allow scraping to complete
@@ -161,8 +161,10 @@ export const useTrackedCars = (userId: string | undefined) => {
       }
       
       toast({
-        title: "Vehicle Search Complete",
-        description: `Found ${listings.length} similar vehicles from dealers.`
+        title: "Search Complete",
+        description: listings.length > 0 
+          ? "Found the cheapest similar vehicle from dealers." 
+          : "No similar vehicles found at this time."
       });
       
       return listings;
