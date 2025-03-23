@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
@@ -89,6 +90,8 @@ async function scrapeForVehicle(supabase, vehicleId) {
       const cheapestListing = findCheapestListing(scrapedListings);
       
       if (cheapestListing) {
+        console.log(`Found cheapest listing: £${cheapestListing.price} - ${cheapestListing.title}`);
+        
         // Clear previous listings for this car
         await supabase
           .from('scraped_vehicle_listings')
@@ -96,17 +99,31 @@ async function scrapeForVehicle(supabase, vehicleId) {
           .eq('tracked_car_id', vehicleId);
         
         // Insert all scraped listings
-        const insertPromises = scrapedListings.map(listing => {
-          return supabase
+        for (const listing of scrapedListings) {
+          const isCheapest = listing.price === cheapestListing.price;
+          
+          const { data, error } = await supabase
             .from('scraped_vehicle_listings')
             .insert({
-              ...listing,
               tracked_car_id: vehicleId,
-              is_cheapest: listing.price === cheapestListing.price
+              dealer_name: listing.dealer_name,
+              url: listing.url,
+              title: listing.title,
+              price: listing.price,
+              mileage: listing.mileage,
+              year: listing.year,
+              color: listing.color,
+              location: listing.location,
+              lat: listing.lat,
+              lng: listing.lng,
+              is_cheapest: isCheapest
             });
-        });
+          
+          if (error) {
+            console.error(`Error inserting listing for ${vehicleId}:`, error);
+          }
+        }
         
-        await Promise.all(insertPromises);
         console.log(`Successfully inserted ${scrapedListings.length} listings for vehicle ${vehicleId}`);
 
         // Update the vehicle's cheapest price if applicable

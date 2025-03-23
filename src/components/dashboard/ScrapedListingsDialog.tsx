@@ -27,6 +27,7 @@ export function ScrapedListingsDialog({
 }: ScrapedListingsDialogProps) {
   const cheapestPrice = car.cheapest_price || car.last_price;
   const targetPrice = car.last_price;
+  const cheapestListing = listings.find(listing => listing.is_cheapest);
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -79,6 +80,18 @@ export function ScrapedListingsDialog({
               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
               <AlertDescription className="text-green-600 dark:text-green-400">
                 Found {listings.length} real {listings.length === 1 ? 'vehicle' : 'vehicles'} from dealer websites.
+                {cheapestListing && (
+                  <span className="font-semibold ml-1">
+                    <a 
+                      href={cheapestListing.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="hover:underline"
+                    >
+                      Cheapest: £{cheapestListing.price.toLocaleString()}
+                    </a>
+                  </span>
+                )}
               </AlertDescription>
             </Alert>
             
@@ -90,7 +103,9 @@ export function ScrapedListingsDialog({
               return (
                 <div 
                   key={listing.id} 
-                  className="rounded-lg border p-4 transition-colors bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
+                  className={`rounded-lg border p-4 transition-colors ${listing.is_cheapest 
+                    ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800" 
+                    : "bg-card"}`}
                 >
                   <div className="flex justify-between items-start">
                     <div>
@@ -98,7 +113,7 @@ export function ScrapedListingsDialog({
                       <p className="text-sm text-muted-foreground">{listing.dealer_name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-lg text-green-600 dark:text-green-400">
+                      <p className={`font-bold text-lg ${listing.is_cheapest ? "text-green-600 dark:text-green-400" : ""}`}>
                         £{listing.price.toLocaleString()}
                       </p>
                       {isPriceBetter && (

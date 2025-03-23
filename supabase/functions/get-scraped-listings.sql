@@ -1,26 +1,26 @@
 
--- Create a function to get scraped listings for a car
-CREATE OR REPLACE FUNCTION get_scraped_listings_for_car(car_id UUID)
-RETURNS SETOF json AS $$
+CREATE OR REPLACE FUNCTION public.get_scraped_listings_for_car(car_id uuid)
+ RETURNS TABLE(id uuid, tracked_car_id uuid, dealer_name text, url text, title text, price numeric, mileage integer, year integer, color text, location text, lat numeric, lng numeric, is_cheapest boolean, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+AS $function$
 BEGIN
   RETURN QUERY 
-  SELECT json_build_object(
-    'id', id,
-    'tracked_car_id', tracked_car_id,
-    'dealer_name', dealer_name,
-    'url', url,
-    'title', title,
-    'price', price,
-    'mileage', mileage,
-    'year', year,
-    'color', color,
-    'location', location,
-    'lat', lat,
-    'lng', lng,
-    'is_cheapest', is_cheapest,
-    'created_at', created_at
-  )
-  FROM scraped_vehicle_listings
-  WHERE tracked_car_id = car_id;
+  SELECT 
+    s.id,
+    s.tracked_car_id,
+    s.dealer_name,
+    s.url,
+    s.title,
+    s.price::numeric, -- Cast integer to numeric
+    s.mileage,
+    s.year,
+    s.color,
+    s.location,
+    s.lat,
+    s.lng,
+    s.is_cheapest,
+    s.created_at
+  FROM scraped_vehicle_listings s
+  WHERE s.tracked_car_id = car_id;
 END;
-$$ LANGUAGE plpgsql;
+$function$;
