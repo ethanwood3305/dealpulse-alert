@@ -94,6 +94,65 @@ export type Database = {
           },
         ]
       }
+      scraped_vehicle_listings: {
+        Row: {
+          color: string | null
+          created_at: string
+          dealer_name: string
+          id: string
+          is_cheapest: boolean | null
+          lat: number | null
+          lng: number | null
+          location: string | null
+          mileage: number
+          price: number
+          title: string
+          tracked_car_id: string
+          url: string
+          year: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          dealer_name: string
+          id?: string
+          is_cheapest?: boolean | null
+          lat?: number | null
+          lng?: number | null
+          location?: string | null
+          mileage: number
+          price: number
+          title: string
+          tracked_car_id: string
+          url: string
+          year: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          dealer_name?: string
+          id?: string
+          is_cheapest?: boolean | null
+          lat?: number | null
+          lng?: number | null
+          location?: string | null
+          mileage?: number
+          price?: number
+          title?: string
+          tracked_car_id?: string
+          url?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraped_vehicle_listings_tracked_car_id_fkey"
+            columns: ["tracked_car_id"]
+            isOneToOne: false
+            referencedRelation: "tracked_urls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           api_key: string | null
