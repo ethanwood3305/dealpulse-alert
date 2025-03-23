@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Car as CarIcon, MapPin, Edit, ExternalLink } from "lucide-react";
@@ -163,7 +164,7 @@ export function TrackedCarsTable({
                               href={cheapestUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="flex items-center hover:underline cursor-pointer font-medium"
+                              className="flex items-center underline hover:text-red-800 dark:hover:text-red-300 cursor-pointer font-medium"
                             >
                               Found at £{car.cheapest_price.toLocaleString()}
                               <ExternalLink className="h-3 w-3 ml-1" />
