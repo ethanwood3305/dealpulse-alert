@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -143,19 +142,15 @@ export const useTrackedCars = (userId: string | undefined) => {
         description: "We're searching for the cheapest similar vehicle. This may take a moment."
       });
       
-      // Wait a bit to allow scraping to complete
       await new Promise(resolve => setTimeout(resolve, 5000));
       
-      // Fetch the scraped listings
       const listings = await fetchScrapedListings(carId);
       
-      // Update the scrapedListings state with typesafe data
       setScrapedListings(prev => ({
         ...prev,
         [carId]: listings
       }));
       
-      // Refresh the car data to get the updated cheapest price
       if (userId) {
         await fetchTrackedCars(userId);
       }
@@ -220,12 +215,8 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw error;
       }
       
-      // Immediately trigger scraping for the newly added car
       if (data && data.length > 0) {
-        // Wait for the fetchTrackedCars to complete so we have the latest data
         await fetchTrackedCars(userId);
-        
-        // Then trigger scraping in the background
         triggerScraping(data[0].id).catch(e => 
           console.error("Error auto-triggering scraping for new car:", e)
         );
@@ -312,58 +303,21 @@ export const useTrackedCars = (userId: string | undefined) => {
     try {
       if (!userId) return false;
       
-      console.log(`Attempting to delete car with ID: ${id}`);
+      console.log(`Attempting to delete car with ID: ${id} using database function`);
       
-      // First, fetch all scraped listings for this car to make sure we catch them all
-      const { data: listings, error: fetchError } = await supabase
-        .from('scraped_vehicle_listings')
-        .select('id')
-        .eq('tracked_car_id', id);
-        
-      if (fetchError) {
-        console.error('Error fetching scraped listings before delete:', fetchError);
-        throw fetchError;
+      const { data, error } = await supabase.rpc('delete_car_completely', {
+        car_id: id
+      });
+      
+      if (error) {
+        console.error('Error deleting car using database function:', error);
+        throw error;
       }
       
-      console.log(`Found ${listings?.length || 0} listings to delete`);
+      console.log('Successfully deleted car and all associated listings');
       
-      // Delete each listing individually to ensure complete deletion
-      if (listings && listings.length > 0) {
-        for (const listing of listings) {
-          const { error: deleteListingError } = await supabase
-            .from('scraped_vehicle_listings')
-            .delete()
-            .eq('id', listing.id);
-            
-          if (deleteListingError) {
-            console.error(`Error deleting scraped listing ${listing.id}:`, deleteListingError);
-            throw deleteListingError;
-          }
-        }
-      }
-      
-      console.log('Successfully deleted all associated listings');
-      
-      // Add a small delay to ensure database consistency
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Now delete the car itself
-      const { error: carError } = await supabase
-        .from('tracked_urls')
-        .delete()
-        .eq('id', id);
-      
-      if (carError) {
-        console.error('Error deleting tracked car:', carError);
-        throw carError;
-      }
-      
-      console.log('Successfully deleted tracked car');
-      
-      // Update local state
       await fetchTrackedCars(userId);
       
-      // Clear any scraped listings for this car from local state
       setScrapedListings(prev => {
         const updated = { ...prev };
         delete updated[id];

@@ -248,6 +248,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      delete_car_completely: {
+        Args: {
+          car_id: string
+        }
+        Returns: boolean
+      }
       delete_tracked_car_with_listings: {
         Args: {
           car_id: string
