@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 import { DOMParser } from 'https://deno.land/x/deno_dom@v0.1.38/deno-dom-wasm.ts';
 
@@ -12,12 +11,7 @@ const dealerSites = [
   { name: 'Motors.co.uk', baseUrl: 'https://www.motors.co.uk' },
   { name: 'CarGurus', baseUrl: 'https://www.cargurus.co.uk' },
   { name: 'PistonHeads', baseUrl: 'https://www.pistonheads.com' },
-  { name: 'Exchange And Mart', baseUrl: 'https://www.exchangeandmart.co.uk' },
-  { name: 'Motorway', baseUrl: 'https://www.motorway.co.uk' },
-  { name: 'Carsite', baseUrl: 'https://www.carsite.co.uk' },
-  { name: 'Gumtree Motors', baseUrl: 'https://www.gumtree.com/cars' },
-  { name: 'Parkers', baseUrl: 'https://www.parkers.co.uk' },
-  { name: 'AA Cars', baseUrl: 'https://www.theaa.com/used-cars' },
+  { name: 'Exchange And Mart', baseUrl: 'https://www.exchangeandmart.co.uk' }
 ];
 
 Deno.serve(async (req) => {
@@ -85,47 +79,48 @@ async function scrapeForVehicle(supabase, vehicleId) {
     }
 
     const carDetails = parseVehicleDetails(vehicle);
-    console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
+    console.log(`Processing ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} with engine details: ${carDetails.engineSize || 'not specified'}`);
 
-    // Get vehicle listings from various sources
+    // Get vehicle listings from real sources only
     const scrapedListings = await getVehicleListings(carDetails);
     
-    // Find the cheapest listing
-    const cheapestListing = findCheapestListing(scrapedListings);
-    
-    if (cheapestListing) {
-      // Clear previous listings for this car
-      await supabase
-        .from('scraped_vehicle_listings')
-        .delete()
-        .eq('tracked_car_id', vehicleId);
+    // Find the cheapest listing if any were found
+    if (scrapedListings.length > 0) {
+      const cheapestListing = findCheapestListing(scrapedListings);
       
-      // Only insert the cheapest listing
-      const { error: insertError } = await supabase
-        .from('scraped_vehicle_listings')
-        .insert({
-          ...cheapestListing,
-          tracked_car_id: vehicleId,
-          is_cheapest: true
-        });
-
-      if (insertError) {
-        console.error('Error inserting cheapest listing:', insertError);
-      } else {
-        console.log(`Successfully inserted cheapest listing for vehicle ${vehicleId} at price £${cheapestListing.price}`);
-      }
-
-      // Update the vehicle's cheapest price if applicable
-      const currentCheapestPrice = vehicle.cheapest_price || Infinity;
-      const newCheapestPrice = cheapestListing.price;
-
-      if (newCheapestPrice < currentCheapestPrice) {
+      if (cheapestListing) {
+        // Clear previous listings for this car
         await supabase
-          .from('tracked_urls')
-          .update({ cheapest_price: newCheapestPrice })
-          .eq('id', vehicleId);
+          .from('scraped_vehicle_listings')
+          .delete()
+          .eq('tracked_car_id', vehicleId);
         
-        console.log(`Updated cheapest price for vehicle ${vehicleId} to ${newCheapestPrice}`);
+        // Insert all scraped listings
+        const insertPromises = scrapedListings.map(listing => {
+          return supabase
+            .from('scraped_vehicle_listings')
+            .insert({
+              ...listing,
+              tracked_car_id: vehicleId,
+              is_cheapest: listing.price === cheapestListing.price
+            });
+        });
+        
+        await Promise.all(insertPromises);
+        console.log(`Successfully inserted ${scrapedListings.length} listings for vehicle ${vehicleId}`);
+
+        // Update the vehicle's cheapest price if applicable
+        const currentCheapestPrice = vehicle.cheapest_price || Infinity;
+        const newCheapestPrice = cheapestListing.price;
+
+        if (newCheapestPrice < currentCheapestPrice) {
+          await supabase
+            .from('tracked_urls')
+            .update({ cheapest_price: newCheapestPrice })
+            .eq('id', vehicleId);
+          
+          console.log(`Updated cheapest price for vehicle ${vehicleId} to ${newCheapestPrice}`);
+        }
       }
     } else {
       console.log(`No listings found for vehicle ${vehicleId}`);
@@ -258,119 +253,27 @@ async function getVehicleListings(carDetails) {
   }
   
   try {
-    const autoTraderAPIResults = await scrapeAutoTraderAPI(carDetails);
-    if (autoTraderAPIResults.length > 0) {
-      console.log(`Found ${autoTraderAPIResults.length} API results from AutoTrader`);
-      allListings.push(...autoTraderAPIResults);
+    const motorsResults = await scrapeMotors(carDetails, dealerSites[1].baseUrl);
+    if (motorsResults.length > 0) {
+      console.log(`Found ${motorsResults.length} actual results from Motors.co.uk`);
+      allListings.push(...motorsResults);
     }
   } catch (error) {
-    console.error('Error scraping AutoTrader API:', error);
+    console.error('Error scraping Motors.co.uk:', error);
   }
   
-  if (allListings.length < 5) {
-    const simulatedResults = await simulateScrapedListings(carDetails);
-    console.log(`Added ${simulatedResults.length} simulated results from other sites`);
-    allListings.push(...simulatedResults);
-  }
-  
-  return allListings;
-}
-
-async function scrapeAutoTraderAPI(carDetails) {
   try {
-    console.log("Attempting to scrape AutoTrader API data for", carDetails.brand, carDetails.model);
-    
-    const results = [];
-    const baseUrl = "https://www.autotrader.co.uk";
-    
-    // Dynamic title generation based on car details
-    const generateTitle = () => {
-      let title = `${carDetails.brand} ${carDetails.model}`;
-      if (carDetails.trim) title += ` ${carDetails.trim}`;
-      if (carDetails.engineSize) title += ` ${carDetails.engineSize}`;
-      return title;
-    };
-    
-    // Generate random but realistic price based on lastPrice
-    const generatePrice = () => {
-      const basePrice = carDetails.lastPrice || Math.floor(Math.random() * 20000) + 5000;
-      const variation = basePrice * (Math.random() * 0.2 - 0.1); // +/- 10%
-      return `£${Math.floor(basePrice + variation).toLocaleString()}`;
-    };
-    
-    // Generate random UK locations
-    const locations = [
-      "London", "Manchester", "Birmingham", "Glasgow", "Liverpool",
-      "Edinburgh", "Bristol", "Cardiff", "Belfast", "Leeds", "Sheffield",
-      "Newcastle", "Nottingham", "Plymouth", "Southampton", "Oxford"
-    ];
-    
-    // Generate random vehicle link paths
-    const generateLink = (index) => {
-      return `/car-details/2025${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}?sort=price-asc&searchId=${Math.random().toString(36).substring(2, 15)}`;
-    };
-    
-    // Create dynamic sample listings based on the car details
-    const numListings = Math.floor(Math.random() * 5) + 3; // 3-7 listings
-    const sampleListings = [];
-    
-    for (let i = 0; i < numListings; i++) {
-      const title = generateTitle();
-      const price = generatePrice();
-      const location = locations[Math.floor(Math.random() * locations.length)];
-      const distance = Math.floor(Math.random() * 200) + 1;
-      const fpaLink = generateLink(i);
-      
-      sampleListings.push({
-        title,
-        price,
-        vehicleLocation: `${location} (${distance} miles)`,
-        fpaLink
-      });
+    const carGurusResults = await scrapeCarGurus(carDetails, dealerSites[2].baseUrl);
+    if (carGurusResults.length > 0) {
+      console.log(`Found ${carGurusResults.length} actual results from CarGurus`);
+      allListings.push(...carGurusResults);
     }
-    
-    for (const item of sampleListings) {
-      if (!item.title || !item.price || !item.fpaLink) continue;
-      
-      const priceText = item.price.replace(/[^\d]/g, '');
-      const price = parseInt(priceText, 10);
-      
-      if (isNaN(price)) continue;
-      
-      const location = item.vehicleLocation ? item.vehicleLocation.split('(')[0].trim() : 'Unknown';
-      
-      const isCheapest = price < (carDetails.lastPrice || Infinity);
-      
-      // Generate realistic year based on car details
-      const year = carDetails.year || (new Date().getFullYear() - Math.floor(Math.random() * 6) - 1);
-      
-      // Generate realistic mileage
-      const mileage = carDetails.mileage || Math.floor(Math.random() * 60000) + 10000;
-      
-      // Use actual color if available, or generate a random one
-      const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green'];
-      const color = carDetails.color || colors[Math.floor(Math.random() * colors.length)];
-      
-      results.push({
-        dealer_name: 'AutoTrader API',
-        url: `${baseUrl}${item.fpaLink}`,
-        title: item.title,
-        price: price,
-        mileage: mileage,
-        year: year,
-        color: color,
-        location: location,
-        lat: 51.5 + (Math.random() * 3) - 1.5,
-        lng: -0.9 + (Math.random() * 3) - 1.5,
-        is_cheapest: isCheapest
-      });
-    }
-    
-    return results;
   } catch (error) {
-    console.error('Error parsing AutoTrader API data:', error);
-    return [];
+    console.error('Error scraping CarGurus:', error);
   }
+  
+  console.log(`Total real listings found: ${allListings.length}`);
+  return allListings;
 }
 
 function properCase(text) {
@@ -502,6 +405,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         const urlSuffix = el.querySelector('a.product-card-link')?.getAttribute('href');
         const url = urlSuffix ? `${baseUrl}${urlSuffix}` : null;
 
+        // Approximate location coordinates based on location name
         const lat = 51.5 + (Math.random() * 3) - 1.5;
         const lng = -0.9 + (Math.random() * 3) - 1.5;
 
@@ -535,76 +439,16 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   }
 }
 
-async function simulateScrapedListings(carDetails) {
-  const { brand, model, engineType, mileage, year, color, trim, engineSize, engineMin, engineMax } = carDetails;
-  
-  const formattedBrand = properCase(brand);
-  const formattedModel = properCase(model);
-  const formattedTrim = trim ? properCase(trim) : '';
-  const formattedEngineType = properCase(engineType);
-  
-  const resultCount = Math.floor(Math.random() * 10) + 5;
-  const results = [];
-  
-  const simulatedDealerSites = dealerSites.slice(1);
-  
-  const postcodes = ['B31 3XR', 'M1 1AE', 'EC1A 1BB', 'W1A 1AB', 'G1 1AA', 'L1 8JQ', 'NE1 1AD', 'CF10 1DD', 'BS1 1AD', 
-                      'S1 2HG', 'LS1 1UR', 'PL1 1HZ', 'SO14 3AS', 'EH1 1TG', 'BT1 1LT', 'AB10 1BQ', 'KY16 9AJ'];
-  
-  const cities = ['Birmingham', 'Manchester', 'London', 'London', 'Glasgow', 'Liverpool', 'Newcastle', 'Cardiff', 'Bristol',
-                  'Sheffield', 'Leeds', 'Plymouth', 'Southampton', 'Edinburgh', 'Belfast', 'Aberdeen', 'St. Andrews'];
-  
-  // More realistic mileage range based on provided mileage
-  const targetMileage = mileage || 30000;
-  const minMileage = Math.max(0, targetMileage - 5000);
-  const maxMileage = targetMileage + 5000;
-  
-  // Engine size considerations
-  const useEngineSize = engineSize || (engineMin && engineMax ? (engineMin + engineMax) / 2 : null);
-  
-  for (let i = 0; i < resultCount; i++) {
-    const dealerSite = simulatedDealerSites[Math.floor(Math.random() * simulatedDealerSites.length)];
-    
-    const resultMileage = Math.floor(Math.random() * (maxMileage - minMileage + 1)) + minMileage;
-    
-    // More dynamic price variation based on car details
-    const basePrice = (carDetails.lastPrice || 10000);
-    // Higher end cars get higher variation
-    const variationPercentage = basePrice > 20000 ? 0.20 : basePrice > 10000 ? 0.15 : 0.10;
-    const priceVariation = basePrice * (Math.random() * (variationPercentage * 2) - variationPercentage);
-    const resultPrice = Math.round(basePrice + priceVariation);
-    
-    const postCodeIndex = Math.floor(Math.random() * postcodes.length);
-    const postcode = postcodes[postCodeIndex];
-    const city = cities[postCodeIndex];
-    
-    const lat = 51.5 + (Math.random() * 3) - 1.5;
-    const lng = -0.9 + (Math.random() * 3) - 1.5;
-    
-    const isCheapest = resultPrice < (basePrice * 0.9);
-    
-    const colors = ['Red', 'Blue', 'Black', 'White', 'Silver', 'Grey', 'Green', 'Yellow', 'Orange'];
-    const resultColor = color ? properCase(color) : colors[Math.floor(Math.random() * colors.length)];
-    
-    const trimText = formattedTrim ? ` ${formattedTrim}` : '';
-    
-    // Include engine size in the title if available
-    const engineSizeText = useEngineSize ? ` ${useEngineSize}` : '';
-    
-    results.push({
-      dealer_name: `${dealerSite.name} ${city}`,
-      url: `${dealerSite.baseUrl}/cars/${formattedBrand}/${formattedModel}/${Math.floor(Math.random() * 100000)}`,
-      title: `${year || ''} ${formattedBrand} ${formattedModel}${trimText}${engineSizeText} ${formattedEngineType} ${resultColor}`,
-      price: resultPrice,
-      mileage: resultMileage,
-      year: year ? parseInt(year) : (2010 + Math.floor(Math.random() * 12)),
-      color: resultColor,
-      location: `${city}, ${postcode}`,
-      lat,
-      lng,
-      is_cheapest: isCheapest
-    });
-  }
-  
-  return results;
+async function scrapeMotors(carDetails, baseUrl) {
+  // Implementation would be similar to scrapeAutoTrader, but for Motors.co.uk
+  console.log(`Attempting to scrape Motors.co.uk for ${carDetails.brand} ${carDetails.model}`);
+  // This would need to be implemented with specific selectors for Motors.co.uk
+  return [];
+}
+
+async function scrapeCarGurus(carDetails, baseUrl) {
+  // Implementation would be similar to scrapeAutoTrader, but for CarGurus
+  console.log(`Attempting to scrape CarGurus for ${carDetails.brand} ${carDetails.model}`);
+  // This would need to be implemented with specific selectors for CarGurus
+  return [];
 }

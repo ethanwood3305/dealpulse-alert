@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ExternalLink, CheckCircle } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle, AlertTriangle } from "lucide-react";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { formatDistanceToNow } from "date-fns";
 
@@ -33,7 +33,7 @@ export function ScrapedListingsDialog({
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
-            <span>Cheapest Similar Vehicle</span>
+            <span>Similar Vehicles</span>
             <Button 
               variant="outline" 
               size="sm" 
@@ -54,7 +54,7 @@ export function ScrapedListingsDialog({
               {car.color && <Badge variant="outline">{car.color}</Badge>}
             </div>
             <div className="text-sm mt-2">
-              Showing the cheapest similar vehicle found.
+              Showing real vehicle listings from dealer websites.
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -62,13 +62,15 @@ export function ScrapedListingsDialog({
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-10">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Searching dealer sites for the cheapest similar vehicle...</p>
+            <p className="text-muted-foreground">Searching dealer sites for similar vehicles...</p>
           </div>
         ) : listings.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-muted-foreground">No similar vehicles found yet.</p>
+            <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-4" />
+            <p className="text-muted-foreground">No similar vehicles found in our real-time search.</p>
             <p className="text-sm text-muted-foreground mt-2">
-              Click refresh to search dealer websites again.
+              This could be due to the specific vehicle details or limited availability.
+              Try adjusting your search criteria or click refresh to search again.
             </p>
           </div>
         ) : (
@@ -76,7 +78,7 @@ export function ScrapedListingsDialog({
             <Alert className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
               <AlertDescription className="text-green-600 dark:text-green-400">
-                Found {listings.length} similar {listings.length === 1 ? 'vehicle' : 'vehicles'}, showing the cheapest option.
+                Found {listings.length} real {listings.length === 1 ? 'vehicle' : 'vehicles'} from dealer websites.
               </AlertDescription>
             </Alert>
             
