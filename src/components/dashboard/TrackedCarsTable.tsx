@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Trash2, Car as CarIcon, MapPin, Edit } from "lucide-react";
+import { Trash2, Car as CarIcon, MapPin, Edit, ExternalLink } from "lucide-react";
 import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { TrackedCar } from "@/hooks/use-tracked-cars";
@@ -86,6 +86,16 @@ export function TrackedCarsTable({
     navigate(`/radius-map?carId=${carId}`);
   };
 
+  const getListingUrl = (carId: string) => {
+    if (!getListingsForCar) return '';
+    
+    const listings = getListingsForCar(carId);
+    if (!listings || listings.length === 0) return '';
+    
+    const cheapestListing = listings.find(listing => listing.is_cheapest);
+    return cheapestListing ? cheapestListing.url : '';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -135,11 +145,24 @@ export function TrackedCarsTable({
                       <div className="font-medium">
                         {car.last_price ? `£${car.last_price.toLocaleString()}` : "—"}
                       </div>
-                      {car.cheapest_price && car.cheapest_price < (car.last_price || Infinity) && (
-                        <div className="text-sm text-green-600 dark:text-green-400">
-                          Found at £{car.cheapest_price.toLocaleString()}
+                      
+                      {car.cheapest_price && car.last_price && car.cheapest_price === car.last_price ? (
+                        <div className="text-sm text-green-600 dark:text-green-400 font-medium">
+                          You have the cheapest listing currently.
                         </div>
-                      )}
+                      ) : car.cheapest_price && car.cheapest_price < (car.last_price || Infinity) ? (
+                        <div className="text-sm text-red-600 dark:text-red-400">
+                          <a 
+                            href={getListingUrl(car.id)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center hover:underline"
+                          >
+                            Found at £{car.cheapest_price.toLocaleString()}
+                            <ExternalLink className="h-3 w-3 ml-1" />
+                          </a>
+                        </div>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1 max-w-[200px]">
