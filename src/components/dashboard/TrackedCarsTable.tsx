@@ -1,13 +1,12 @@
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Trash2, Car as CarIcon, MapPin, Edit, ExternalLink } from "lucide-react";
-import { AlertDialog, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { TrackedCar } from "@/hooks/use-tracked-cars";
-import { EditVehicleDialog } from "./EditVehicleDialog";
-import { ScrapedListing } from "@/integrations/supabase/database.types";
 import { useNavigate } from "react-router-dom";
+import { TrackedCar } from "@/hooks/use-tracked-cars";
+import { ScrapedListing } from "@/integrations/supabase/database.types";
+import { EditVehicleDialog } from "./EditVehicleDialog";
+import { DeleteCarDialog } from "./DeleteCarDialog";
+import { EmptyCarsList } from "./EmptyCarsList";
+import { CarRow } from "./CarRow";
 import {
   Table,
   TableBody,
@@ -27,18 +26,6 @@ interface TrackedCarsTableProps {
   onTriggerScraping?: (carId: string) => Promise<ScrapedListing[]>;
   isScrapingCar?: boolean;
   getListingsForCar?: (carId: string) => ScrapedListing[];
-}
-
-function CompetitorTag({ tag, onRemove }: { tag: string; onRemove: () => void }) {
-  return (
-    <Badge variant="secondary" className="gap-x-1.5">
-      {tag}
-      <button onClick={onRemove} className="ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-        <Trash2 className="h-3 w-3" />
-        <span className="sr-only">Remove tag</span>
-      </button>
-    </Badge>
-  );
 }
 
 export function TrackedCarsTable({ 
@@ -106,13 +93,7 @@ export function TrackedCarsTable({
       </div>
 
       {trackedCars.length === 0 ? (
-        <div className="text-center py-12 border rounded-md bg-muted/50">
-          <CarIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <h3 className="text-lg font-medium mb-2">No vehicles tracked yet</h3>
-          <p className="text-muted-foreground">
-            Add your first vehicle to start tracking prices.
-          </p>
-        </div>
+        <EmptyCarsList />
       ) : (
         <div className="border rounded-md overflow-hidden">
           <div className="overflow-x-auto">
@@ -131,120 +112,28 @@ export function TrackedCarsTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {trackedCars.map((car) => {
-                  const cheapestUrl = getListingUrl(car.id);
-                  const hasLastPrice = car.last_price !== null && car.last_price !== undefined;
-                  const hasCheapestPrice = car.cheapest_price !== null && car.cheapest_price !== undefined;
-                  const isUserCheapest = hasCheapestPrice && hasLastPrice && car.cheapest_price === car.last_price;
-                  const cheaperExists = hasCheapestPrice && hasLastPrice && car.cheapest_price < car.last_price;
-                  
-                  return (
-                  <TableRow key={car.id}>
-                    <TableCell>
-                      <div className="font-medium">{car.brand} {car.model}</div>
-                    </TableCell>
-                    <TableCell>{car.trim || "—"}</TableCell>
-                    <TableCell>{car.engineType}</TableCell>
-                    <TableCell>{car.year || "—"}</TableCell>
-                    <TableCell>{car.mileage || "—"}</TableCell>
-                    <TableCell>{car.color || "—"}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">
-                        {hasLastPrice ? `£${car.last_price.toLocaleString()}` : "—"}
-                      </div>
-                      
-                      {isUserCheapest ? (
-                        <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                          You have the cheapest listing currently.
-                        </div>
-                      ) : cheaperExists ? (
-                        <div className="text-sm text-red-600 dark:text-red-400">
-                          {cheapestUrl ? (
-                            <a 
-                              href={cheapestUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex items-center underline hover:text-red-800 dark:hover:text-red-300 cursor-pointer font-medium"
-                            >
-                              Found at £{car.cheapest_price.toLocaleString()}
-                              <ExternalLink className="h-3 w-3 ml-1" />
-                            </a>
-                          ) : (
-                            <span>Found at £{car.cheapest_price.toLocaleString()}</span>
-                          )}
-                        </div>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {car.tags && car.tags.length > 0 ? (
-                          car.tags.map((tag) => (
-                            <CompetitorTag
-                              key={tag}
-                              tag={tag}
-                              onRemove={() => onRemoveTag(car.id, tag)}
-                            />
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">Not registered</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex flex-col items-end space-y-2">
-                        <Button 
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setEditCarId(car.id)}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        
-                        <Button 
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigateToMap(car.id)}
-                        >
-                          <MapPin className="h-4 w-4 mr-1" />
-                          Map
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => confirmDelete(car.id)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Remove
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )})}
+                {trackedCars.map((car) => (
+                  <CarRow
+                    key={car.id}
+                    car={car}
+                    cheapestUrl={getListingUrl(car.id)}
+                    onEdit={() => setEditCarId(car.id)}
+                    onMapClick={() => navigateToMap(car.id)}
+                    onDelete={() => confirmDelete(car.id)}
+                    onRemoveTag={(tag) => onRemoveTag(car.id, tag)}
+                  />
+                ))}
               </TableBody>
             </Table>
           </div>
         </div>
       )}
 
-      <AlertDialog open={!!deleteId} onOpenChange={closeDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the vehicle
-              from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDeleteDialog}>Cancel</AlertDialogCancel>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" onClick={handleDelete}>Delete</Button>
-            </AlertDialogTrigger>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <DeleteCarDialog
+        open={!!deleteId}
+        onOpenChange={closeDeleteDialog}
+        onConfirmDelete={handleDelete}
+      />
 
       {getCarToEdit() && (
         <EditVehicleDialog
