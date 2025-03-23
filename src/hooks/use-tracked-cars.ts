@@ -314,17 +314,31 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       console.log(`Attempting to delete car with ID: ${id}`);
       
-      // Call the RPC function with explicit typing to ensure correct input
-      const { data, error } = await supabase.rpc('delete_tracked_car_with_listings', {
-        car_id: id
-      });
+      // First delete all scraped listings for this car directly
+      const { error: listingsError } = await supabase
+        .from('scraped_vehicle_listings')
+        .delete()
+        .eq('tracked_car_id', id);
       
-      if (error) {
-        console.error('Error from RPC call:', error);
-        throw error;
+      if (listingsError) {
+        console.error('Error deleting scraped listings:', listingsError);
+        throw listingsError;
       }
       
-      console.log('Successfully deleted car and associated listings, result:', data);
+      console.log('Successfully deleted associated listings');
+      
+      // Now delete the car itself
+      const { error: carError } = await supabase
+        .from('tracked_urls')
+        .delete()
+        .eq('id', id);
+      
+      if (carError) {
+        console.error('Error deleting tracked car:', carError);
+        throw carError;
+      }
+      
+      console.log('Successfully deleted tracked car');
       
       // Update local state
       await fetchTrackedCars(userId);
