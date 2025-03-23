@@ -133,6 +133,10 @@ export function TrackedCarsTable({
               <TableBody>
                 {trackedCars.map((car) => {
                   const cheapestUrl = getListingUrl(car.id);
+                  const hasLastPrice = car.last_price !== null && car.last_price !== undefined;
+                  const hasCheapestPrice = car.cheapest_price !== null && car.cheapest_price !== undefined;
+                  const isUserCheapest = hasCheapestPrice && hasLastPrice && car.cheapest_price === car.last_price;
+                  const cheaperExists = hasCheapestPrice && hasLastPrice && car.cheapest_price < car.last_price;
                   
                   return (
                   <TableRow key={car.id}>
@@ -146,14 +150,14 @@ export function TrackedCarsTable({
                     <TableCell>{car.color || "—"}</TableCell>
                     <TableCell>
                       <div className="font-medium">
-                        {car.last_price ? `£${car.last_price.toLocaleString()}` : "—"}
+                        {hasLastPrice ? `£${car.last_price.toLocaleString()}` : "—"}
                       </div>
                       
-                      {car.cheapest_price && car.last_price && car.cheapest_price === car.last_price ? (
+                      {isUserCheapest ? (
                         <div className="text-sm text-green-600 dark:text-green-400 font-medium">
                           You have the cheapest listing currently.
                         </div>
-                      ) : car.cheapest_price && car.cheapest_price < (car.last_price || Infinity) ? (
+                      ) : cheaperExists ? (
                         <div className="text-sm text-red-600 dark:text-red-400">
                           {cheapestUrl ? (
                             <a 
