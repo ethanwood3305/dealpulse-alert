@@ -92,14 +92,8 @@ export function TrackedCarsTable({
     const listings = getListingsForCar(carId);
     if (!listings || listings.length === 0) return '';
     
-    // Find the cheapest listing based on price
-    const cheapestListing = listings.reduce((cheapest, current) => {
-      if (!cheapest) return current;
-      return current.price < cheapest.price ? current : cheapest;
-    }, null as ScrapedListing | null);
-    
-    // Return the actual URL from the listing object
-    return cheapestListing?.url || '';
+    const cheapestListing = listings.find(listing => listing.is_cheapest);
+    return cheapestListing ? cheapestListing.url : '';
   };
 
   return (

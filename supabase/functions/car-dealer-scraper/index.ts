@@ -296,12 +296,9 @@ async function getVehicleListings(carDetails) {
           price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
         }
         
-        // Make sure the URL is properly formed by combining the base URL with the link path
-        const fullUrl = l.fpaLink.startsWith('http') ? l.fpaLink : `${baseUrl}${l.fpaLink}`;
-        
         return {
           dealer_name: "AutoTrader",
-          url: fullUrl,
+          url: `${baseUrl}${l.fpaLink}`,
           title: l.title,
           price: price,
           mileage: carDetails.mileage || 30000,
