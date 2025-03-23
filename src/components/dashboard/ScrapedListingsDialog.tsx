@@ -3,7 +3,8 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2, ExternalLink, CheckCircle } from "lucide-react";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { formatDistanceToNow } from "date-fns";
 
@@ -72,6 +73,13 @@ export function ScrapedListingsDialog({
           </div>
         ) : (
           <div className="space-y-4 mt-4">
+            <Alert className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <AlertDescription className="text-green-600 dark:text-green-400">
+                Found {listings.length} similar {listings.length === 1 ? 'vehicle' : 'vehicles'}, showing the cheapest option.
+              </AlertDescription>
+            </Alert>
+            
             {listings.map((listing) => {
               const isPriceBetter = listing.price < (targetPrice || Infinity);
               const priceDifference = targetPrice ? targetPrice - listing.price : 0;
