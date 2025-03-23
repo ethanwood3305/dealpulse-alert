@@ -1,6 +1,6 @@
 
+// Using a standalone fetch implementation instead of relying on @supabase/node-fetch
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +19,7 @@ serve(async (req) => {
   }
 
   try {
-    // Create a Supabase client
+    // Create a direct fetch request to the Supabase RPC endpoint instead of using the client
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     
@@ -27,16 +27,19 @@ serve(async (req) => {
       throw new Error('Missing Supabase credentials');
     }
 
-    const supabaseAdmin = createClient(
-      supabaseUrl,
-      supabaseKey
-    );
+    // Direct API call to the RPC endpoint to populate car data
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/populate_car_data`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseKey}`,
+        'apikey': supabaseKey
+      }
+    });
 
-    // Call the database function to populate car data
-    const { data, error } = await supabaseAdmin.rpc('populate_car_data');
-
-    if (error) {
-      throw error;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to call populate_car_data RPC: ${response.status} ${errorText}`);
     }
 
     return new Response(
