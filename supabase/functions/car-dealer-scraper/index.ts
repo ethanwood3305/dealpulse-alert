@@ -212,8 +212,6 @@ function parseVehicleDetails(vehicle) {
     }
   }
   
-  const properColor = color ? properCase(color) : null;
-  
   return {
     brand,
     model,
@@ -221,7 +219,7 @@ function parseVehicleDetails(vehicle) {
     trim,
     mileage: mileage ? parseInt(mileage) : null,
     year: year || null,
-    color: properColor,
+    color: color, // Don't transform color case - preserve original case
     lastPrice: vehicle.last_price,
     engineSize: engineSize ? parseFloat(engineSize) : null,
     engineMin: engineMin ? parseFloat(engineMin) : null,
@@ -276,22 +274,23 @@ async function getVehicleListings(carDetails) {
   return allListings;
 }
 
-function properCase(text) {
+// Proper case function that preserves capitalization for vehicle colors
+function preserveColorCase(text) {
   if (!text) return '';
   
-  const allCapsWords = ['bmw', 'vw', 'amg', 'st', 'rs', 'gti', 'tdi', 'fsi', 'tsi'];
-  if (allCapsWords.includes(text.toLowerCase())) {
-    return text.toUpperCase();
+  // Special cases for colors that should be capitalized in a specific way
+  const specialCaseColors = {
+    'bmw': 'BMW',
+    'amg': 'AMG'
+  };
+  
+  const lowerText = text.toLowerCase();
+  if (specialCaseColors[lowerText]) {
+    return specialCaseColors[lowerText];
   }
   
-  const lowerCaseWords = ['and', 'or', 'the', 'in', 'on', 'at', 'for', 'with', 'by', 'of'];
-  
-  return text.split(' ').map((word, index) => {
-    if (index > 0 && lowerCaseWords.includes(word.toLowerCase())) {
-      return word.toLowerCase();
-    }
-    return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-  }).join(' ');
+  // Default capitalization: first letter uppercase, rest unchanged
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 async function scrapeAutoTrader(carDetails, baseUrl) {
@@ -301,9 +300,9 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   const minMileage = Math.max(0, targetMileage - mileageVariance);
   const maxMileage = targetMileage + mileageVariance;
   
-  const formattedBrand = properCase(carDetails.brand);
-  const formattedModel = properCase(carDetails.model);
-  const formattedTrim = carDetails.trim ? properCase(carDetails.trim) : '';
+  const formattedBrand = carDetails.brand.charAt(0).toUpperCase() + carDetails.brand.slice(1);
+  const formattedModel = carDetails.model.charAt(0).toUpperCase() + carDetails.model.slice(1);
+  const formattedTrim = carDetails.trim ? carDetails.trim : '';
   
   let searchUrl = `${baseUrl}/car-search?make=${encodeURIComponent(formattedBrand)}`;
   searchUrl += `&model=${encodeURIComponent(formattedModel)}`;
@@ -321,8 +320,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
   }
   
   if (carDetails.color) {
-    const formattedColor = properCase(carDetails.color);
-    searchUrl += `&colour=${encodeURIComponent(formattedColor.toLowerCase())}`;
+    searchUrl += `&colour=${encodeURIComponent(carDetails.color.toLowerCase())}`;
   }
   
   // Add engine size parameters if available
@@ -334,7 +332,8 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
     searchUrl += `&minimum-badge-engine-size=${minSize}&maximum-badge-engine-size=${maxSize}`;
   }
   
-  searchUrl += "&postcode=b31%203xr&sort=relevance";
+  // Add non-writeoff filter
+  searchUrl += "&writeoff-categories=exclude_writeoff&postcode=b31%203xr&sort=relevance";
   
   console.log(`Scraping AutoTrader with URL: ${searchUrl}`);
 
@@ -383,6 +382,7 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
           }
         }
         
+        // Extract color from title or use the car details color
         let colorText = carDetails.color || 'unknown';
         if (title) {
           const colors = ['red', 'blue', 'black', 'white', 'silver', 'grey', 'green', 'yellow', 'orange', 'purple', 'brown'];
@@ -394,7 +394,8 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
           }
         }
         
-        const color = properCase(colorText);
+        // Preserve color case instead of forcing lowercase
+        const color = preserveColorCase(colorText);
         
         let location = 'Unknown';
         let locationEl = el.querySelector('[data-testid="seller-location"]');
@@ -405,12 +406,30 @@ async function scrapeAutoTrader(carDetails, baseUrl) {
         const urlSuffix = el.querySelector('a.product-card-link')?.getAttribute('href');
         const url = urlSuffix ? `${baseUrl}${urlSuffix}` : null;
 
-        // Approximate location coordinates based on location name
-        const lat = 51.5 + (Math.random() * 3) - 1.5;
-        const lng = -0.9 + (Math.random() * 3) - 1.5;
+        // Extract engine size from title if available
+        let engineSizeText = '';
+        if (carDetails.engineSize) {
+          engineSizeText = ` ${carDetails.engineSize}L`;
+        } else if (title) {
+          const engineMatch = title.match(/\b(\d\.\d)L?\b/i);
+          if (engineMatch) {
+            engineSizeText = ` ${engineMatch[1]}L`;
+          }
+        }
+
+        // Check if listing mentions CAT S, CAT N, etc. (writeoffs)
+        const isWriteOff = title && /\b(cat\s*[a-z]|write\s*off|damaged|salvage)\b/i.test(title);
+        if (isWriteOff) {
+          console.log(`Skipping writeoff vehicle: ${title}`);
+          continue;
+        }
 
         if (title && price && url) {
           const isCheapest = price < (carDetails.lastPrice || Infinity);
+          
+          // Generate lat/lng based on location for map display
+          const lat = 51.5 + (Math.random() * 3) - 1.5;
+          const lng = -0.9 + (Math.random() * 3) - 1.5;
           
           results.push({
             dealer_name: 'AutoTrader',
