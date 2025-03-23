@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -314,47 +313,28 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       console.log(`Attempting to delete car with ID: ${id}`);
       
-      // First, check if there are any scraped listings for this car
-      const { data: listingsData, error: listingsCheckError } = await supabase
-        .from('scraped_vehicle_listings')
-        .select('id')
-        .eq('tracked_car_id', id);
+      // IMPORTANT: Use RPC function instead of direct deletion to handle the foreign key constraint
+      const { data, error } = await supabase.rpc('delete_tracked_car_with_listings', {
+        car_id: id
+      });
       
-      if (listingsCheckError) {
-        console.error('Error checking for scraped listings:', listingsCheckError);
-        throw listingsCheckError;
+      if (error) {
+        console.error('Error deleting car and its listings:', error);
+        throw error;
       }
       
-      // If there are scraped listings, delete them
-      if (listingsData && listingsData.length > 0) {
-        console.log(`Found ${listingsData.length} scraped listings to delete`);
-        
-        const { error: deleteListingsError } = await supabase
-          .from('scraped_vehicle_listings')
-          .delete()
-          .eq('tracked_car_id', id);
-        
-        if (deleteListingsError) {
-          console.error('Error deleting scraped listings:', deleteListingsError);
-          throw deleteListingsError;
-        }
-        
-        console.log('Successfully deleted scraped listings');
-      }
+      console.log('Successfully deleted car and associated listings:', data);
       
-      // After all scraped listings are deleted, delete the tracked car
-      console.log('Now deleting the tracked car');
-      const { error: deleteCarError } = await supabase
-        .from('tracked_urls')
-        .delete()
-        .eq('id', id);
-      
-      if (deleteCarError) {
-        console.error('Error deleting tracked car:', deleteCarError);
-        throw deleteCarError;
-      }
-      
+      // Update local state
       await fetchTrackedCars(userId);
+      
+      // Clear any scraped listings for this car from local state
+      setScrapedListings(prev => {
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
+      });
+      
       toast({
         title: "Vehicle removed",
         description: "The vehicle has been removed from your tracking list."
