@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Trash2, Car as CarIcon, MapPin, Edit, ExternalLink } from "lucide-react";
@@ -7,7 +8,6 @@ import { TrackedCar } from "@/hooks/use-tracked-cars";
 import { EditVehicleDialog } from "./EditVehicleDialog";
 import { ScrapedListing } from "@/integrations/supabase/database.types";
 import { useNavigate } from "react-router-dom";
-import { ScrapeButton } from "./ScrapeButton";
 import {
   Table,
   TableBody,
@@ -199,15 +199,6 @@ export function TrackedCarsTable({
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        
-                        {onTriggerScraping && getListingsForCar && (
-                          <ScrapeButton
-                            car={car}
-                            listings={getListingsForCar(car.id)}
-                            onTriggerScraping={onTriggerScraping}
-                            isScrapingCar={isScrapingCar || false}
-                          />
-                        )}
                         
                         <Button 
                           variant="ghost"
