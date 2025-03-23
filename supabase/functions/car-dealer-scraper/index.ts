@@ -288,19 +288,28 @@ async function getVehicleListings(carDetails) {
     
     return listings
       .filter(l => l.fpaLink && l.price)
-      .map(l => ({
-        dealer_name: "AutoTrader",
-        url: `${baseUrl}${l.fpaLink}`,
-        title: l.title,
-        price: l.price,
-        mileage: carDetails.mileage || 30000,
-        year: carDetails.year || new Date().getFullYear(),
-        color: carDetails.color || 'Unknown',
-        location: l.vehicleLocation || 'Unknown',
-        lat: 51.5 + Math.random() * 3 - 1.5,
-        lng: -0.9 + Math.random() * 3 - 1.5,
-        is_cheapest: false // This will be set correctly before insertion
-      }));
+      .map(l => {
+        // Make sure price is a number by cleaning and parsing it
+        let price = l.price;
+        if (typeof price === 'string') {
+          // Remove £ symbol, commas, and any other non-numeric characters except decimal point
+          price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
+        }
+        
+        return {
+          dealer_name: "AutoTrader",
+          url: `${baseUrl}${l.fpaLink}`,
+          title: l.title,
+          price: price,
+          mileage: carDetails.mileage || 30000,
+          year: carDetails.year || new Date().getFullYear(),
+          color: carDetails.color || 'Unknown',
+          location: l.vehicleLocation || 'Unknown',
+          lat: 51.5 + Math.random() * 3 - 1.5,
+          lng: -0.9 + Math.random() * 3 - 1.5,
+          is_cheapest: false // This will be set correctly before insertion
+        };
+      });
   } catch (error) {
     console.error('[ERROR] AutoTrader API:', error);
     return [];
