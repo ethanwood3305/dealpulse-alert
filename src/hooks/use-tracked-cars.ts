@@ -314,18 +314,38 @@ export const useTrackedCars = (userId: string | undefined) => {
       
       console.log(`Attempting to delete car with ID: ${id}`);
       
-      // First delete all scraped listings for this car directly
-      const { error: listingsError } = await supabase
+      // First, fetch all scraped listings for this car to make sure we catch them all
+      const { data: listings, error: fetchError } = await supabase
         .from('scraped_vehicle_listings')
-        .delete()
+        .select('id')
         .eq('tracked_car_id', id);
-      
-      if (listingsError) {
-        console.error('Error deleting scraped listings:', listingsError);
-        throw listingsError;
+        
+      if (fetchError) {
+        console.error('Error fetching scraped listings before delete:', fetchError);
+        throw fetchError;
       }
       
-      console.log('Successfully deleted associated listings');
+      console.log(`Found ${listings?.length || 0} listings to delete`);
+      
+      // Delete each listing individually to ensure complete deletion
+      if (listings && listings.length > 0) {
+        for (const listing of listings) {
+          const { error: deleteListingError } = await supabase
+            .from('scraped_vehicle_listings')
+            .delete()
+            .eq('id', listing.id);
+            
+          if (deleteListingError) {
+            console.error(`Error deleting scraped listing ${listing.id}:`, deleteListingError);
+            throw deleteListingError;
+          }
+        }
+      }
+      
+      console.log('Successfully deleted all associated listings');
+      
+      // Add a small delay to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Now delete the car itself
       const { error: carError } = await supabase
