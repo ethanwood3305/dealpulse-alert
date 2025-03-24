@@ -83,7 +83,7 @@ const Navbar = () => {
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-semibold tracking-tight">Carparison Alert</span>
+            <span className="text-xl font-semibold tracking-tight">Carparison</span>
           </Link>
 
           {/* Desktop Navigation */}
