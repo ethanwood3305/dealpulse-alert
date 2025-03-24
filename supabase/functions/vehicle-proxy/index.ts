@@ -84,23 +84,26 @@ serve(async (req) => {
     const tech = v?.TechnicalDetails || {};
 
     const vehicle = {
-      registration: vrm,
-      make: reg.Make || 'Unknown',
-      model: smmt.Range || reg.Model?.split(' ')[0] || 'Unknown',
-      color: reg.Colour ? reg.Colour.charAt(0).toUpperCase() + reg.Colour.slice(1).toLowerCase() : 'Unknown',
-      fuelType: reg.FuelType || 'Unknown',
-      year: reg.YearOfManufacture || 'Unknown',
-      engineSize: reg.EngineCapacity ? `${reg.EngineCapacity}cc` : 'Unknown',
-      motStatus: mot.MotTestResult || 'Unknown',
-      motExpiryDate: mot.ExpiryDate || null,
-      taxStatus: tax.TaxStatus || 'Unknown',
-      taxDueDate: tax.TaxDueDate || null,
-      doorCount: smmt.NumberOfDoors || 'Unknown',
-      bodyStyle: smmt.BodyStyle || 'Unknown',
-      transmission: reg.Transmission || 'Unknown',
-      weight: reg.GrossWeight ? `${reg.GrossWeight}` : 'Unknown',
-      trim: classif?.Smmt?.Trim || null,
-    };
+  registration: vrm,
+  make: reg.Make || 'Unknown',
+  model: smmt.Range || reg.Model?.split(' ')[0] || 'Unknown',
+  color: reg.Colour ? reg.Colour.charAt(0).toUpperCase() + reg.Colour.slice(1).toLowerCase() : 'Unknown',
+  fuelType: reg.FuelType || 'Unknown',
+  year: reg.YearOfManufacture || 'Unknown',
+  engineSize: reg.EngineCapacity ? `${reg.EngineCapacity}cc` : 'Unknown',
+  motStatus: mot.MotTestResult || 'Unknown',
+  motExpiryDate: mot.ExpiryDate || null,
+  taxStatus: tax.TaxStatus || 'Unknown',
+  taxDueDate: tax.TaxDueDate || null,
+  doorCount: smmt.NumberOfDoors || 'Unknown',
+  bodyStyle: smmt.BodyStyle || 'Unknown',
+  transmission: reg.Transmission || 'Unknown',
+  weight: tech.Dimensions?.GrossVehicleWeight
+    ? `${tech.Dimensions.GrossVehicleWeight} kg`
+    : 'Unknown',
+  trim: classif?.Smmt?.Trim || null,
+};
+
 
     return jsonResponse({ vehicle, success: true }, 200);
   } catch (error) {
