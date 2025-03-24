@@ -45,7 +45,6 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
-    console.log(url);
     
     const res = await fetch(url.toString(), {
       method: 'GET',
@@ -99,7 +98,7 @@ serve(async (req) => {
       doorCount: smmt.NumberOfDoors || 'Unknown',
       bodyStyle: smmt.BodyStyle || 'Unknown',
       transmission: reg.Transmission || 'Unknown',
-      weight: reg.GrossWeight ? `${reg.GrossVehicleWeight}` : 'Unknown',
+      weight: reg.GrossWeight ? `${reg.GrossWeight}` : 'Unknown',
       trim: classif?.Smmt?.Trim || null,
     };
 
