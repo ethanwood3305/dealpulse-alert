@@ -1,254 +1,153 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 const UKVEHICLEDATA_API_KEY = Deno.env.get('UKVEHICLEDATA_API_KEY');
 const API_ENDPOINT = 'https://long-frost-6310.ethanwood3305.workers.dev/';
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Vehicle proxy function invoked');
-    
     if (!UKVEHICLEDATA_API_KEY) {
-      console.error('API key is missing');
       return new Response(
-        JSON.stringify({ 
-          error: 'Service configuration error',
-          success: false,
-          code: 'MISSING_API_KEY'
-        }),
+        JSON.stringify({ error: 'Missing API key', success: false, code: 'MISSING_API_KEY' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
     }
 
-    // Get the registration from the request body
     const reqBody = await req.text();
-    console.log(`Request body: ${reqBody}`);
-    
     let jsonBody;
     try {
       jsonBody = JSON.parse(reqBody);
-    } catch (parseError) {
-      console.error('Failed to parse request body:', parseError);
+    } catch {
       return new Response(
-        JSON.stringify({ 
-          error: 'Invalid request format',
-          success: false,
-          code: 'INVALID_REQUEST_FORMAT'
-        }),
+        JSON.stringify({ error: 'Invalid request format', success: false, code: 'INVALID_REQUEST_FORMAT' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
-    
+
     const { vrm } = jsonBody;
-    
     if (!vrm) {
-      console.error('Missing VRM in request');
       return new Response(
-        JSON.stringify({ 
-          error: 'Vehicle registration number is required',
-          success: false,
-          code: 'MISSING_VRM'
-        }),
+        JSON.stringify({ error: 'Vehicle registration number is required', success: false, code: 'MISSING_VRM' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
-    console.log(`Processing VRM lookup for: ${vrm}`);
+    // Build query URL
+    const url = new URL(API_ENDPOINT);
+    url.searchParams.set("v", "2");
+    url.searchParams.set("api_nullitems", "1");
+    url.searchParams.set("auth_apikey", UKVEHICLEDATA_API_KEY);
+    url.searchParams.set("key_VRM", vrm);
+    url.searchParams.set("key_VehicleData", "Yes");
+    url.searchParams.set("key_MOTData", "Yes");
+    url.searchParams.set("key_TaxStatusData", "Yes");
+    url.searchParams.set("user_tag", "supabase_edge");
 
-    // Construct the request body following the API documentation
-    const requestData = {
-      v: 2,
-      api_nullitems: 1,
-      auth_apikey: UKVEHICLEDATA_API_KEY,
-      user_tag: "supabase_edge",
-      key_VRM: vrm,
-      key_VehicleData: "Yes",
-      key_MOTData: "Yes",
-      key_TaxStatusData: "Yes"
-    };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-      console.log('Calling UK Vehicle Data API...');
-      console.log('Request data:', JSON.stringify(requestData));
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0'
+        },
+        signal: controller.signal
+      });
 
-      // Use POST method with JSON body as specified in the docs
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
-      try {
-        const response = await fetch(API_ENDPOINT, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData),
-          signal: controller.signal
-        });
+      clearTimeout(timeoutId);
 
-        clearTimeout(timeoutId);
-        
-        console.log(`API response status: ${response.status}`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`API error response (${response.status}):`, errorText);
-          
-          return new Response(
-            JSON.stringify({ 
-              error: `API returned error status: ${response.status}`,
-              success: false,
-              code: 'API_HTTP_ERROR',
-              statusCode: response.status,
-              responseText: errorText
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
-          );
-        }
-
-        const data = await response.json();
-        console.log('API response received');
-
-        // Check for API error responses
-        if (data.Response && data.Response.StatusCode !== 'Success') {
-          const errorMessage = data.Response.StatusMessage || 'Vehicle lookup failed';
-          console.error(`API error: ${errorMessage}`, data.Response);
-
-          // Parse specific error conditions
-          let code = 'API_ERROR';
-          if (data.Response.StatusMessage && data.Response.StatusMessage.includes('No vehicle found')) {
-            code = 'VEHICLE_NOT_FOUND';
-          }
-
-          return new Response(
-            JSON.stringify({ 
-              error: errorMessage,
-              success: false,
-              code: code,
-              apiResponse: data.Response
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
-          );
-        }
-
-        // Extract and map the vehicle data
-        const vehicleInfo = data.Response.DataItems.VehicleRegistration || {};
-        const motInfo = data.Response.DataItems.MotHistory || {};
-        const taxInfo = data.Response.DataItems.VehicleTaxDetails || {};
-        
-        // Get correct model from SMMT Range and trim from Classification Details
-        const smmtDetails = data.Response.DataItems.SmmtDetails || {};
-        const classificationDetails = data.Response.DataItems.ClassificationDetails || {};
-        
-        // Get proper model (Range from SMMT if available, otherwise use model from vehicleInfo)
-        const model = smmtDetails.Range || vehicleInfo.Model?.split(' ')[0] || 'Unknown';
-        
-        // Get proper trim (from SMMT Classification Details if available)
-        const trim = classificationDetails?.Smmt?.Trim || null;
-        
-        // Properly capitalize color (first letter uppercase, rest lowercase)
-        const color = vehicleInfo.Colour ? 
-                     vehicleInfo.Colour.charAt(0).toUpperCase() + 
-                     vehicleInfo.Colour.slice(1).toLowerCase() : 
-                     'Unknown';
-        
-        // Map API data to expected structure
-        const vehicleData = {
-          registration: vrm,
-          make: vehicleInfo.Make || 'Unknown',
-          model: model,
-          color: color,
-          fuelType: vehicleInfo.FuelType || 'Unknown',
-          year: vehicleInfo.YearOfManufacture || 'Unknown',
-          engineSize: vehicleInfo.EngineCapacity 
-              ? `${vehicleInfo.EngineCapacity}cc` 
-              : 'Unknown',
-          motStatus: motInfo.MotTestResult || 'Unknown',
-          motExpiryDate: motInfo.ExpiryDate || null,
-          taxStatus: taxInfo.TaxStatus || 'Unknown',
-          taxDueDate: taxInfo.TaxDueDate || null,
-          doorCount: vehicleInfo.NumberOfDoors || 'Unknown',
-          bodyStyle: vehicleInfo.BodyStyle || 'Unknown',
-          transmission: vehicleInfo.Transmission || 'Unknown',
-          weight: vehicleInfo.GrossVehicleWeight ? 
-              `${vehicleInfo.GrossVehicleWeight}` 
-              : 'Unknown',
-          trim: trim,
-        };
-
-        console.log('Vehicle data processed successfully');
-        
+      if (!response.ok) {
+        const errorText = await response.text();
         return new Response(
-          JSON.stringify({ 
-            vehicle: vehicleData,
-            success: true
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
-      } catch (fetchError) {
-        clearTimeout(timeoutId);
-        
-        if (fetchError.name === 'AbortError') {
-          console.error('API request timed out after 30 seconds');
-          return new Response(
-            JSON.stringify({ 
-              error: 'Request to vehicle data service timed out',
-              success: false,
-              code: 'API_TIMEOUT',
-              diagnostic: {
-                error_type: 'AbortError',
-                error_message: 'Request timed out after 30 seconds'
-              }
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 504 }
-          );
-        }
-        
-        console.error('Error fetching from UK Vehicle Data API:', fetchError);
-        
-        return new Response(
-          JSON.stringify({ 
-            error: 'Failed to retrieve vehicle data',
+          JSON.stringify({
+            error: `API returned error status: ${response.status}`,
             success: false,
-            diagnostic: {
-              error_type: fetchError.name,
-              error_message: fetchError.message
-            },
-            code: 'API_REQUEST_FAILED'
+            code: 'API_HTTP_ERROR',
+            statusCode: response.status,
+            responseText: errorText
           }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
         );
       }
-    } catch (error) {
-      console.error('Error in vehicle-proxy function:', error);
-      
+
+      const data = await response.json();
+
+      if (data.Response && data.Response.StatusCode !== 'Success') {
+        const errorMessage = data.Response.StatusMessage || 'Vehicle lookup failed';
+        let code = 'API_ERROR';
+        if (data.Response.StatusMessage?.includes('No vehicle found')) {
+          code = 'VEHICLE_NOT_FOUND';
+        }
+        return new Response(
+          JSON.stringify({ error: errorMessage, success: false, code, apiResponse: data.Response }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+        );
+      }
+
+      const vehicleInfo = data.Response?.DataItems?.VehicleRegistration || {};
+      const motInfo = data.Response?.DataItems?.MotHistory || {};
+      const taxInfo = data.Response?.DataItems?.VehicleTaxDetails || {};
+      const smmtDetails = data.Response?.DataItems?.SmmtDetails || {};
+      const classificationDetails = data.Response?.DataItems?.ClassificationDetails || {};
+
+      const model = smmtDetails.Range || vehicleInfo.Model?.split(' ')[0] || 'Unknown';
+      const trim = classificationDetails?.Smmt?.Trim || null;
+      const color = vehicleInfo.Colour
+        ? vehicleInfo.Colour.charAt(0).toUpperCase() + vehicleInfo.Colour.slice(1).toLowerCase()
+        : 'Unknown';
+
+      const vehicleData = {
+        registration: vrm,
+        make: vehicleInfo.Make || 'Unknown',
+        model,
+        color,
+        fuelType: vehicleInfo.FuelType || 'Unknown',
+        year: vehicleInfo.YearOfManufacture || 'Unknown',
+        engineSize: vehicleInfo.EngineCapacity ? `${vehicleInfo.EngineCapacity}cc` : 'Unknown',
+        motStatus: motInfo.MotTestResult || 'Unknown',
+        motExpiryDate: motInfo.ExpiryDate || null,
+        taxStatus: taxInfo.TaxStatus || 'Unknown',
+        taxDueDate: taxInfo.TaxDueDate || null,
+        doorCount: vehicleInfo.NumberOfDoors || 'Unknown',
+        bodyStyle: vehicleInfo.BodyStyle || 'Unknown',
+        transmission: vehicleInfo.Transmission || 'Unknown',
+        weight: vehicleInfo.GrossVehicleWeight ? `${vehicleInfo.GrossVehicleWeight}` : 'Unknown',
+        trim
+      };
+
       return new Response(
-        JSON.stringify({ 
-          error: error.message || 'An unexpected error occurred',
+        JSON.stringify({ vehicle: vehicleData, success: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
+      );
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      const isTimeout = fetchError.name === 'AbortError';
+      return new Response(
+        JSON.stringify({
+          error: isTimeout ? 'Request timed out' : 'Failed to retrieve vehicle data',
           success: false,
+          code: isTimeout ? 'API_TIMEOUT' : 'API_REQUEST_FAILED',
           diagnostic: {
-            error_type: error.name,
-            error_message: error.message,
-            stack: error.stack
-          },
-          code: 'INTERNAL_ERROR'
+            error_type: fetchError.name,
+            error_message: fetchError.message
+          }
         }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: isTimeout ? 504 : 500 }
       );
     }
   } catch (error) {
-    console.error('Error in vehicle-proxy function:', error);
-    
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message || 'An unexpected error occurred',
         success: false,
         diagnostic: {
@@ -261,4 +160,4 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
-})
+});
