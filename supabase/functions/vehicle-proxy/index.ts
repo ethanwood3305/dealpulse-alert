@@ -82,6 +82,7 @@ serve(async (req) => {
     const classif = v?.ClassificationDetails || {};
     const mot = v?.MotHistory || {};
     const tax = v?.VehicleTaxDetails || {};
+    const tech = v?.TechnicalDetails || {};
 
     const vehicle = {
       registration: vrm,
@@ -95,10 +96,10 @@ serve(async (req) => {
       motExpiryDate: mot.ExpiryDate || null,
       taxStatus: tax.TaxStatus || 'Unknown',
       taxDueDate: tax.TaxDueDate || null,
-      doorCount: reg.NumberOfDoors || 'Unknown',
-      bodyStyle: reg.BodyStyle || 'Unknown',
+      doorCount: smmt.NumberOfDoors || 'Unknown',
+      bodyStyle: smmt.BodyStyle || 'Unknown',
       transmission: reg.Transmission || 'Unknown',
-      weight: reg.GrossVehicleWeight ? `${reg.GrossVehicleWeight}` : 'Unknown',
+      weight: tech.GrossVehicleWeight ? `${reg.GrossVehicleWeight}` : 'Unknown',
       trim: classif?.Smmt?.Trim || null,
     };
 
