@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 const UKVEHICLEDATA_API_KEY = Deno.env.get('UKVEHICLEDATA_API_KEY');
-const API_ENDPOINT = 'https://uk1.ukvehicledata.co.uk/api/datapackage/VehicleData';
+const API_ENDPOINT = 'https://long-frost-6310.ethanwood3305.workers.dev/';
 
 serve(async (req) => {
   // Handle CORS preflight requests
