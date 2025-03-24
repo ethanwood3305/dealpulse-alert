@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { supabase, getMapboxToken } from "@/integrations/supabase/client";
@@ -188,28 +187,20 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     }
   }, [dealerLocation, dealerLocationFromDB, map.current]);
 
-  const addDealerMarkerAndCircles = (location: CarLocation, targetPrice: number, listings: ScrapedListing[]) => {
+  const addDealerMarkerAndCircles = (dealerLocation: CarLocation, cheapestListing: ScrapedListing) => {
     if (!map.current) return;
 
-    if (map.current.getLayer('dealer-marker')) {
-      map.current.removeLayer('dealer-marker');
-    }
-    if (map.current.getSource('dealer')) {
-      map.current.removeSource('dealer');
-    }
-    if (map.current.getLayer('radius-5k')) {
-      map.current.removeLayer('radius-5k');
-    }
-    if (map.current.getSource('radius-5k')) {
-      map.current.removeSource('radius-5k');
-    }
-    if (map.current.getLayer('radius-10k')) {
-      map.current.removeLayer('radius-10k');
-    }
-    if (map.current.getSource('radius-10k')) {
-      map.current.removeSource('radius-10k');
-    }
+    // Clear previous layers and sources
+    if (map.current.getLayer('dealer-marker')) map.current.removeLayer('dealer-marker');
+    if (map.current.getSource('dealer')) map.current.removeSource('dealer');
+    if (map.current.getLayer('radius-5k')) map.current.removeLayer('radius-5k');
+    if (map.current.getSource('radius-5k')) map.current.removeSource('radius-5k');
+    if (map.current.getLayer('radius-10k')) map.current.removeLayer('radius-10k');
+    if (map.current.getSource('radius-10k')) map.current.removeSource('radius-10k');
+    if (map.current.getLayer('cheapest-radius')) map.current.removeLayer('cheapest-radius');
+    if (map.current.getSource('cheapest-radius')) map.current.removeSource('cheapest-radius');
 
+    // Add dealer marker
     const markerEl = document.createElement('div');
     markerEl.className = 'flex items-center justify-center';
     markerEl.style.width = '30px';
@@ -221,24 +212,26 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
     markerEl.appendChild(markerSvg);
     
     new mapboxgl.Marker(markerEl)
-      .setLngLat([location.lng, location.lat])
+      .setLngLat([dealerLocation.lng, dealerLocation.lat])
       .setPopup(
         new mapboxgl.Popup({ offset: 25 })
-          .setHTML(`<h4>Dealer Location</h4><p>${location.postcode}</p>`)
+          .setHTML(`<h4>Dealer Location</h4><p>${dealerLocation.postcode}</p>`)
       )
       .addTo(map.current);
 
-    const addCircle = (id: string, radiusKm: number, color: string) => {
+    // Function to add circle
+    const addCircle = (id: string, center: [number, number], radiusKm: number, color: string) => {
       const radiusMeters = radiusKm * 1000;
       const steps = 64;
-      const outerRadius = radiusMeters / (Math.cos(Math.PI * location.lat / 180) * 40075000 / 360);
+      const lat = center[1];
+      const outerRadius = radiusMeters / (Math.cos(Math.PI * lat / 180) * 40075000 / 360);
       const innerRadius = outerRadius;
 
       const coordinates: number[][] = [];
       for (let i = 0; i < steps; i++) {
         const angle = (i / steps) * Math.PI * 2;
-        const lng = location.lng + outerRadius * Math.cos(angle);
-        const lat = location.lat + innerRadius * Math.sin(angle);
+        const lng = center[0] + outerRadius * Math.cos(angle);
+        const lat = center[1] + innerRadius * Math.sin(angle);
         coordinates.push([lng, lat]);
       }
       coordinates.push([...coordinates[0]]);
@@ -271,30 +264,53 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       });
     };
 
-    addCircle('radius-5k', 5, '#00f');
-    addCircle('radius-10k', 10, '#0f0');
+    // Add standard radius circles around dealer
+    addCircle('radius-5k', [dealerLocation.lng, dealerLocation.lat], 5, '#00f');
+    addCircle('radius-10k', [dealerLocation.lng, dealerLocation.lat], 10, '#0f0');
 
-    // Add markers for listings
-    listings.forEach(listing => {
-      if (listing.lat && listing.lng) {
-        const el = document.createElement('div');
-        el.className = 'marker';
-        el.style.width = '10px';
-        el.style.height = '10px';
-        el.style.borderRadius = '50%';
-        el.style.backgroundColor = 'red';
+    // Add marker and radius for cheapest listing
+    if (cheapestListing && cheapestListing.lat && cheapestListing.lng) {
+      // Add marker for cheapest listing
+      const el = document.createElement('div');
+      el.className = 'marker';
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.borderRadius = '50%';
+      el.style.backgroundColor = '#f50057';
+      el.style.border = '3px solid white';
+      el.style.boxShadow = '0 0 10px rgba(0,0,0,0.3)';
 
-        new mapboxgl.Marker(el)
-          .setLngLat([listing.lng, listing.lat])
-          .setPopup(
-            new mapboxgl.Popup({ offset: 25 })
-              .setHTML(
-                `<h4>${listing.title}</h4><p>Price: £${listing.price.toLocaleString()}</p><p>Location: ${listing.location || 'Unknown'}</p>`
-              )
-          )
-          .addTo(map.current!);
-      }
-    });
+      new mapboxgl.Marker(el)
+        .setLngLat([cheapestListing.lng, cheapestListing.lat])
+        .setPopup(
+          new mapboxgl.Popup({ offset: 25 })
+            .setHTML(
+              `<h4>${cheapestListing.title}</h4>
+               <p><strong>Price:</strong> £${cheapestListing.price.toLocaleString()}</p>
+               <p><strong>Location:</strong> ${cheapestListing.location || 'Unknown'}</p>
+               <p><a href="${cheapestListing.url}" target="_blank">View Listing</a></p>`
+            )
+        )
+        .addTo(map.current!);
+        
+      // Add radius circle around cheapest listing (using different color)
+      addCircle(
+        'cheapest-radius', 
+        [cheapestListing.lng, cheapestListing.lat], 
+        5, 
+        '#f50057'
+      );
+        
+      // Adjust map bounds to show both dealer and cheapest listing
+      const bounds = new mapboxgl.LngLatBounds();
+      bounds.extend([dealerLocation.lng, dealerLocation.lat]);
+      bounds.extend([cheapestListing.lng, cheapestListing.lat]);
+      
+      map.current.fitBounds(bounds, {
+        padding: 100,
+        maxZoom: 10
+      });
+    }
   };
 
   const fetchScrapedListings = async () => {
@@ -325,14 +341,14 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       } else {
         toast({
           title: "Scraping Started",
-          description: "We're searching for similar vehicles. This may take a moment."
+          description: "We're searching for the cheapest similar vehicle. This may take a moment."
         });
       }
       
       // Wait a moment for scraping to complete
       await new Promise(resolve => setTimeout(resolve, 5000));
       
-      // Now fetch the scraped listings
+      // Now fetch the scraped listings (should only be one now - the cheapest)
       const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
         car_id: urlCarId
       });
@@ -343,11 +359,15 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       
       const locationToUse = dealerLocation || dealerLocationFromDB;
       
-      const currentPrice = selectedCar?.last_price ? parseFloat(selectedCar.last_price.toString()) : parseFloat(targetPrice);
-      
       if (data && data.length > 0 && locationToUse) {
-        console.log(`Found ${data.length} scraped listings for car ${urlCarId}`);
-        addDealerMarkerAndCircles(locationToUse, currentPrice, data);
+        console.log(`Found cheapest listing for car ${urlCarId}`);
+        const cheapestListing = data[0]; // There should only be one listing now
+        addDealerMarkerAndCircles(locationToUse, cheapestListing);
+        
+        toast({
+          title: "Success",
+          description: `Found the cheapest similar vehicle: £${cheapestListing.price.toLocaleString()}`
+        });
       } else if (data && data.length > 0 && !locationToUse) {
         toast({
           title: "Warning",
@@ -357,7 +377,7 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
       } else if (data && data.length === 0) {
         toast({
           title: "No Listings Found",
-          description: "No scraped listings found for this car."
+          description: "No similar vehicles found for this car."
         });
       }
     } catch (error) {
@@ -482,3 +502,4 @@ const RadiusMap = ({ carId = 'default-car-id', targetPrice = '0', dealerLocation
 };
 
 export default RadiusMap;
+

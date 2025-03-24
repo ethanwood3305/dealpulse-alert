@@ -92,23 +92,23 @@ async function scrapeForVehicle(supabase, vehicleId) {
       // Find the cheapest listing
       const cheapestListing = scrapedListings.reduce((a, b) => a.price < b.price ? a : b);
       
-      // Mark the cheapest listing
-      const listingsToInsert = scrapedListings.map(listing => ({
-        ...listing,
+      // Only insert the cheapest listing, with is_cheapest set to true
+      const listingToInsert = {
+        ...cheapestListing,
         tracked_car_id: vehicleId,
-        is_cheapest: listing.price === cheapestListing.price
-      }));
+        is_cheapest: true
+      };
       
-      // Insert all listings
+      // Insert only the cheapest listing
       const { data: insertedData, error: insertError } = await supabase
         .from('scraped_vehicle_listings')
-        .insert(listingsToInsert)
+        .insert([listingToInsert])
         .select();
       
       if (insertError) {
-        console.error(`Error inserting listings for vehicle ${vehicleId}:`, insertError);
+        console.error(`Error inserting listing for vehicle ${vehicleId}:`, insertError);
       } else {
-        console.log(`Successfully inserted ${insertedData?.length || 0} listings for vehicle ${vehicleId}`);
+        console.log(`Successfully inserted the cheapest listing for vehicle ${vehicleId}`);
       }
       
       // Update vehicle's cheapest price if found a better deal
