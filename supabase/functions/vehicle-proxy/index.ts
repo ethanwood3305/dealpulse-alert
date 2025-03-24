@@ -67,9 +67,11 @@ serve(async (req) => {
     const data = await res.json();
 
     if (data.Response?.StatusCode !== 'Success') {
+      console.log(data);
       const message = data.Response?.StatusMessage || 'Vehicle lookup failed';
       const code = message.includes('No vehicle found') ? 'VEHICLE_NOT_FOUND' : 'API_ERROR';
       return jsonResponse({ error: message, success: false, code, apiResponse: data.Response }, 404);
+      
     }
 
     const v = data.Response.DataItems;
