@@ -45,6 +45,8 @@ serve(async (req) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
+    console.log(url);
+    
     const res = await fetch(url.toString(), {
       method: 'GET',
       headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'application/json' },
