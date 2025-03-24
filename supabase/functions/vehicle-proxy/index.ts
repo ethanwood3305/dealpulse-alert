@@ -99,7 +99,7 @@ serve(async (req) => {
       doorCount: smmt.NumberOfDoors || 'Unknown',
       bodyStyle: smmt.BodyStyle || 'Unknown',
       transmission: reg.Transmission || 'Unknown',
-      weight: tech.GrossVehicleWeight ? `${reg.GrossVehicleWeight}` : 'Unknown',
+      weight: reg.GrossWeight ? `${reg.GrossVehicleWeight}` : 'Unknown',
       trim: classif?.Smmt?.Trim || null,
     };
 
