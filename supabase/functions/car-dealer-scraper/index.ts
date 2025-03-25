@@ -303,6 +303,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }`
   }];
 
+  // Log the payload details being sent
+  console.log("Payload being sent:", JSON.stringify(payload, null, 2));
+
   const MAX_RETRIES = 3;
   let retries = 0;
   let response;
@@ -394,6 +397,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       }`
     }];
 
+    // Log the uppercase payload details being sent
+    console.log("Uppercase Payload being sent:", JSON.stringify(newPayload, null, 2));
+
     let retriesUpper = 0;
     let responseUpper;
     while (retriesUpper < MAX_RETRIES) {
@@ -458,3 +464,4 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       };
     });
 }
+
