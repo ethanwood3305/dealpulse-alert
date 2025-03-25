@@ -310,7 +310,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   while (retries < MAX_RETRIES) {
     try {
       const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${118 + retries}.0.0.0 Safari/537.36`;
-
       response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
         method: 'POST',
         headers: {
@@ -341,19 +340,102 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
 
   const json = await response.json();
-  const listings = json[0]?.data?.searchResults?.listings || [];
+  let listings = json[0]?.data?.searchResults?.listings || [];
+
+  // If no listings found and a trim exists, re-run the search using the uppercase trim
+  if (listings.length === 0 && carDetails.trim) {
+    const newFilters = filters.map(filter => {
+      if (filter.filter === "aggregated_trim") {
+        return { ...filter, selected: [filter.selected[0].toUpperCase()] };
+      }
+      return filter;
+    });
+
+    const newPayload = [{
+      operationName: "SearchResultsListingsGridQuery",
+      variables: {
+        filters: newFilters,
+        channel: "cars",
+        page: 1,
+        sortBy: "price_asc",
+        listingType: null,
+        searchId: crypto.randomUUID()
+      },
+      query: `query SearchResultsListingsGridQuery(
+        $filters: [FilterInput!]!,
+        $channel: Channel!,
+        $page: Int,
+        $sortBy: SearchResultsSort,
+        $listingType: [ListingType!],
+        $searchId: String!
+      ) {
+        searchResults(input: {
+          facets: [],
+          filters: $filters,
+          channel: $channel,
+          page: $page,
+          sortBy: $sortBy,
+          listingType: $listingType,
+          searchId: $searchId
+        }) {
+          listings {
+            ... on SearchListing {
+              title
+              price
+              vehicleLocation
+              fpaLink
+              badges {
+                type
+                displayText
+              }
+            }
+          }
+        }
+      }`
+    }];
+
+    let retriesUpper = 0;
+    let responseUpper;
+    while (retriesUpper < MAX_RETRIES) {
+      try {
+        const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${118 + retriesUpper}.0.0.0 Safari/537.36`;
+        responseUpper = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': userAgent,
+            'x-sauron-app-name': 'sauron-search-results-app',
+            'x-sauron-app-version': '3157'
+          },
+          body: JSON.stringify(newPayload)
+        });
+
+        if (responseUpper.ok) break;
+
+        const body = await responseUpper.text();
+        console.warn(`[RETRY] Uppercase trim API failed (status ${responseUpper.status}): ${body.substring(0, 300)}`);
+        retriesUpper++;
+        await new Promise(r => setTimeout(r, retriesUpper * 1000));
+      } catch (err) {
+        console.error(`[RETRY ERROR] Uppercase trim`, err);
+        retriesUpper++;
+        await new Promise(r => setTimeout(r, retriesUpper * 1000));
+      }
+    }
+    if (responseUpper && responseUpper.ok) {
+      const jsonUpper = await responseUpper.json();
+      listings = jsonUpper[0]?.data?.searchResults?.listings || [];
+    }
+  }
 
   return listings
     .filter(l => l.fpaLink && l.price)
     .map(l => {
-      // Parse price
       let price = typeof l.price === 'string'
         ? parseInt(l.price.replace(/[^0-9]/g, ''), 10)
         : l.price;
-
       if (isNaN(price)) price = 0;
 
-      // Extract mileage from badges
       let mileage = 0;
       const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
       if (mileageBadge?.displayText) {
