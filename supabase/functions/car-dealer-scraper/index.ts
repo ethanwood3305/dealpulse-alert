@@ -387,4 +387,3 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       };
     });
 }
-
