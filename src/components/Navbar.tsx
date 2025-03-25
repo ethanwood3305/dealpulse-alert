@@ -34,7 +34,6 @@ const Navbar = () => {
 
     checkUser();
 
-    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setUser(session?.user ?? null);
@@ -60,7 +59,6 @@ const Navbar = () => {
   const handleFeatureClick = (e: React.MouseEvent) => {
     e.preventDefault();
     
-    // If on home page, scroll to features
     if (location.pathname === '/') {
       const featuresSection = document.getElementById('features');
       if (featuresSection) {
@@ -68,7 +66,6 @@ const Navbar = () => {
         setIsMobileMenuOpen(false);
       }
     } else {
-      // Navigate to home page with hash
       navigate('/#features');
       setIsMobileMenuOpen(false);
     }
@@ -86,7 +83,6 @@ const Navbar = () => {
             <span className="text-xl font-semibold tracking-tight">Carparison</span>
           </Link>
 
-          {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
             <Link to="/" className="text-sm font-medium hover:text-primary transition-colors">
               Home
@@ -98,8 +94,8 @@ const Navbar = () => {
             >
               Features
             </a>
-            <Link to="/pricing" className="text-sm font-medium hover:text-primary transition-colors">
-              Purchase
+            <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">
+              Enquire Now
             </Link>
             <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">
               About
@@ -134,22 +130,14 @@ const Navbar = () => {
                 Sign Out
               </Button>
             ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost" className="rounded-full">
-                    Log in
-                  </Button>
-                </Link>
-                <Link to="/signup">
-                  <Button className="rounded-full">
-                    Try for free
-                  </Button>
-                </Link>
-              </>
+              <Link to="/login">
+                <Button variant="ghost" className="rounded-full">
+                  Dealer Login
+                </Button>
+              </Link>
             )}
           </div>
 
-          {/* Mobile menu button */}
           <div className="md:hidden flex items-center gap-2">
             <Button 
               variant="ghost" 
@@ -179,7 +167,6 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* Mobile Navigation */}
       {isMobileMenuOpen && (
         <div className="md:hidden glass animate-fade-in">
           <div className="px-4 py-6 space-y-4">
@@ -198,11 +185,11 @@ const Navbar = () => {
               Features
             </a>
             <Link
-              to="/pricing"
+              to="/contact"
               className="block text-lg font-medium hover:text-primary"
               onClick={() => setIsMobileMenuOpen(false)}
             >
-              Purchase
+              Enquire Now
             </Link>
             <Link
               to="/about"
@@ -240,18 +227,11 @@ const Navbar = () => {
                     Sign Out
                   </Button>
                 ) : (
-                  <>
-                    <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="ghost" className="w-full justify-center rounded-full">
-                        Log in
-                      </Button>
-                    </Link>
-                    <Link to="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button className="w-full justify-center rounded-full">
-                        Try for free
-                      </Button>
-                    </Link>
-                  </>
+                  <Link to="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                    <Button className="w-full justify-center rounded-full">
+                      Dealer Login
+                    </Button>
+                  </Link>
                 )}
               </div>
             </div>

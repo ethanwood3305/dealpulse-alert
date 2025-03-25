@@ -21,20 +21,16 @@ export default function Hero() {
           </p>
           <div className="mt-10 flex items-center justify-center gap-4">
             <Button asChild size="lg">
-              <Link to="/signup">
+              <Link to="/login">
                 Start Tracking Vehicles
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
             <Button variant="outline" asChild size="lg">
-              <Link to="/pricing">
-                View Pricing
+              <Link to="/contact">
+                Enquire Now
               </Link>
             </Button>
-          </div>
-          <div className="mt-8 text-sm text-muted-foreground">
-            <span className="font-medium">No credit card required</span> for the free plan.
-            Track your first vehicle in under 2 minutes.
           </div>
         </div>
       </div>
