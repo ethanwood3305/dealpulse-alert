@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 
 const corsHeaders = {
@@ -140,27 +139,20 @@ async function scrapeForVehicle(supabase, vehicleId) {
         console.log(`Successfully inserted the cheapest listing for vehicle ${vehicleId}`);
       }
       
-      // Update vehicle's cheapest price if found a better deal
-      if (cheapestListing && cheapestListing.price < (vehicle.cheapest_price || Infinity)) {
-        const { error: updateError } = await supabase
-          .from('tracked_urls')
-          .update({ 
-            cheapest_price: cheapestListing.price,
-            last_checked: new Date().toISOString()
-          })
-          .eq('id', vehicleId);
-        
-        if (updateError) {
-          console.error(`Error updating cheapest price for vehicle ${vehicleId}:`, updateError);
-        } else {
-          console.log(`Updated cheapest price for vehicle ${vehicleId} to £${cheapestListing.price}`);
-        }
+      // Always update vehicle with the cheapest price found from scraping
+      // regardless of the user's price (this ensures the "Cheapest" tag is accurate)
+      const { error: updateError } = await supabase
+        .from('tracked_urls')
+        .update({ 
+          cheapest_price: cheapestListing.price,
+          last_checked: new Date().toISOString()
+        })
+        .eq('id', vehicleId);
+      
+      if (updateError) {
+        console.error(`Error updating cheapest price for vehicle ${vehicleId}:`, updateError);
       } else {
-        // Update last_checked timestamp even if price didn't change
-        await supabase
-          .from('tracked_urls')
-          .update({ last_checked: new Date().toISOString() })
-          .eq('id', vehicleId);
+        console.log(`Updated cheapest price for vehicle ${vehicleId} to £${cheapestListing.price}`);
       }
     } else {
       console.log(`No listings found for vehicle ${vehicleId}`);

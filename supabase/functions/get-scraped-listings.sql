@@ -16,8 +16,8 @@ BEGIN
     s.year,
     s.color,
     s.location,
-    s.lat::double precision,
-    s.lng::double precision,
+    s.lat,
+    s.lng,
     s.is_cheapest,
     s.created_at
   FROM scraped_vehicle_listings s
