@@ -247,7 +247,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
 
   if (carDetails.mileage) {
-    const min = Math.max(0, carDetails.mileage - 6000);
+    const min = Math.max(0, carDetails.mileage - 4000);
     const max = carDetails.mileage + 2000;
     filters.push({ filter: "min_mileage", selected: [String(min)] });
     filters.push({ filter: "max_mileage", selected: [String(max)] });
