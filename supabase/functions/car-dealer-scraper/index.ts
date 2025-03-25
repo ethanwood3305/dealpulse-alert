@@ -231,7 +231,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     return [];
   }
 
-  // Build search filters
+  // Build search filters with less restrictive parameters
   const filters = [
     {
       filter: "make",
@@ -255,31 +255,39 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }
   ];
   
-  // Add optional filters when values are present
-  if (carDetails.trim) filters.push({
-    filter: "aggregated_trim",
-    selected: [carDetails.trim]
-  });
-  
-  if (carDetails.color) filters.push({
-    filter: "colour",
-    selected: [carDetails.color]
-  });
-  
-  if (carDetails.year) {
+  // Make optional filters less restrictive to increase chances of finding vehicles
+  if (carDetails.trim) {
+    // Add trim as a filter but make it case-insensitive
     filters.push({
-      filter: "min_year_manufactured",
-      selected: [carDetails.year]
-    });
-    filters.push({
-      filter: "max_year_manufactured",
-      selected: [carDetails.year]
+      filter: "aggregated_trim",
+      selected: [carDetails.trim]
     });
   }
   
-  if (carDetails.mileage) {
-    const min = Math.max(0, carDetails.mileage - 5000); // Increased range for better matches
-    const max = carDetails.mileage + 5000; // Increased range for better matches
+  if (carDetails.color) {
+    filters.push({
+      filter: "colour",
+      selected: [carDetails.color]
+    });
+  }
+  
+  if (carDetails.year) {
+    // Wider range for year - include one year before and after
+    const yearInt = parseInt(carDetails.year);
+    filters.push({
+      filter: "min_year_manufactured",
+      selected: [(yearInt - 1).toString()]
+    });
+    filters.push({
+      filter: "max_year_manufactured",
+      selected: [(yearInt + 1).toString()]
+    });
+  }
+  
+  if (carDetails.mileage && carDetails.mileage > 0) {
+    // Significantly increase the mileage range to find more matches
+    const min = Math.max(0, carDetails.mileage - 10000); 
+    const max = carDetails.mileage + 15000;
     filters.push({
       filter: "min_mileage",
       selected: [String(min)]
@@ -291,8 +299,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
   
   if (carDetails.engineSize) {
-    const minEngine = Math.max(0, (carDetails.engineSize - 0.2).toFixed(2)); // Increased range
-    const maxEngine = (carDetails.engineSize + 0.2).toFixed(2); // Increased range
+    // Increase engine size range
+    const minEngine = Math.max(0, (carDetails.engineSize - 0.3).toFixed(2));
+    const maxEngine = (carDetails.engineSize + 0.3).toFixed(2);
     filters.push({
       filter: "min_engine_size",
       selected: [String(minEngine)]
@@ -333,7 +342,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   
   try {
     // Implement retry mechanism
-    const MAX_RETRIES = 2;
+    const MAX_RETRIES = 3;
     let retries = 0;
     let response;
     
@@ -357,14 +366,14 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         
         // Add exponential backoff
         if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, retries * 1000));
+          await new Promise(r => setTimeout(r, retries * 1500));
         }
       } catch (error) {
         console.error(`[RETRY ERROR] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES}:`, error);
         retries++;
         
         if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, retries * 1000));
+          await new Promise(r => setTimeout(r, retries * 1500));
         } else {
           throw error;
         }
@@ -377,6 +386,10 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }
     
     const json = await response.json();
+    
+    // Log the full response for debugging
+    console.log('[DEBUG] AutoTrader API response:', JSON.stringify(json).slice(0, 1000) + '...');
+    
     const listings = json[0]?.data?.searchResults?.listings || [];
     console.log('[DEBUG] Found results:', listings.length);
     
