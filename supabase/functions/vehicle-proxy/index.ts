@@ -105,9 +105,13 @@ serve(async (req) => {
   trim:
   classif?.Smmt?.Trim?.trim() ||
   (typeof classif?.Dvla?.Model === 'string'
-    ? classif.Dvla.Model.split(' ').slice(1).filter(w =>
-        !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w)
-      ).join(' ').trim()
+    ? classif.Dvla.Model
+        .split(' ')
+        .slice(1) // skip the model name (first word)
+        .filter(w => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w)) // remove suffixes
+        .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) // format like "2 Nav"
+        .join(' ')
+        .trim()
     : null) ||
   null,
 
