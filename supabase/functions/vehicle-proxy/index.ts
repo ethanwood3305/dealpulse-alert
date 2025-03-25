@@ -107,6 +107,7 @@ serve(async (req) => {
 
 };
 
+    console.log(vehicle.trim);
 
     return jsonResponse({ vehicle, success: true }, 200);
   } catch (error) {
