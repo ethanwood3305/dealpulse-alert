@@ -5,6 +5,7 @@ import { Globe, Loader2 } from "lucide-react";
 import { ScrapedListingsDialog } from "./ScrapedListingsDialog";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { toast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface ScrapeButtonProps {
   car: TrackedCar;
@@ -17,6 +18,11 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
+  
+  // Check if there are any cheaper vehicles
+  const hasCheaperVehicles = listings && listings.length > 0 && listings.some(listing => 
+    listing.is_cheapest && car.last_price && Number(listing.price) < Number(car.last_price)
+  );
   
   const handleClick = async () => {
     setIsDialogOpen(true);
@@ -48,21 +54,29 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
   
   return (
     <>
-      <Button 
-        variant="secondary" 
-        size="sm" 
-        onClick={handleClick}
-        disabled={isScrapingCar}
-        title="Find the cheapest similar vehicle online"
-        className="whitespace-nowrap"
-      >
-        {isScrapingCar ? (
-          <Loader2 className="h-4 w-4 animate-spin mr-1" />
-        ) : (
-          <Globe className="h-4 w-4 mr-1" />
+      <div className="relative">
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          onClick={handleClick}
+          disabled={isScrapingCar}
+          title="Find the cheapest similar vehicle online"
+          className="whitespace-nowrap"
+        >
+          {isScrapingCar ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+          ) : (
+            <Globe className="h-4 w-4 mr-1" />
+          )}
+          Find Cheapest
+        </Button>
+        
+        {hasCheaperVehicles && !isScrapingCar && !isDialogOpen && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white">
+            !
+          </span>
         )}
-        Find Cheapest
-      </Button>
+      </div>
       
       <ScrapedListingsDialog
         isOpen={isDialogOpen}
