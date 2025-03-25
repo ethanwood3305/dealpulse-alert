@@ -1,10 +1,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Search } from "lucide-react";
-import { ScrapedListing } from "@/integrations/supabase/database.types";
-import { TrackedCar } from "@/hooks/use-tracked-cars";
+import { Globe, Loader2 } from "lucide-react";
 import { ScrapedListingsDialog } from "./ScrapedListingsDialog";
+import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
+import { toast } from "@/components/ui/use-toast";
 import { Badge } from "@/components/ui/badge";
 
 interface ScrapeButtonProps {
@@ -15,72 +15,89 @@ interface ScrapeButtonProps {
 }
 
 export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }: ScrapeButtonProps) {
-  const [isOpen, setIsOpen] = useState(false);
-
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  
+  // Check if there are any cheaper vehicles
+  const hasCheaperVehicles = listings && listings.length > 0 && listings.some(listing => 
+    car.last_price && Number(listing.price) < Number(car.last_price)
+  );
+  
+  // Check if the current car is the cheapest (i.e., no cheaper cars found)
+  const isTheCheapestVehicle = car.last_checked && listings && listings.length > 0 && 
+    !listings.some(listing => Number(listing.price) < Number(car.last_price || 0));
+  
   const handleClick = async () => {
-    if (isScrapingCar) return;
+    setIsDialogOpen(true);
+    // Only auto-trigger scraping if no listings exist or car has never been checked
+    if (!listings || listings.length === 0 || !car.last_checked) {
+      await handleRefresh();
+    }
+  };
+  
+  const handleRefresh = async () => {
+    setIsLoading(true);
+    setHasError(false);
     
     try {
       await onTriggerScraping(car.id);
-      setIsOpen(true);
+      // No need to throw error here as onTriggerScraping already handles that
     } catch (error) {
       console.error("Error triggering scraping:", error);
+      setHasError(true);
+      toast({
+        title: "Search Error",
+        description: "We encountered an error while searching for vehicles. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
-
-  const hasListings = listings && listings.length > 0;
-  const listingCount = hasListings ? listings.length : 0;
   
-  const getStatusDisplay = () => {
-    if (isScrapingCar) {
-      return (
-        <Button variant="outline" size="sm" disabled>
-          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-          Searching...
-        </Button>
-      );
-    }
-    
-    if (hasListings) {
-      return (
-        <div className="flex items-center">
-          <Button variant="outline" size="sm" onClick={handleClick} className="relative">
-            <Search className="h-3.5 w-3.5 mr-1" />
-            Find Cheapest
-            {listingCount > 0 && (
-              <Badge variant="secondary" className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                {listingCount}
-              </Badge>
-            )}
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setIsOpen(true)}
-            className="ml-1"
-          >
-            View
-          </Button>
-        </div>
-      );
-    }
-    
-    return (
-      <Button variant="outline" size="sm" onClick={handleClick}>
-        <Search className="h-3.5 w-3.5 mr-1" />
-        Find Cheapest
-      </Button>
-    );
-  };
-
   return (
     <>
-      {getStatusDisplay()}
+      <div className="relative">
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          onClick={handleClick}
+          disabled={isScrapingCar}
+          title="Find the cheapest similar vehicle online"
+          className="whitespace-nowrap"
+        >
+          {isScrapingCar ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-1" />
+          ) : (
+            <Globe className="h-4 w-4 mr-1" />
+          )}
+          Find Cheapest
+        </Button>
+        
+        {/* Show red notification for cheaper vehicles */}
+        {hasCheaperVehicles && !isScrapingCar && !isDialogOpen && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white">
+            !
+          </span>
+        )}
+        
+        {/* Show green notification when your car is the cheapest */}
+        {isTheCheapestVehicle && !isScrapingCar && !isDialogOpen && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white">
+            ✓
+          </span>
+        )}
+      </div>
       
-      <ScrapedListingsDialog 
-        listingData={listings || []}
-        open={isOpen} 
-        onOpenChange={setIsOpen}
+      <ScrapedListingsDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        car={car}
+        listings={listings}
+        isLoading={isLoading || isScrapingCar} // Show loading if either local or global loading
+        hasError={hasError}
+        onRefresh={handleRefresh}
       />
     </>
   );

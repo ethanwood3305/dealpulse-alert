@@ -21,8 +21,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
   const [mileage, setMileage] = useState<string>('');
   const [price, setPrice] = useState<string>('');
-  const [mileageError, setMileageError] = useState<string | null>(null);
-  const [priceError, setPriceError] = useState<string | null>(null);
   const { addCar, trackedCars } = useTrackedCars(userId);
 
   const handleLookup = async (registration: string) => {
@@ -31,8 +29,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     setErrorCode(null);
     setVehicleDetails(null);
     setDiagnosticInfo(null);
-    setMileageError(null);
-    setPriceError(null);
 
     // Validate registration format
     const regPattern = /^[A-Z0-9]{2,8}$/i;
@@ -149,48 +145,23 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
     }
   };
 
-  const validateInputs = (): boolean => {
-    let isValid = true;
-    
-    // Reset error states
-    setMileageError(null);
-    setPriceError(null);
-    
-    // Validate mileage
-    if (!mileage || mileage.trim() === '') {
-      setMileageError('Mileage is required');
-      isValid = false;
-    } else {
-      const mileageNum = Number(mileage);
-      if (isNaN(mileageNum) || mileageNum < 0) {
-        setMileageError('Mileage must be a positive number');
-        isValid = false;
-      }
-    }
-    
-    // Validate price
-    if (!price || price.trim() === '') {
-      setPriceError('Target price is required');
-      isValid = false;
-    } else {
-      const priceNum = Number(price);
-      if (isNaN(priceNum) || priceNum <= 0) {
-        setPriceError('Price must be a positive number');
-        isValid = false;
-      }
-    }
-    
-    return isValid;
-  };
-
   const handleAddCar = async () => {
     if (!vehicleDetails) return;
 
-    // Validate inputs before proceeding
-    if (!validateInputs()) {
+    // Validate mileage and price are provided
+    if (!mileage || mileage.trim() === '') {
       toast({
         title: "Missing information",
-        description: "Please check the required fields and try again",
+        description: "Please enter the vehicle mileage",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!price || price.trim() === '') {
+      toast({
+        title: "Missing information",
+        description: "Please enter a target price",
         variant: "destructive"
       });
       return;
@@ -228,8 +199,6 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         setVehicleDetails(null);
         setMileage('');
         setPrice('');
-        setMileageError(null);
-        setPriceError(null);
         
         if (onCarAdded) {
           onCarAdded();
@@ -273,38 +242,26 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div>
-                  <Label htmlFor="mileage" className="flex items-center">
-                    Mileage <span className="text-destructive ml-1">*</span>
-                  </Label>
+                  <Label htmlFor="mileage">Mileage</Label>
                   <Input
                     id="mileage"
                     placeholder="Enter current mileage"
                     type="number"
                     value={mileage}
                     onChange={(e) => setMileage(e.target.value)}
-                    className={`mt-1 ${mileageError ? 'border-destructive' : ''}`}
-                    required
+                    className="mt-1"
                   />
-                  {mileageError && (
-                    <p className="text-destructive text-xs mt-1">{mileageError}</p>
-                  )}
                 </div>
                 <div>
-                  <Label htmlFor="price" className="flex items-center">
-                    Target Price (£) <span className="text-destructive ml-1">*</span>
-                  </Label>
+                  <Label htmlFor="price">Target Price (£)</Label>
                   <Input
                     id="price"
                     placeholder="Enter target price"
                     type="number"
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
-                    className={`mt-1 ${priceError ? 'border-destructive' : ''}`}
-                    required
+                    className="mt-1"
                   />
-                  {priceError && (
-                    <p className="text-destructive text-xs mt-1">{priceError}</p>
-                  )}
                 </div>
               </div>
               <VehicleResultCard 
