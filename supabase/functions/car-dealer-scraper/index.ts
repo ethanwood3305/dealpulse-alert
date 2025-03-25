@@ -14,7 +14,8 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
     console.log('[INIT] Supabase URL and Key loaded');
-    if (!supabaseUrl || !supabaseKey) throw new Error('Missing Supabase environment variables');
+    if (!supabaseUrl || !supabaseKey)
+      throw new Error('Missing Supabase environment variables');
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     console.log('[INIT] Supabase client initialized');
@@ -25,12 +26,15 @@ Deno.serve(async (req) => {
 
     if (vehicleId) {
       await scrapeForVehicle(supabase, vehicleId);
-      return new Response(JSON.stringify({ success: true, message: `Scraped vehicle ${vehicleId}` }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
+      return new Response(
+        JSON.stringify({ success: true, message: `Scraped vehicle ${vehicleId}` }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    const { data: trackedCars, error } = await supabase.from('tracked_urls').select('*');
+    const { data: trackedCars, error } = await supabase
+      .from('tracked_urls')
+      .select('*');
     console.log('[DB] Tracked cars fetched');
     if (error) throw new Error(error.message);
 
@@ -40,33 +44,16 @@ Deno.serve(async (req) => {
       await scrapeForVehicle(supabase, car.id);
     }
 
-    return new Response(JSON.stringify({ success: true, message: `Processed ${carsToProcess.length} vehicles` }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ success: true, message: `Processed ${carsToProcess.length} vehicles` }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   } catch (error) {
     console.error('[ERROR] Scraper error:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message || 'Unknown error occurred' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  }
-});
-
-// Rest of code continues unchanged with added console.log at each logical step inside scrapeForVehicle, parseVehicleDetails, cleanTrim, getVehicleListings...
-
-// To save space in this response, only the request-level logging is shown above.
-// Let me know if you want detailed logging injected into each function (already partially exists in some).
-    }
-
-    return new Response(JSON.stringify({ success: true, message: `Processed ${carsToProcess.length} vehicles` }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
-  } catch (error) {
-    console.error('Scraper error:', error);
-    return new Response(JSON.stringify({ success: false, error: error.message || 'Unknown error occurred' }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(
+      JSON.stringify({ success: false, error: error.message || 'Unknown error occurred' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 });
 
@@ -77,7 +64,11 @@ async function scrapeForVehicle(supabase, vehicleId) {
       return;
     }
 
-    const { data: vehicle, error } = await supabase.from('tracked_urls').select('*').eq('id', vehicleId).single();
+    const { data: vehicle, error } = await supabase
+      .from('tracked_urls')
+      .select('*')
+      .eq('id', vehicleId)
+      .single();
     if (error || !vehicle) {
       console.error(`Error fetching vehicle ${vehicleId}:`, error);
       return;
@@ -88,30 +79,42 @@ async function scrapeForVehicle(supabase, vehicleId) {
       .select('dealer_postcode')
       .eq('user_id', vehicle.user_id)
       .single();
-
     const dealerPostcode = subscriptionData?.dealer_postcode || 'b31 3xr';
+
     const carDetails = parseVehicleDetails(vehicle);
-    console.log(`Scraping ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
+    console.log(
+      `Scraping ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`
+    );
 
     const scrapedListings = await getVehicleListings(carDetails, dealerPostcode);
     console.log(`Found ${scrapedListings.length} listings for vehicle ${vehicleId}`);
 
-    const { error: deleteError } = await supabase.from('scraped_vehicle_listings').delete().eq('tracked_car_id', vehicleId);
+    // Delete previous listings
+    const { error: deleteError } = await supabase
+      .from('scraped_vehicle_listings')
+      .delete()
+      .eq('tracked_car_id', vehicleId);
     if (deleteError) {
       console.error(`Error deleting previous listings for vehicle ${vehicleId}:`, deleteError);
     }
 
     if (scrapedListings.length > 0) {
-      const sortedListings = [...scrapedListings].sort((a, b) => a.price !== b.price ? a.price - b.price : a.mileage - b.mileage);
+      const sortedListings = [...scrapedListings].sort((a, b) =>
+        a.price !== b.price ? a.price - b.price : a.mileage - b.mileage
+      );
       const cheapestListing = sortedListings[0];
       const top3Listings = sortedListings.slice(0, 3);
       const listingsToInsert = top3Listings.map(listing => ({
         ...listing,
         tracked_car_id: vehicleId,
-        is_cheapest: listing.price === cheapestListing.price && listing.mileage === cheapestListing.mileage
+        is_cheapest:
+          listing.price === cheapestListing.price &&
+          listing.mileage === cheapestListing.mileage
       }));
 
-      const { error: insertError } = await supabase.from('scraped_vehicle_listings').insert(listingsToInsert);
+      const { error: insertError } = await supabase
+        .from('scraped_vehicle_listings')
+        .insert(listingsToInsert);
       if (insertError) {
         console.error(`Error inserting listings for vehicle ${vehicleId}:`, insertError);
       } else {
@@ -125,7 +128,6 @@ async function scrapeForVehicle(supabase, vehicleId) {
           last_checked: new Date().toISOString()
         })
         .eq('id', vehicleId);
-
       if (updateError) {
         console.error(`Error updating cheapest price for vehicle ${vehicleId}:`, updateError);
       } else {
@@ -133,7 +135,10 @@ async function scrapeForVehicle(supabase, vehicleId) {
       }
     } else {
       console.log(`No listings found for vehicle ${vehicleId}`);
-      await supabase.from('tracked_urls').update({ last_checked: new Date().toISOString() }).eq('id', vehicleId);
+      await supabase
+        .from('tracked_urls')
+        .update({ last_checked: new Date().toISOString() })
+        .eq('id', vehicleId);
     }
   } catch (err) {
     console.error(`Vehicle scrape error (${vehicleId}):`, err);
@@ -148,7 +153,11 @@ function toProperCase(text) {
 function cleanTrim(trim) {
   if (!trim) return '';
 
-  const blacklist = ['cdti', 'tdci', 'tdi', 'dci', 'e4', 'e5', 'e6', 'bhp', 'vvt', 'turbo', 'eco', 's/s', 'ss', 'fwd', 'awd', 'rwd', 'auto', 'manual', 'mt', 'at', 'dct', 'cv', 'engine', '1.0', '1.2', '1.4', '1.6', '1.8', '2.0', '2.2', '2.5', '3.0'];
+  const blacklist = [
+    'cdti', 'tdci', 'tdi', 'dci', 'e4', 'e5', 'e6', 'bhp', 'vvt', 'turbo',
+    'eco', 's/s', 'ss', 'fwd', 'awd', 'rwd', 'auto', 'manual', 'mt', 'at',
+    'dct', 'cv', 'engine', '1.0', '1.2', '1.4', '1.6', '1.8', '2.0', '2.2', '2.5', '3.0'
+  ];
 
   const words = trim
     .toLowerCase()
@@ -157,13 +166,12 @@ function cleanTrim(trim) {
     .filter(word => word && !blacklist.includes(word));
 
   // Keep first 1–2 meaningful words
-  const mainTrim = words.slice(0, 2)
+  const mainTrim = words
+    .slice(0, 2)
     .map(w => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
-
   return mainTrim;
 }
-
 
 function parseVehicleDetails(vehicle) {
   if (!vehicle || !vehicle.url) {
@@ -213,9 +221,6 @@ function parseVehicleDetails(vehicle) {
     engineSize: engineSize ? parseFloat(engineSize) : null
   };
 }
-
-// getVehicleListings stays the same as in the last replacement you approved.
-
 
 async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const baseUrl = 'https://www.autotrader.co.uk';
@@ -303,7 +308,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }`
   }];
 
-  // Log the payload details being sent
   console.log("Payload being sent:", JSON.stringify(payload, null, 2));
 
   const MAX_RETRIES = 3;
@@ -327,7 +331,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       if (response.ok) break;
 
       const body = await response.text();
-      console.warn(`[RETRY] AutoTrader API failed (status ${response.status}): ${body.substring(0, 300)}`);
+      console.warn(
+        `[RETRY] AutoTrader API failed (status ${response.status}): ${body.substring(0, 300)}`
+      );
       retries++;
       await new Promise(r => setTimeout(r, retries * 1000));
     } catch (err) {
@@ -397,7 +403,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       }`
     }];
 
-    // Log the uppercase payload details being sent
     console.log("Uppercase Payload being sent:", JSON.stringify(newPayload, null, 2));
 
     let retriesUpper = 0;
@@ -419,7 +424,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         if (responseUpper.ok) break;
 
         const body = await responseUpper.text();
-        console.warn(`[RETRY] Uppercase trim API failed (status ${responseUpper.status}): ${body.substring(0, 300)}`);
+        console.warn(
+          `[RETRY] Uppercase trim API failed (status ${responseUpper.status}): ${body.substring(0, 300)}`
+        );
         retriesUpper++;
         await new Promise(r => setTimeout(r, retriesUpper * 1000));
       } catch (err) {
@@ -437,9 +444,10 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   return listings
     .filter(l => l.fpaLink && l.price)
     .map(l => {
-      let price = typeof l.price === 'string'
-        ? parseInt(l.price.replace(/[^0-9]/g, ''), 10)
-        : l.price;
+      let price =
+        typeof l.price === 'string'
+          ? parseInt(l.price.replace(/[^0-9]/g, ''), 10)
+          : l.price;
       if (isNaN(price)) price = 0;
 
       let mileage = 0;
@@ -453,7 +461,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         dealer_name: "AutoTrader",
         url: `${baseUrl}${l.fpaLink}`,
         title: l.title || `${carDetails.brand} ${carDetails.model}`,
-        price: price,
+        price,
         mileage: mileage || carDetails.mileage || 0,
         year: carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear(),
         color: carDetails.color || 'Unknown',
@@ -464,4 +472,3 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       };
     });
 }
-
