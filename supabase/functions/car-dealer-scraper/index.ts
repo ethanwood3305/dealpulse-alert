@@ -310,7 +310,8 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     });
   }
   
-  // Build payload for AutoTrader API
+  // Updated GraphQL query that works with the current version of AutoTrader API
+  // The previous query was requesting fields that no longer exist or have changed name
   const payload = [{
     operationName: "SearchResultsListingsGridQuery",
     variables: {
@@ -325,6 +326,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       searchResults(input: {facets: [], filters: $filters, channel: $channel, page: $page, sortBy: $sortBy, listingType: $listingType, searchId: $searchId}) {
         listings {
           ... on SearchListing {
+            id
             title
             price
             vehicleLocation
@@ -345,7 +347,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }`
   }];
   
-  console.log('[DEBUG] AutoTrader search with filters:', JSON.stringify(filters, null, 2));
+  // Log the complete request payload for debugging
+  console.log('[DEBUG] AutoTrader search filters:', JSON.stringify(filters, null, 2));
+  console.log('[DEBUG] AutoTrader full payload:', JSON.stringify(payload[0].variables, null, 2));
   
   try {
     // Implement retry mechanism with exponential backoff
@@ -355,16 +359,18 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     
     // List of different User-Agent strings to try
     const userAgents = [
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36',
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36'
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
     ];
     
-    while (retries <= MAX_RETRIES) {
+    while (retries < MAX_RETRIES) {
       try {
         // Use a different User-Agent on each retry
         const userAgent = userAgents[retries % userAgents.length];
+
+        console.log(`[ATTEMPT ${retries + 1}/${MAX_RETRIES}] Calling AutoTrader API with User-Agent: ${userAgent.substring(0, 25)}...`);
         
         response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
           method: 'POST',
@@ -377,21 +383,31 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           body: JSON.stringify(payload)
         });
         
-        if (response.ok) break;
+        if (response.ok) {
+          console.log(`[SUCCESS] AutoTrader API responded with status: ${response.status}`);
+          break;
+        }
         
+        const responseText = await response.text();
         console.log(`[RETRY] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES} failed with status: ${response.status}`);
+        console.log(`[RETRY] Response body: ${responseText.substring(0, 500)}`);
+        
         retries++;
         
         // Add exponential backoff
-        if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
+        if (retries < MAX_RETRIES) {
+          const backoffTime = Math.pow(2, retries) * 1000;
+          console.log(`[RETRY] Backing off for ${backoffTime}ms before retry ${retries + 1}`);
+          await new Promise(r => setTimeout(r, backoffTime));
         }
       } catch (error) {
         console.error(`[RETRY ERROR] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES}:`, error);
         retries++;
         
-        if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
+        if (retries < MAX_RETRIES) {
+          const backoffTime = Math.pow(2, retries) * 1000;
+          console.log(`[RETRY] Backing off for ${backoffTime}ms before retry ${retries + 1}`);
+          await new Promise(r => setTimeout(r, backoffTime));
         } else {
           throw error;
         }
@@ -399,20 +415,28 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }
     
     if (!response || !response.ok) {
-      console.error('[ERROR] AutoTrader API failed after retries');
+      console.error('[ERROR] AutoTrader API failed after all retries');
       return [];
     }
     
-    const json = await response.json();
+    const responseText = await response.text();
+    console.log('[DEBUG] AutoTrader raw response:', responseText.substring(0, 500) + '...');
+    
+    const json = JSON.parse(responseText);
     
     // Check if there's an error in the response
     if (json[0]?.errors) {
-      console.error('[FATAL] AutoTrader API failed after all retries:', JSON.stringify(json[0].errors, null, 2));
+      console.error('[FATAL] AutoTrader API error response:', JSON.stringify(json[0].errors, null, 2));
       return [];
     }
     
     const listings = json[0]?.data?.searchResults?.listings || [];
     console.log('[DEBUG] Found results:', listings.length);
+    
+    // Log a sample listing to see the structure
+    if (listings.length > 0) {
+      console.log('[DEBUG] Sample listing structure:', JSON.stringify(listings[0], null, 2));
+    }
     
     // Map raw listings to our format
     return listings
@@ -435,7 +459,11 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         let mileage = 0;
         const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
         if (mileageBadge?.displayText) {
-          mileage = parseInt(mileageBadge.displayText.replace(/[^0-9]/g, ''), 10);
+          // Extract number from format like "1,234 miles"
+          const mileageMatch = mileageBadge.displayText.match(/[\d,]+/);
+          if (mileageMatch) {
+            mileage = parseInt(mileageMatch[0].replace(/,/g, ''), 10);
+          }
         }
         
         // Extract year and color from metadata
