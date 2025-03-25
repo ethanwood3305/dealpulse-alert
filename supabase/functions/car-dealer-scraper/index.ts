@@ -309,7 +309,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     });
   }
   
-  // Build payload for AutoTrader API
+  // Build payload for AutoTrader API with FIXED GraphQL query - removed the "mileage" field which caused the error
   const payload = [{
     operationName: "SearchResultsListingsGridQuery",
     variables: {
@@ -328,7 +328,11 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             price
             vehicleLocation
             fpaLink
-            mileage
+            metadata {
+              mileage
+              year
+              colour
+            }
           }
         }
       }
@@ -435,7 +439,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           return createMockListings(carDetails);
         }
         
-        // Map raw listings to our format
+        // Map raw listings to our format - UPDATED to extract mileage from metadata
         return listings
           .filter(l => l && l.fpaLink)
           .map(l => {
@@ -454,17 +458,23 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             // Extract location details
             const location = l.vehicleLocation || 'Unknown';
             
-            // Process mileage from the listing
-            let mileage = l.mileage;
+            // Extract mileage from metadata - NEW WAY
+            let mileage = l.metadata?.mileage || 0;
             if (typeof mileage === 'string') {
               // Extract numeric value from strings like "10,000 miles"
               const mileageMatch = mileage.match(/(\d+[,\d]*)/);
-              mileage = mileageMatch ? parseInt(mileageMatch[0].replace(/,/g, ''), 10) : NaN;
+              mileage = mileageMatch ? parseInt(mileageMatch[0].replace(/,/g, ''), 10) : 0;
             }
             
             // Use extracted mileage or fall back to the user's mileage
             const finalMileage = !isNaN(mileage) && mileage > 0 ? 
               mileage : (carDetails.mileage || 10000);
+
+            // Extract year from metadata or use default
+            const year = l.metadata?.year || parseInt(carDetails.year) || new Date().getFullYear();
+            
+            // Extract color from metadata or use default
+            const color = l.metadata?.colour || carDetails.color || 'Unknown';
             
             return {
               dealer_name: "AutoTrader",
@@ -472,8 +482,8 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
               title: l.title || `${carDetails.brand} ${carDetails.model}`,
               price: price,
               mileage: finalMileage,
-              year: parseInt(carDetails.year) || new Date().getFullYear(),
-              color: carDetails.color || 'Unknown',
+              year: year,
+              color: color,
               location: location,
               lat: 51.5 + Math.random() * 3 - 1.5, // Generate random coordinates for map view
               lng: -0.9 + Math.random() * 3 - 1.5, // These should ideally be based on actual location
