@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ExternalLink, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle, AlertTriangle, RotateCw } from "lucide-react";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { formatDistanceToNow } from "date-fns";
 
@@ -14,6 +14,7 @@ interface ScrapedListingsDialogProps {
   car: TrackedCar;
   listings: ScrapedListing[];
   isLoading: boolean;
+  hasError?: boolean;
   onRefresh: () => void;
 }
 
@@ -23,11 +24,16 @@ export function ScrapedListingsDialog({
   car,
   listings,
   isLoading,
+  hasError = false,
   onRefresh
 }: ScrapedListingsDialogProps) {
   const cheapestPrice = car.cheapest_price || car.last_price;
   const targetPrice = car.last_price;
-  const cheapestListing = listings.length > 0 ? listings[0] : null; // Now there will only be one listing
+  const cheapestListing = listings.length > 0 ? listings[0] : null;
+  
+  const lastCheckedText = car.last_checked ? 
+    `Last checked ${formatDistanceToNow(new Date(car.last_checked), { addSuffix: true })}` :
+    "Never checked before";
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -35,15 +41,18 @@ export function ScrapedListingsDialog({
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
             <span>Similar Vehicles</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onRefresh}
-              disabled={isLoading}
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Refresh Search
-            </Button>
+            <div className="flex gap-2 items-center">
+              <span className="text-sm text-muted-foreground">{lastCheckedText}</span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={onRefresh}
+                disabled={isLoading}
+              >
+                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCw className="h-4 w-4 mr-2" />}
+                Refresh Search
+              </Button>
+            </div>
           </DialogTitle>
           <DialogDescription>
             <div className="flex flex-wrap gap-2 mb-2">
@@ -53,6 +62,7 @@ export function ScrapedListingsDialog({
               {car.year && <Badge variant="outline">Year: {car.year}</Badge>}
               {car.mileage && <Badge variant="outline">Miles: {car.mileage}</Badge>}
               {car.color && <Badge variant="outline">{car.color}</Badge>}
+              {car.trim && <Badge variant="outline">Trim: {car.trim}</Badge>}
             </div>
             <div className="text-sm mt-2">
               Showing the cheapest vehicle from dealer websites.
@@ -64,6 +74,15 @@ export function ScrapedListingsDialog({
           <div className="flex flex-col items-center justify-center py-10">
             <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
             <p className="text-muted-foreground">Searching dealer sites for similar vehicles...</p>
+            <p className="text-xs text-muted-foreground mt-2">This may take up to 30 seconds</p>
+          </div>
+        ) : hasError ? (
+          <div className="text-center py-10">
+            <AlertTriangle className="h-10 w-10 text-destructive mx-auto mb-4" />
+            <p className="text-muted-foreground">There was an error searching for similar vehicles.</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Please try again later or contact support if the problem persists.
+            </p>
           </div>
         ) : listings.length === 0 ? (
           <div className="text-center py-10">

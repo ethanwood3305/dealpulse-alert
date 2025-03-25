@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -41,6 +42,7 @@ export const useTrackedCars = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);
   const [scrapedListings, setScrapedListings] = useState<Record<string, ScrapedListing[]>>({});
   const [isScrapingCar, setIsScrapingCar] = useState(false);
+  const [scrapingError, setScrapingError] = useState<string | null>(null);
 
   const fetchTrackedCars = async (userId: string) => {
     try {
@@ -103,6 +105,16 @@ export const useTrackedCars = (userId: string | undefined) => {
       }) || [];
       
       setTrackedCars(carsWithTags);
+      
+      // Fetch the scraped listings for each car
+      for (const car of carsWithTags) {
+        fetchScrapedListings(car.id).then(listings => {
+          setScrapedListings(prev => ({
+            ...prev,
+            [car.id]: listings
+          }));
+        });
+      }
     } catch (error) {
       console.error("Error fetching tracked cars:", error);
       toast({
@@ -122,7 +134,8 @@ export const useTrackedCars = (userId: string | undefined) => {
       });
         
       if (error) {
-        throw error;
+        console.error("Error fetching scraped listings:", error);
+        return [];
       }
       
       return data || [];
@@ -135,20 +148,33 @@ export const useTrackedCars = (userId: string | undefined) => {
   const triggerScraping = async (carId: string): Promise<ScrapedListing[]> => {
     try {
       setIsScrapingCar(true);
+      setScrapingError(null);
+      
+      // Validate car ID
+      if (!carId) {
+        throw new Error("Invalid car ID");
+      }
+      
+      const car = trackedCars.find(c => c.id === carId);
+      if (!car) {
+        throw new Error("Car not found");
+      }
+      
+      toast({
+        title: "Search Started",
+        description: `Searching for the cheapest ${car.brand} ${car.model}. This may take a moment.`
+      });
       
       const { error } = await supabase.functions.invoke('car-dealer-scraper', {
         body: { vehicle_id: carId }
       });
       
       if (error) {
+        console.error("Error invoking car-dealer-scraper:", error);
         throw error;
       }
       
-      toast({
-        title: "Search Started",
-        description: "We're searching for the cheapest similar vehicle. This may take a moment."
-      });
-      
+      // Wait for scraping to complete (throttle to prevent too many requests)
       await new Promise(resolve => setTimeout(resolve, 5000));
       
       const listings = await fetchScrapedListings(carId);
@@ -162,16 +188,24 @@ export const useTrackedCars = (userId: string | undefined) => {
         await fetchTrackedCars(userId);
       }
       
-      toast({
-        title: "Search Complete",
-        description: listings.length > 0 
-          ? "Found the cheapest similar vehicle from dealers." 
-          : "No similar vehicles found at this time."
-      });
+      // Show a successful toast based on results
+      if (listings.length > 0) {
+        const cheapestListing = listings[0];
+        toast({
+          title: "Search Complete",
+          description: `Found ${car.brand} ${car.model} for £${cheapestListing.price.toLocaleString()}`
+        });
+      } else {
+        toast({
+          title: "Search Complete",
+          description: "No similar vehicles found at this time. Try again later."
+        });
+      }
       
       return listings;
     } catch (error: any) {
       console.error("Error triggering car scraping:", error);
+      setScrapingError(error.message || "Unknown error");
       toast({
         title: "Error",
         description: "Failed to search for similar vehicles. Please try again later.",
@@ -431,6 +465,7 @@ export const useTrackedCars = (userId: string | undefined) => {
     scrapedListings,
     triggerScraping,
     isScrapingCar,
+    scrapingError,
     getListingsForCar: (carId: string) => scrapedListings[carId] || []
   };
 };

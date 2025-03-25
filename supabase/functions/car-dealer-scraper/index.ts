@@ -1,11 +1,13 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: corsHeaders
@@ -15,13 +17,21 @@ Deno.serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    
+    // Validate environment variables
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase environment variables');
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseKey);
     
+    // Parse request data
     const requestData = await req.json().catch(() => ({}));
     const vehicleId = requestData.vehicle_id;
     
     console.log(`Scraper triggered for Vehicle ID: ${vehicleId || 'ALL'}`);
     
+    // Process single vehicle if ID provided
     if (vehicleId) {
       await scrapeForVehicle(supabase, vehicleId);
       return new Response(JSON.stringify({
@@ -35,9 +45,11 @@ Deno.serve(async (req) => {
       });
     }
     
+    // Batch process vehicles if no ID provided
     const { data: trackedCars, error } = await supabase.from('tracked_urls').select('*');
     if (error) throw new Error(error.message);
     
+    // Limit batch size to prevent timeouts
     const carsToProcess = trackedCars?.slice(0, 50) || [];
     for (const car of carsToProcess) {
       await scrapeForVehicle(supabase, car.id);
@@ -56,7 +68,7 @@ Deno.serve(async (req) => {
     console.error('Scraper error:', error);
     return new Response(JSON.stringify({
       success: false,
-      error: error.message
+      error: error.message || 'Unknown error occurred'
     }), {
       status: 500,
       headers: {
@@ -69,17 +81,35 @@ Deno.serve(async (req) => {
 
 async function scrapeForVehicle(supabase, vehicleId) {
   try {
+    // Validate input
+    if (!vehicleId) {
+      console.error('Invalid vehicle ID provided');
+      return;
+    }
+
+    // Fetch vehicle details
     const { data: vehicle, error } = await supabase.from('tracked_urls').select('*').eq('id', vehicleId).single();
     if (error || !vehicle) {
       console.error(`Error fetching vehicle ${vehicleId}:`, error);
       return;
     }
     
+    // Get dealer postcode from user's subscription for location-based search
+    const { data: subscriptionData } = await supabase
+      .from('subscriptions')
+      .select('dealer_postcode')
+      .eq('user_id', vehicle.user_id)
+      .single();
+    
+    // Default postcode if not found
+    const dealerPostcode = subscriptionData?.dealer_postcode || 'b31 3xr';
+    
+    // Parse vehicle details from URL
     const carDetails = parseVehicleDetails(vehicle);
     console.log(`Scraping ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
     
-    // Get scraped listings
-    const scrapedListings = await getVehicleListings(carDetails);
+    // Get scraped listings using user's preferred location
+    const scrapedListings = await getVehicleListings(carDetails, dealerPostcode);
     console.log(`Found ${scrapedListings.length} listings for vehicle ${vehicleId}`);
     
     // Clear previous listings
@@ -100,10 +130,9 @@ async function scrapeForVehicle(supabase, vehicleId) {
       };
       
       // Insert only the cheapest listing
-      const { data: insertedData, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from('scraped_vehicle_listings')
-        .insert([listingToInsert])
-        .select();
+        .insert([listingToInsert]);
       
       if (insertError) {
         console.error(`Error inserting listing for vehicle ${vehicleId}:`, insertError);
@@ -115,7 +144,10 @@ async function scrapeForVehicle(supabase, vehicleId) {
       if (cheapestListing && cheapestListing.price < (vehicle.cheapest_price || Infinity)) {
         const { error: updateError } = await supabase
           .from('tracked_urls')
-          .update({ cheapest_price: cheapestListing.price })
+          .update({ 
+            cheapest_price: cheapestListing.price,
+            last_checked: new Date().toISOString()
+          })
           .eq('id', vehicleId);
         
         if (updateError) {
@@ -123,9 +155,20 @@ async function scrapeForVehicle(supabase, vehicleId) {
         } else {
           console.log(`Updated cheapest price for vehicle ${vehicleId} to £${cheapestListing.price}`);
         }
+      } else {
+        // Update last_checked timestamp even if price didn't change
+        await supabase
+          .from('tracked_urls')
+          .update({ last_checked: new Date().toISOString() })
+          .eq('id', vehicleId);
       }
     } else {
       console.log(`No listings found for vehicle ${vehicleId}`);
+      // Update last_checked timestamp even if no listings found
+      await supabase
+        .from('tracked_urls')
+        .update({ last_checked: new Date().toISOString() })
+        .eq('id', vehicleId);
     }
   } catch (err) {
     console.error(`Vehicle scrape error (${vehicleId}):`, err);
@@ -133,6 +176,21 @@ async function scrapeForVehicle(supabase, vehicleId) {
 }
 
 function parseVehicleDetails(vehicle) {
+  if (!vehicle || !vehicle.url) {
+    console.error('Invalid vehicle data:', vehicle);
+    return {
+      brand: 'Unknown',
+      model: 'Unknown',
+      engineType: '',
+      trim: '',
+      mileage: 0,
+      year: new Date().getFullYear(),
+      color: '',
+      lastPrice: null,
+      engineSize: null
+    };
+  }
+
   const urlParts = vehicle.url.split('/');
   const brand = toProperCase(urlParts[0] || '');
   const model = toProperCase(urlParts[1] || '');
@@ -158,9 +216,9 @@ function parseVehicleDetails(vehicle) {
     model,
     engineType,
     trim,
-    mileage,
-    year,
-    color,
+    mileage: mileage || 0,
+    year: year || new Date().getFullYear().toString(),
+    color: color || '',
     lastPrice: vehicle.last_price,
     engineSize: engineSize ? parseFloat(engineSize) : null
   };
@@ -171,8 +229,16 @@ function toProperCase(text) {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
-async function getVehicleListings(carDetails) {
+async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const baseUrl = 'https://www.autotrader.co.uk';
+  
+  // Skip scraping if required details are missing
+  if (!carDetails.brand || !carDetails.model) {
+    console.error('Missing required vehicle details for scraping:', carDetails);
+    return [];
+  }
+
+  // Build search filters
   const filters = [
     {
       filter: "make",
@@ -184,7 +250,7 @@ async function getVehicleListings(carDetails) {
     },
     {
       filter: "postcode",
-      selected: ["b31 3xr"]
+      selected: [postcode]
     },
     {
       filter: "price_search_type",
@@ -196,6 +262,7 @@ async function getVehicleListings(carDetails) {
     }
   ];
   
+  // Add optional filters when values are present
   if (carDetails.trim) filters.push({
     filter: "aggregated_trim",
     selected: [carDetails.trim]
@@ -218,8 +285,8 @@ async function getVehicleListings(carDetails) {
   }
   
   if (carDetails.mileage) {
-    const min = Math.max(0, carDetails.mileage - 2000);
-    const max = carDetails.mileage + 2000;
+    const min = Math.max(0, carDetails.mileage - 5000); // Increased range for better matches
+    const max = carDetails.mileage + 5000; // Increased range for better matches
     filters.push({
       filter: "min_mileage",
       selected: [String(min)]
@@ -231,8 +298,8 @@ async function getVehicleListings(carDetails) {
   }
   
   if (carDetails.engineSize) {
-    const minEngine = (carDetails.engineSize - 0.01).toFixed(2); // 1.24 becomes 1.23
-    const maxEngine = (carDetails.engineSize + 0.01).toFixed(2); // 1.24 becomes 1.25
+    const minEngine = Math.max(0, (carDetails.engineSize - 0.2).toFixed(2)); // Increased range
+    const maxEngine = (carDetails.engineSize + 0.2).toFixed(2); // Increased range
     filters.push({
       filter: "min_engine_size",
       selected: [String(minEngine)]
@@ -243,13 +310,14 @@ async function getVehicleListings(carDetails) {
     });
   }
   
+  // Build payload for AutoTrader API
   const payload = [{
     operationName: "SearchResultsListingsGridQuery",
     variables: {
       filters,
       channel: "cars",
       page: 1,
-      sortBy: "price_asc",
+      sortBy: "price_asc", // Sort by lowest price first
       listingType: null,
       searchId: crypto.randomUUID()
     },
@@ -267,46 +335,87 @@ async function getVehicleListings(carDetails) {
     }`
   }];
   
-  console.log('[DEBUG] Payload:', JSON.stringify(payload, null, 2));
+  console.log('[DEBUG] AutoTrader search with filters:', JSON.stringify(filters, null, 2));
   
   try {
-    const response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0',
-        'x-sauron-app-name': 'sauron-search-results-app',
-        'x-sauron-app-version': '3157'
-      },
-      body: JSON.stringify(payload)
-    });
+    // Implement retry mechanism
+    const MAX_RETRIES = 2;
+    let retries = 0;
+    let response;
+    
+    while (retries <= MAX_RETRIES) {
+      try {
+        response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'x-sauron-app-name': 'sauron-search-results-app',
+            'x-sauron-app-version': '3157'
+          },
+          body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) break;
+        
+        console.log(`[RETRY] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES} failed with status: ${response.status}`);
+        retries++;
+        
+        // Add exponential backoff
+        if (retries <= MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, retries * 1000));
+        }
+      } catch (error) {
+        console.error(`[RETRY ERROR] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES}:`, error);
+        retries++;
+        
+        if (retries <= MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, retries * 1000));
+        } else {
+          throw error;
+        }
+      }
+    }
+    
+    if (!response || !response.ok) {
+      console.error('[ERROR] AutoTrader API failed after retries');
+      return [];
+    }
     
     const json = await response.json();
-    console.log('[DEBUG] Found results:', json[0]?.data?.searchResults?.listings?.length || 0);
-    
     const listings = json[0]?.data?.searchResults?.listings || [];
+    console.log('[DEBUG] Found results:', listings.length);
     
+    // Map raw listings to our format
     return listings
       .filter(l => l.fpaLink && l.price)
       .map(l => {
-        // Make sure price is a number by cleaning and parsing it
+        // Normalize price to ensure it's a number
         let price = l.price;
         if (typeof price === 'string') {
-          // Remove £ symbol, commas, and any other non-numeric characters except decimal point
+          // Remove £ symbol, commas, and other non-numeric characters
           price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
         }
+        
+        if (isNaN(price)) {
+          price = 0;
+          console.log('[WARNING] Invalid price found in listing:', l);
+        }
+        
+        // Extract location details
+        const location = l.vehicleLocation || 'Unknown';
         
         return {
           dealer_name: "AutoTrader",
           url: `${baseUrl}${l.fpaLink}`,
-          title: l.title,
+          title: l.title || `${carDetails.brand} ${carDetails.model}`,
           price: price,
           mileage: carDetails.mileage || 30000,
-          year: carDetails.year || new Date().getFullYear(),
+          year: parseInt(carDetails.year) || new Date().getFullYear(),
           color: carDetails.color || 'Unknown',
-          location: l.vehicleLocation || 'Unknown',
-          lat: 51.5 + Math.random() * 3 - 1.5,
-          lng: -0.9 + Math.random() * 3 - 1.5,
+          location: location,
+          lat: 51.5 + Math.random() * 3 - 1.5, // Generate random coordinates for map view
+          lng: -0.9 + Math.random() * 3 - 1.5, // These should ideally be based on actual location
           is_cheapest: false // This will be set correctly before insertion
         };
       });
