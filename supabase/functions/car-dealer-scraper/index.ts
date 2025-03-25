@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 
 const corsHeaders = {
@@ -119,29 +118,29 @@ async function scrapeForVehicle(supabase, vehicleId) {
     }
     
     if (scrapedListings.length > 0) {
-      // Find the top 3 cheapest listings (or all if less than 3)
-      const listingsToInsert = scrapedListings
-        .sort((a, b) => a.price - b.price)
-        .slice(0, 3)
-        .map((listing, index) => ({
-          ...listing,
-          tracked_car_id: vehicleId,
-          is_cheapest: index === 0 // Only the first listing (cheapest) gets marked as is_cheapest
-        }));
-        
-      // Insert the top 3 cheapest listings
+      // Find the cheapest listing
+      const cheapestListing = scrapedListings.reduce((a, b) => a.price < b.price ? a : b);
+      
+      // Only insert the cheapest listing, with is_cheapest set to true
+      const listingToInsert = {
+        ...cheapestListing,
+        tracked_car_id: vehicleId,
+        is_cheapest: true
+      };
+      
+      // Insert only the cheapest listing
       const { error: insertError } = await supabase
         .from('scraped_vehicle_listings')
-        .insert(listingsToInsert);
+        .insert([listingToInsert]);
       
       if (insertError) {
-        console.error(`Error inserting listings for vehicle ${vehicleId}:`, insertError);
+        console.error(`Error inserting listing for vehicle ${vehicleId}:`, insertError);
       } else {
-        console.log(`Successfully inserted ${listingsToInsert.length} listings for vehicle ${vehicleId}`);
+        console.log(`Successfully inserted the cheapest listing for vehicle ${vehicleId}`);
       }
       
-      // Update vehicle with the cheapest price found from scraping
-      const cheapestListing = listingsToInsert[0];
+      // Always update vehicle with the cheapest price found from scraping
+      // regardless of the user's price (this ensures the "Cheapest" tag is accurate)
       const { error: updateError } = await supabase
         .from('tracked_urls')
         .update({ 
@@ -231,7 +230,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     return [];
   }
 
-  // Build search filters with less restrictive parameters
+  // Build search filters
   const filters = [
     {
       filter: "make",
@@ -255,39 +254,31 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }
   ];
   
-  // Make optional filters less restrictive to increase chances of finding vehicles
-  if (carDetails.trim) {
-    // Add trim as a filter but make it case-insensitive
-    filters.push({
-      filter: "aggregated_trim",
-      selected: [carDetails.trim]
-    });
-  }
+  // Add optional filters when values are present
+  if (carDetails.trim) filters.push({
+    filter: "aggregated_trim",
+    selected: [carDetails.trim]
+  });
   
-  if (carDetails.color) {
-    filters.push({
-      filter: "colour",
-      selected: [carDetails.color]
-    });
-  }
+  if (carDetails.color) filters.push({
+    filter: "colour",
+    selected: [carDetails.color]
+  });
   
   if (carDetails.year) {
-    // Wider range for year - include one year before and after
-    const yearInt = parseInt(carDetails.year);
     filters.push({
       filter: "min_year_manufactured",
-      selected: [(yearInt - 1).toString()]
+      selected: [carDetails.year]
     });
     filters.push({
       filter: "max_year_manufactured",
-      selected: [(yearInt + 1).toString()]
+      selected: [carDetails.year]
     });
   }
   
-  if (carDetails.mileage && carDetails.mileage > 0) {
-    // Significantly increase the mileage range to find more matches
-    const min = Math.max(0, carDetails.mileage - 10000); 
-    const max = carDetails.mileage + 15000;
+  if (carDetails.mileage) {
+    const min = Math.max(0, carDetails.mileage - 5000); // Increased range for better matches
+    const max = carDetails.mileage + 5000; // Increased range for better matches
     filters.push({
       filter: "min_mileage",
       selected: [String(min)]
@@ -299,9 +290,8 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
   
   if (carDetails.engineSize) {
-    // Increase engine size range
-    const minEngine = Math.max(0, (carDetails.engineSize - 0.3).toFixed(2));
-    const maxEngine = (carDetails.engineSize + 0.3).toFixed(2);
+    const minEngine = Math.max(0, (carDetails.engineSize - 0.2).toFixed(2)); // Increased range
+    const maxEngine = (carDetails.engineSize + 0.2).toFixed(2); // Increased range
     filters.push({
       filter: "min_engine_size",
       selected: [String(minEngine)]
@@ -331,7 +321,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             price
             vehicleLocation
             fpaLink
-            mileage
           }
         }
       }
@@ -342,7 +331,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   
   try {
     // Implement retry mechanism
-    const MAX_RETRIES = 3;
+    const MAX_RETRIES = 2;
     let retries = 0;
     let response;
     
@@ -366,14 +355,14 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         
         // Add exponential backoff
         if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, retries * 1500));
+          await new Promise(r => setTimeout(r, retries * 1000));
         }
       } catch (error) {
         console.error(`[RETRY ERROR] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES}:`, error);
         retries++;
         
         if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, retries * 1500));
+          await new Promise(r => setTimeout(r, retries * 1000));
         } else {
           throw error;
         }
@@ -386,10 +375,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }
     
     const json = await response.json();
-    
-    // Log the full response for debugging
-    console.log('[DEBUG] AutoTrader API response:', JSON.stringify(json).slice(0, 1000) + '...');
-    
     const listings = json[0]?.data?.searchResults?.listings || [];
     console.log('[DEBUG] Found results:', listings.length);
     
@@ -409,20 +394,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           console.log('[WARNING] Invalid price found in listing:', l);
         }
         
-        // Extract mileage
-        let mileage = carDetails.mileage || 30000;
-        if (l.mileage) {
-          if (typeof l.mileage === 'string') {
-            // Extract numbers from string like "61,721 miles"
-            const match = l.mileage.match(/(\d+,?\d*)/);
-            if (match && match[1]) {
-              mileage = parseInt(match[1].replace(/,/g, ''), 10);
-            }
-          } else if (typeof l.mileage === 'number') {
-            mileage = l.mileage;
-          }
-        }
-        
         // Extract location details
         const location = l.vehicleLocation || 'Unknown';
         
@@ -431,7 +402,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           url: `${baseUrl}${l.fpaLink}`,
           title: l.title || `${carDetails.brand} ${carDetails.model}`,
           price: price,
-          mileage: mileage,
+          mileage: carDetails.mileage || 30000,
           year: parseInt(carDetails.year) || new Date().getFullYear(),
           color: carDetails.color || 'Unknown',
           location: location,

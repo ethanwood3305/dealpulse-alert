@@ -5,6 +5,7 @@ import { Globe, Loader2 } from "lucide-react";
 import { ScrapedListingsDialog } from "./ScrapedListingsDialog";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { toast } from "@/components/ui/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface ScrapeButtonProps {
   car: TrackedCar;

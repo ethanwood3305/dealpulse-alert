@@ -15,7 +15,7 @@ interface ScrapedListingsDialogProps {
   listings: ScrapedListing[];
   isLoading: boolean;
   hasError?: boolean;
-  onRefresh?: () => void;
+  onRefresh: () => void;
 }
 
 export function ScrapedListingsDialog({
@@ -41,7 +41,7 @@ export function ScrapedListingsDialog({
   
   // Force a refresh if the dialog is opened and there are no listings and it's not already loading
   useEffect(() => {
-    if (isOpen && listings.length === 0 && !isLoading && !car.last_checked && onRefresh) {
+    if (isOpen && listings.length === 0 && !isLoading && !car.last_checked) {
       console.log('Auto-refreshing search for car with no listings');
       onRefresh();
     }
