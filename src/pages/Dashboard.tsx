@@ -10,27 +10,14 @@ import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
-import { AddCarForm } from '@/components/dashboard/AddCarForm';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
-import * as z from "zod";
-
-const carSchema = z.object({
-  brand: z.string().min(1, "Brand is required"),
-  model: z.string().min(1, "Model is required"),
-  engineType: z.string().min(1, "Engine type is required"),
-  mileage: z.string().optional(),
-  year: z.string().optional(),
-  color: z.string().optional(),
-});
 
 const Dashboard = () => {
-  const [isAddingCar, setIsAddingCar] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [activeTab, setActiveTab] = useState<'form' | 'lookup'>('form');
   const navigate = useNavigate();
   
   const { 
@@ -44,7 +31,6 @@ const Dashboard = () => {
   const { 
     trackedCars, 
     isLoading: isLoadingCars,
-    addCar,
     deleteCar,
     addTag,
     removeTag,
@@ -88,55 +74,6 @@ const Dashboard = () => {
     }
   }, [isLoadingSubscription, isLoadingCars, initialLoadComplete]);
 
-  const onSubmitCar = async (values: z.infer<typeof carSchema>) => {
-    if (!user) return;
-    setIsAddingCar(true);
-    
-    try {
-      const { data: canAddMore, error: checkError } = await supabase.rpc('can_add_more_urls', {
-        user_uuid: user.id
-      });
-      
-      if (checkError) {
-        throw checkError;
-      }
-      
-      if (!canAddMore) {
-        toast({
-          title: "Limit reached",
-          description: `You've reached your limit of ${userSubscription?.urls_limit} vehicles. Please contact support to add more.`,
-          variant: "destructive"
-        });
-        return;
-      }
-
-      const success = await addCar({
-        brand: values.brand,
-        model: values.model,
-        engineType: values.engineType,
-        mileage: values.mileage,
-        year: values.year,
-        color: values.color
-      });
-      
-      if (success) {
-        refreshSubscription();
-        toast({
-          title: "Vehicle added",
-          description: "The vehicle has been added to your tracking list."
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add vehicle. Please try again later.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsAddingCar(false);
-    }
-  };
-
   const handleDeleteCar = async (id: string): Promise<boolean> => {
     if (!user) return false;
     const success = await deleteCar(id);
@@ -171,18 +108,10 @@ const Dashboard = () => {
     return success;
   };
 
-  const scrollToAddCarForm = () => {
-    document.getElementById('add-car-form')?.scrollIntoView({
-      behavior: 'smooth'
-    });
-    setActiveTab('form');
-  };
-  
   const scrollToVehicleLookup = () => {
     document.getElementById('vehicle-lookup')?.scrollIntoView({
       behavior: 'smooth'
     });
-    setActiveTab('lookup');
   };
 
   const manuallyRefreshSubscription = () => {
@@ -243,7 +172,7 @@ const Dashboard = () => {
             
             <QuickActionsCard 
               canAddMoreCars={canAddMoreCars}
-              onAddCarClick={scrollToAddCarForm}
+              onAddCarClick={scrollToVehicleLookup}
             />
           </div>
           
@@ -256,36 +185,11 @@ const Dashboard = () => {
             />
           </div>
           
-          <div className="mb-6">
-            <div className="flex border-b border-gray-200 mb-6">
-              <button
-                className={`py-2 px-4 text-center ${activeTab === 'form' ? 'border-b-2 border-primary font-medium text-primary' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setActiveTab('form')}
-              >
-                Add Vehicle Manually
-              </button>
-              <button
-                className={`py-2 px-4 text-center ${activeTab === 'lookup' ? 'border-b-2 border-primary font-medium text-primary' : 'text-gray-500 hover:text-gray-700'}`}
-                onClick={() => setActiveTab('lookup')}
-              >
-                DVLA Registration Lookup
-              </button>
-            </div>
-            
-            <div className={activeTab === 'form' ? 'block' : 'hidden'}>
-              <AddCarForm 
-                onSubmit={onSubmitCar}
-                isAddingCar={isAddingCar}
-                canAddMoreCars={canAddMoreCars}
-              />
-            </div>
-            
-            <div id="vehicle-lookup" className={activeTab === 'lookup' ? 'block' : 'hidden'}>
-              <VehicleLookup 
-                userId={user?.id}
-                onCarAdded={handleCarAdded}
-              />
-            </div>
+          <div id="vehicle-lookup" className="mb-10">
+            <VehicleLookup 
+              userId={user?.id}
+              onCarAdded={handleCarAdded}
+            />
           </div>
           
           <TrackedCarsTable 

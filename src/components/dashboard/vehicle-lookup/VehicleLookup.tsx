@@ -197,9 +197,9 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Vehicle Lookup</CardTitle>
+        <CardTitle>Add Vehicle by Registration</CardTitle>
         <CardDescription>
-          Quickly find vehicle details using UK registration number
+          Enter a UK registration number to automatically find and track the vehicle
         </CardDescription>
       </CardHeader>
       <CardContent>
