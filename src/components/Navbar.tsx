@@ -100,9 +100,6 @@ const Navbar = () => {
             <Link to="/about" className="text-sm font-medium hover:text-primary transition-colors">
               About
             </Link>
-            <Link to="/contact" className="text-sm font-medium hover:text-primary transition-colors">
-              Contact
-            </Link>
             {user && (
               <Link to="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
                 Dashboard
@@ -197,13 +194,6 @@ const Navbar = () => {
               onClick={() => setIsMobileMenuOpen(false)}
             >
               About
-            </Link>
-            <Link
-              to="/contact"
-              className="block text-lg font-medium hover:text-primary"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              Contact
             </Link>
             {user && (
               <Link
