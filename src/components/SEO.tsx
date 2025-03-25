@@ -14,7 +14,7 @@ const SEO = ({
   description,
   canonicalUrl = 'https://carparison.app',
   ogType = 'website',
-  ogImage = '/og-image.png',
+  ogImage = '/car-dealer-preview.png',
 }: SEOProps) => {
   // Append site name to title unless it's already there
   const fullTitle = title.includes('Carparison') 

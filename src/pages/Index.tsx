@@ -24,8 +24,9 @@ const Index = () => {
     <div className="min-h-screen flex flex-col">
       <SEO 
         title="Carparison - Monitor Vehicle Prices Effortlessly"
-        description="Stay ahead of the market with real-time price tracking for any vehicle model. Get alerts when prices change and make informed decisions."
+        description="Stay ahead of the market with real-time price tracking for any vehicle model. Get daily alerts when prices change and make informed decisions."
         canonicalUrl="https://carparison.app"
+        ogImage="/car-dealer-preview.png"
       />
       <Navbar />
       
