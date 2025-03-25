@@ -2,10 +2,16 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import EnterpriseContact from "@/components/EnterpriseContact";
+import SEO from '@/components/SEO';
 
 const PricingPage = () => {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Enterprise Pricing Solutions"
+        description="Contact us for a tailored pricing plan that fits your dealership's needs. Get premium features for vehicle price monitoring and competitor analysis."
+        canonicalUrl="https://carparison.app/pricing"
+      />
       <Navbar />
       <main className="flex-grow">
         <div className="py-20 relative">

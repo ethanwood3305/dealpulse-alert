@@ -1,10 +1,16 @@
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SEO from '@/components/SEO';
 
 const Privacy = () => {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Privacy Policy"
+        description="Read about how Carparison collects, uses, and protects your data. Our privacy policy outlines our commitment to your data security."
+        canonicalUrl="https://carparison.app/privacy"
+      />
       <Navbar />
       
       <main className="flex-grow pt-24 pb-16">

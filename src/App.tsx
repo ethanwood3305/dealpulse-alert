@@ -2,6 +2,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
 import { ThemeProvider } from "@/hooks/use-theme";
+import { HelmetProvider } from 'react-helmet-async';
 import Index from "@/pages/Index";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
@@ -18,23 +19,25 @@ import './App.css';
 
 const App = () => {
   return (
-    <ThemeProvider defaultTheme="light">
-      <Toaster />
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contact" element={<Contact />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/radius-map" element={<RadiusMap />} />
-        <Route path="/changelog" element={<Changelog />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </ThemeProvider>
+    <HelmetProvider>
+      <ThemeProvider defaultTheme="light">
+        <Toaster />
+        <Routes>
+          <Route path="/" element={<Index />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/radius-map" element={<RadiusMap />} />
+          <Route path="/changelog" element={<Changelog />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </ThemeProvider>
+    </HelmetProvider>
   );
 }
 
