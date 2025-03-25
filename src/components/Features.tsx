@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import { Bell, LineChart, Settings, Calendar, Clock, Shield, Map, BarChart3, Cpu, Tag, Target, Search } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
@@ -96,13 +95,12 @@ const Features = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Updated features with the new descriptions
   const features = [
     {
       icon: Bell,
       title: "Daily Price Alerts",
       description: "Get daily notifications when competitors change their prices",
-      details: "Our monitoring system checks competitor prices daily, sending you notifications via email whenever a price change is detected. Stay informed about market movements without having to constantly check prices manually.",
+      details: "Our monitoring system checks competitor prices daily for at least 30 consecutive days, sending you notifications via email whenever a price change is detected. This extended period of monitoring helps you identify trends and make more informed pricing decisions without having to constantly check prices manually.",
       delay: "delay-100"
     },
     {
@@ -127,31 +125,23 @@ const Features = () => {
       delay: "delay-400"
     },
     {
-      icon: Calendar,
-      title: "30 Days of Pricing Updates",
-      description: "Minimum of 30 daily price updates for comprehensive monitoring",
-      details: "Our system guarantees at least 30 days of continuous price monitoring, providing you with a comprehensive view of how prices evolve over time. This extended period of data collection helps you identify trends and make more informed pricing decisions.",
-      delay: "delay-500"
-    },
-    {
       icon: Map,
       title: "Radius Scope",
       description: "View competitors within 10, 50, 100 miles or nationwide",
       details: "Customize your competitive landscape by setting your preferred radius. Whether you want to focus on local competition within 10 miles or get a broader view of the national market, our flexible radius options give you complete control over your monitoring scope.",
-      delay: "delay-600"
+      delay: "delay-500"
     },
     {
       icon: Cpu,
       title: "Latest AI Algorithms",
       description: "Leveraging cutting-edge AI for accurate price comparison",
       details: "Our platform uses advanced artificial intelligence algorithms to ensure the most accurate and relevant price comparisons. By continuously learning from market data, our AI can identify patterns and anomalies that would be impossible to spot manually, giving you a competitive edge.",
-      delay: "delay-700"
+      delay: "delay-600"
     }
   ];
 
   return (
     <div className="py-20 relative" id="features">
-      {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden -z-10">
         <div className="absolute top-1/2 left-0 w-72 h-72 bg-blue-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-10"></div>
         <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-purple-100 rounded-full mix-blend-multiply filter blur-3xl opacity-30 dark:opacity-10"></div>
