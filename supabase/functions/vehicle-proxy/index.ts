@@ -101,6 +101,7 @@ serve(async (req) => {
   weight: tech.Dimensions?.GrossVehicleWeight
     ? `${tech.Dimensions.GrossVehicleWeight} kg`
     : 'Unknown',
+
   trim:
   classif?.Smmt?.Trim?.trim() ||
   (typeof classif?.Dvla?.Model === 'string'
@@ -109,6 +110,7 @@ serve(async (req) => {
       ).join(' ').trim()
     : null) ||
   null,
+
 
 };
 
