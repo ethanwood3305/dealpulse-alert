@@ -1,9 +1,9 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
+import SEO from '@/components/SEO';
 
 // Type for a changelog entry
 type ChangelogEntry = {
@@ -96,6 +96,11 @@ const badgeColors = {
 const Changelog = () => {
   return (
     <>
+      <SEO 
+        title="Changelog"
+        description="Stay updated with all the latest features, improvements, and fixes to the Carparison platform. See how we're constantly enhancing our vehicle price monitoring tools."
+        canonicalUrl="https://carparison.app/changelog"
+      />
       <Navbar />
       <div className="container mx-auto px-4 py-10 min-h-[calc(100vh-64px-380px)]">
         <div className="max-w-3xl mx-auto">

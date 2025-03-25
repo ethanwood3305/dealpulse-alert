@@ -14,6 +14,7 @@ import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
+import SEO from '@/components/SEO';
 
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
@@ -152,6 +153,11 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Dashboard | Carparison"
+        description="Monitor your tracked vehicles, manage your subscription, and get real-time price alerts for your competitors' listings in one convenient dashboard."
+        canonicalUrl="https://carparison.app/dashboard"
+      />
       <Navbar />
       
       <main className="flex-grow py-16 container mx-auto px-4">

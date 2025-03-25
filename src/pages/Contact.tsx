@@ -1,10 +1,10 @@
-
 import { useState, useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Phone, MapPin } from 'lucide-react';
+import SEO from '@/components/SEO';
 
 const ContactForm = () => {
   const { toast } = useToast();
@@ -111,6 +111,12 @@ const Contact = () => {
   
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Contact Us"
+        description="Get in touch with the Carparison team. We're here to answer your questions about our vehicle price monitoring and competitor analysis tools."
+        canonicalUrl="https://carparison.app/contact"
+      />
+      
       <Navbar />
       
       <main className="flex-grow pt-24">

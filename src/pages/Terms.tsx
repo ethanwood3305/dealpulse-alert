@@ -1,10 +1,16 @@
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SEO from '@/components/SEO';
 
 const Terms = () => {
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Terms of Service"
+        description="Read our terms of service to understand the conditions for using Carparison's vehicle price monitoring and competitor analysis tools."
+        canonicalUrl="https://carparison.app/terms"
+      />
       <Navbar />
       
       <main className="flex-grow pt-24 pb-16">

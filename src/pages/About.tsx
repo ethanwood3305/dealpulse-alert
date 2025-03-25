@@ -4,6 +4,7 @@ import Footer from '@/components/Footer';
 import { motion } from 'framer-motion';
 import { CheckCircle, ArrowRight, Users, Award, TrendingUp, LineChart, MapPin, Settings, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SEO from '@/components/SEO';
 
 const About = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -34,6 +35,12 @@ const About = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="About Carparison"
+        description="Learn about Carparison's mission to revolutionize auto dealership intelligence with real-time price tracking and competitor analysis."
+        canonicalUrl="https://carparison.app/about"
+      />
+      
       <Navbar />
       
       <main className="flex-grow pt-24">

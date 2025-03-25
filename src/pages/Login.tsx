@@ -11,6 +11,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import SEO from '@/components/SEO';
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -80,6 +81,11 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Log In | Carparison"
+        description="Log in to access your Carparison dashboard. Monitor vehicle prices, track competitors, and receive price change alerts."
+        canonicalUrl="https://carparison.app/login"
+      />
       <Navbar />
       
       <main className="flex-grow pt-24 flex items-center justify-center">

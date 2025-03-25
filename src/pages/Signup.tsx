@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import SEO from '@/components/SEO';
 
 const signupSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -122,6 +123,11 @@ const Signup = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <SEO 
+        title="Sign Up | Carparison"
+        description="Create your Carparison account today and start monitoring vehicle prices. Track competitor listings and make data-driven pricing decisions."
+        canonicalUrl="https://carparison.app/signup"
+      />
       <Navbar />
       
       <main className="flex-grow pt-24 flex items-center justify-center">
