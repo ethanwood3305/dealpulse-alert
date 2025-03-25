@@ -124,9 +124,23 @@ function toProperCase(text) {
 
 function cleanTrim(trim) {
   if (!trim) return '';
-  const word = trim.trim().split(' ')[0];
-  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+
+  const blacklist = ['cdti', 'tdci', 'tdi', 'dci', 'e4', 'e5', 'e6', 'bhp', 'vvt', 'turbo', 'eco', 's/s', 'ss', 'fwd', 'awd', 'rwd', 'auto', 'manual', 'mt', 'at', 'dct', 'cv', 'engine', '1.0', '1.2', '1.4', '1.6', '1.8', '2.0', '2.2', '2.5', '3.0'];
+
+  const words = trim
+    .toLowerCase()
+    .replace(/[^a-z0-9. ]+/gi, '') // Remove special chars
+    .split(' ')
+    .filter(word => word && !blacklist.includes(word));
+
+  // Keep first 1–2 meaningful words
+  const mainTrim = words.slice(0, 2)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+
+  return mainTrim;
 }
+
 
 function parseVehicleDetails(vehicle) {
   if (!vehicle || !vehicle.url) {
