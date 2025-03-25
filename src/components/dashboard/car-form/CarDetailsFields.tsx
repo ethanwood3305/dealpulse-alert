@@ -20,7 +20,9 @@ export const CarDetailsFields = ({ form, isAddingCar, canAddMoreCars }: CarDetai
           name="mileage" 
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Mileage</FormLabel>
+              <FormLabel className="flex items-center">
+                Mileage <span className="text-destructive ml-1">*</span>
+              </FormLabel>
               <FormControl>
                 <Input 
                   type="number" 
@@ -77,7 +79,9 @@ export const CarDetailsFields = ({ form, isAddingCar, canAddMoreCars }: CarDetai
           name="price" 
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Target Price (Optional)</FormLabel>
+              <FormLabel className="flex items-center">
+                Target Price <span className="text-destructive ml-1">*</span>
+              </FormLabel>
               <FormControl>
                 <Input 
                   type="number" 

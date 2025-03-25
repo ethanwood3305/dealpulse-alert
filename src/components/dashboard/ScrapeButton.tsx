@@ -24,6 +24,10 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
     listing.is_cheapest && car.last_price && Number(listing.price) < Number(car.last_price)
   );
   
+  // Check if the current car is the cheapest (i.e., no cheaper cars found)
+  const isTheCheapestVehicle = car.last_checked && listings && listings.length > 0 && 
+    !listings.some(listing => Number(listing.price) < Number(car.last_price || 0));
+  
   const handleClick = async () => {
     setIsDialogOpen(true);
     // Only auto-trigger scraping if no listings exist or car has never been checked
@@ -71,9 +75,17 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
           Find Cheapest
         </Button>
         
+        {/* Show red notification for cheaper vehicles */}
         {hasCheaperVehicles && !isScrapingCar && !isDialogOpen && (
           <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] text-white">
             !
+          </span>
+        )}
+        
+        {/* Show green notification when your car is the cheapest */}
+        {isTheCheapestVehicle && !isScrapingCar && !isDialogOpen && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-green-500 text-[10px] text-white">
+            ✓
           </span>
         )}
       </div>
