@@ -144,7 +144,7 @@ const Contact = () => {
                     <div>
                       <p className="font-medium">Email</p>
                       <a href="mailto:info@pricewatch.com" className="text-muted-foreground hover:text-primary transition-colors">
-                        info@pricewatch.com
+                        info@carparison.app
                       </a>
                     </div>
                   </div>
@@ -154,7 +154,7 @@ const Contact = () => {
                     <div>
                       <p className="font-medium">Phone</p>
                       <a href="tel:+18005551234" className="text-muted-foreground hover:text-primary transition-colors">
-                        (800) 555-1234
+                        Coming Soon
                       </a>
                     </div>
                   </div>
@@ -175,8 +175,8 @@ const Contact = () => {
                 <div className="mt-8">
                   <h3 className="text-lg font-medium mb-4">Business Hours</h3>
                   <p className="text-muted-foreground">
-                    Monday - Friday: 9:00 AM - 6:00 PM<br />
-                    Saturday: 10:00 AM - 4:00 PM<br />
+                    Monday - Friday: 9:00 AM - 5:00 PM<br />
+                    Saturday: Closed<br />
                     Sunday: Closed
                   </p>
                 </div>
