@@ -284,8 +284,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
   
   if (carDetails.mileage) {
-    const min = Math.max(0, carDetails.mileage - 6000); // Increased range for better matches
-    const max = carDetails.mileage + 2500; // Increased range for better matches
+    // Create a wider mileage range to improve matches
+    const min = Math.max(0, carDetails.mileage - 8000);
+    const max = carDetails.mileage + 4000;
     filters.push({
       filter: "min_mileage",
       selected: [String(min)]
@@ -297,8 +298,8 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
   
   if (carDetails.engineSize) {
-    const minEngine = Math.max(0, (carDetails.engineSize - 0.02).toFixed(2)); // Increased range
-    const maxEngine = (carDetails.engineSize + 0.02).toFixed(2); // Increased range
+    const minEngine = Math.max(0, (carDetails.engineSize - 0.05).toFixed(2));
+    const maxEngine = (carDetails.engineSize + 0.05).toFixed(2);
     filters.push({
       filter: "min_engine_size",
       selected: [String(minEngine)]
@@ -328,7 +329,16 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             price
             vehicleLocation
             fpaLink
-            mileage
+            badges {
+              type
+              displayText
+              __typename
+            }
+            metadata {
+              year
+              colour
+              __typename
+            }
           }
         }
       }
@@ -338,18 +348,29 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   console.log('[DEBUG] AutoTrader search with filters:', JSON.stringify(filters, null, 2));
   
   try {
-    // Implement retry mechanism
-    const MAX_RETRIES = 2;
+    // Implement retry mechanism with exponential backoff
+    const MAX_RETRIES = 3;
     let retries = 0;
     let response;
     
+    // List of different User-Agent strings to try
+    const userAgents = [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Safari/605.1.15',
+      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36'
+    ];
+    
     while (retries <= MAX_RETRIES) {
       try {
+        // Use a different User-Agent on each retry
+        const userAgent = userAgents[retries % userAgents.length];
+        
         response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'User-Agent': userAgent,
             'x-sauron-app-name': 'sauron-search-results-app',
             'x-sauron-app-version': '3157'
           },
@@ -363,14 +384,14 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         
         // Add exponential backoff
         if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, retries * 1000));
+          await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
         }
       } catch (error) {
         console.error(`[RETRY ERROR] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES}:`, error);
         retries++;
         
         if (retries <= MAX_RETRIES) {
-          await new Promise(r => setTimeout(r, retries * 1000));
+          await new Promise(r => setTimeout(r, Math.pow(2, retries) * 1000));
         } else {
           throw error;
         }
@@ -383,47 +404,58 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     }
     
     const json = await response.json();
+    
+    // Check if there's an error in the response
+    if (json[0]?.errors) {
+      console.error('[FATAL] AutoTrader API failed after all retries:', JSON.stringify(json[0].errors, null, 2));
+      return [];
+    }
+    
     const listings = json[0]?.data?.searchResults?.listings || [];
     console.log('[DEBUG] Found results:', listings.length);
     
     // Map raw listings to our format
     return listings
-  .filter(l => l.fpaLink && l.price)
-  .map(l => {
-    // Normalize price to ensure it's a number
-    let price = l.price;
-    if (typeof price === 'string') {
-      price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
-    }
-    if (isNaN(price)) {
-      price = 0;
-      console.log('[WARNING] Invalid price found in listing:', l);
-    }
+      .filter(l => l.fpaLink && l.price)
+      .map(l => {
+        // Normalize price to ensure it's a number
+        let price = l.price;
+        if (typeof price === 'string') {
+          price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
+        }
+        if (isNaN(price)) {
+          price = 0;
+          console.log('[WARNING] Invalid price found in listing:', l);
+        }
 
-    // Extract location details
-    const location = l.vehicleLocation || 'Unknown';
+        // Extract location details
+        const location = l.vehicleLocation || 'Unknown';
 
-    // ✅ Extract mileage from badges
-    let mileage = 0;
-    const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
-    if (mileageBadge?.displayText) {
-      mileage = parseInt(mileageBadge.displayText.replace(/[^0-9]/g, ''), 10);
-    }
+        // Extract mileage from badges
+        let mileage = 0;
+        const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
+        if (mileageBadge?.displayText) {
+          mileage = parseInt(mileageBadge.displayText.replace(/[^0-9]/g, ''), 10);
+        }
+        
+        // Extract year and color from metadata
+        const year = l.metadata?.year ? parseInt(l.metadata.year) : (carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear());
+        const color = l.metadata?.colour || carDetails.color || 'Unknown';
 
-    return {
-      dealer_name: "AutoTrader",
-      url: `${baseUrl}${l.fpaLink}`,
-      title: l.title || `${carDetails.brand} ${carDetails.model}`,
-      price: price,
-      mileage: mileage || carDetails.mileage || 0,
-      year: parseInt(carDetails.year) || new Date().getFullYear(),
-      color: carDetails.color || 'Unknown',
-      location: location,
-      lat: 51.5 + Math.random() * 3 - 1.5,
-      lng: -0.9 + Math.random() * 3 - 1.5,
-      is_cheapest: false
-    };
-  });
+        return {
+          dealer_name: "AutoTrader",
+          url: `${baseUrl}${l.fpaLink}`,
+          title: l.title || `${carDetails.brand} ${carDetails.model}`,
+          price: price,
+          mileage: mileage || carDetails.mileage || 0,
+          year: year,
+          color: color,
+          location: location,
+          lat: 51.5 + Math.random() * 3 - 1.5,
+          lng: -0.9 + Math.random() * 3 - 1.5,
+          is_cheapest: false
+        };
+      });
 
   } catch (error) {
     console.error('[ERROR] AutoTrader API:', error);
