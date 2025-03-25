@@ -277,8 +277,8 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
   
   if (carDetails.mileage) {
-    const min = Math.max(0, carDetails.mileage - 5000); // Increased range for better matches
-    const max = carDetails.mileage + 5000; // Increased range for better matches
+    const min = Math.max(0, carDetails.mileage - 6000); // Increased range for better matches
+    const max = carDetails.mileage + 2500; // Increased range for better matches
     filters.push({
       filter: "min_mileage",
       selected: [String(min)]
@@ -290,8 +290,8 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
   
   if (carDetails.engineSize) {
-    const minEngine = Math.max(0, (carDetails.engineSize - 0.2).toFixed(2)); // Increased range
-    const maxEngine = (carDetails.engineSize + 0.2).toFixed(2); // Increased range
+    const minEngine = Math.max(0, (carDetails.engineSize - 0.02).toFixed(2)); // Increased range
+    const maxEngine = (carDetails.engineSize + 0.02).toFixed(2); // Increased range
     filters.push({
       filter: "min_engine_size",
       selected: [String(minEngine)]
