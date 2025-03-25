@@ -230,102 +230,76 @@ function toProperCase(text) {
 
 async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const baseUrl = 'https://www.autotrader.co.uk';
-  
-  // Skip scraping if required details are missing
+
   if (!carDetails.brand || !carDetails.model) {
     console.error('Missing required vehicle details for scraping:', carDetails);
     return [];
   }
 
-  // Build search filters
   const filters = [
-    {
-      filter: "make",
-      selected: [carDetails.brand]
-    },
-    {
-      filter: "model",
-      selected: [carDetails.model]
-    },
-    {
-      filter: "postcode",
-      selected: [postcode]
-    },
-    {
-      filter: "price_search_type",
-      selected: ["total"]
-    },
-    {
-      filter: "is_writeoff",
-      selected: ["false"]
-    }
+    { filter: "make", selected: [carDetails.brand] },
+    { filter: "model", selected: [carDetails.model] },
+    { filter: "postcode", selected: [postcode] },
+    { filter: "price_search_type", selected: ["total"] },
+    { filter: "is_writeoff", selected: ["false"] }
   ];
-  
-  // Add optional filters when values are present
-  if (carDetails.trim) filters.push({
-    filter: "aggregated_trim",
-    selected: [carDetails.trim]
-  });
-  
-  if (carDetails.color) filters.push({
-    filter: "colour",
-    selected: [carDetails.color]
-  });
-  
-  if (carDetails.year) {
-    filters.push({
-      filter: "min_year_manufactured",
-      selected: [carDetails.year]
-    });
-    filters.push({
-      filter: "max_year_manufactured",
-      selected: [carDetails.year]
-    });
+
+  if (carDetails.trim) {
+    filters.push({ filter: "aggregated_trim", selected: [carDetails.trim] });
   }
-  
+
+  if (carDetails.color) {
+    filters.push({ filter: "colour", selected: [carDetails.color] });
+  }
+
+  if (carDetails.year) {
+    filters.push({ filter: "min_year_manufactured", selected: [carDetails.year] });
+    filters.push({ filter: "max_year_manufactured", selected: [carDetails.year] });
+  }
+
   if (carDetails.mileage) {
-    // Create a wider mileage range to improve matches
     const min = Math.max(0, carDetails.mileage - 8000);
     const max = carDetails.mileage + 4000;
-    filters.push({
-      filter: "min_mileage",
-      selected: [String(min)]
-    });
-    filters.push({
-      filter: "max_mileage",
-      selected: [String(max)]
-    });
+    filters.push({ filter: "min_mileage", selected: [String(min)] });
+    filters.push({ filter: "max_mileage", selected: [String(max)] });
   }
-  
+
   if (carDetails.engineSize) {
-    const minEngine = Math.max(0, (carDetails.engineSize - 0.05).toFixed(2));
+    const minEngine = (carDetails.engineSize - 0.05).toFixed(2);
     const maxEngine = (carDetails.engineSize + 0.05).toFixed(2);
-    filters.push({
-      filter: "min_engine_size",
-      selected: [String(minEngine)]
-    });
-    filters.push({
-      filter: "max_engine_size",
-      selected: [String(maxEngine)]
-    });
+    filters.push({ filter: "min_engine_size", selected: [minEngine] });
+    filters.push({ filter: "max_engine_size", selected: [maxEngine] });
   }
-  
-  // Updated GraphQL query with fields that actually exist in the API schema
+
   const payload = [{
     operationName: "SearchResultsListingsGridQuery",
     variables: {
       filters,
       channel: "cars",
       page: 1,
-      sortBy: "price_asc", // Sort by lowest price first
+      sortBy: "price_asc",
       listingType: null,
       searchId: crypto.randomUUID()
     },
-    query: `query SearchResultsListingsGridQuery($filters: [FilterInput!]!, $channel: Channel!, $page: Int, $sortBy: SearchResultsSort, $listingType: [ListingType!], $searchId: String!) {
-      searchResults(input: {facets: [], filters: $filters, channel: $channel, page: $page, sortBy: $sortBy, listingType: $listingType, searchId: $searchId}) {
+    query: `query SearchResultsListingsGridQuery(
+      $filters: [FilterInput!]!,
+      $channel: Channel!,
+      $page: Int,
+      $sortBy: SearchResultsSort,
+      $listingType: [ListingType!],
+      $searchId: String!
+    ) {
+      searchResults(input: {
+        facets: [],
+        filters: $filters,
+        channel: $channel,
+        page: $page,
+        sortBy: $sortBy,
+        listingType: $listingType,
+        searchId: $searchId
+      }) {
         listings {
           ... on SearchListing {
-            stockItemId
             title
             price
             vehicleLocation
@@ -333,160 +307,84 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             badges {
               type
               displayText
-              __typename
             }
-            keySpecificationData {
-              year
-              colour
-              __typename
-            }
-            __typename
           }
         }
       }
     }`
   }];
-  
-  // Log the complete request payload for debugging
-  console.log('[DEBUG] AutoTrader search filters:', JSON.stringify(filters, null, 2));
-  console.log('[DEBUG] AutoTrader full payload:', JSON.stringify(payload[0].variables, null, 2));
-  
-  try {
-    // Implement retry mechanism with exponential backoff
-    const MAX_RETRIES = 3;
-    let retries = 0;
-    let response;
-    
-    // List of different User-Agent strings to try
-    const userAgents = [
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
-    ];
-    
-    while (retries < MAX_RETRIES) {
-      try {
-        // Use a different User-Agent on each retry
-        const userAgent = userAgents[retries % userAgents.length];
 
-        console.log(`[ATTEMPT ${retries + 1}/${MAX_RETRIES}] Calling AutoTrader API with User-Agent: ${userAgent.substring(0, 25)}...`);
-        
-        response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'User-Agent': userAgent,
-            'x-sauron-app-name': 'sauron-search-results-app',
-            'x-sauron-app-version': '3157'
-          },
-          body: JSON.stringify(payload)
-        });
-        
-        if (response.ok) {
-          console.log(`[SUCCESS] AutoTrader API responded with status: ${response.status}`);
-          break;
-        }
-        
-        const responseText = await response.text();
-        console.log(`[RETRY] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES} failed with status: ${response.status}`);
-        console.log(`[RETRY] Response body: ${responseText.substring(0, 500)}`);
-        
-        retries++;
-        
-        // Add exponential backoff
-        if (retries < MAX_RETRIES) {
-          const backoffTime = Math.pow(2, retries) * 1000;
-          console.log(`[RETRY] Backing off for ${backoffTime}ms before retry ${retries + 1}`);
-          await new Promise(r => setTimeout(r, backoffTime));
-        }
-      } catch (error) {
-        console.error(`[RETRY ERROR] AutoTrader API attempt ${retries + 1}/${MAX_RETRIES}:`, error);
-        retries++;
-        
-        if (retries < MAX_RETRIES) {
-          const backoffTime = Math.pow(2, retries) * 1000;
-          console.log(`[RETRY] Backing off for ${backoffTime}ms before retry ${retries + 1}`);
-          await new Promise(r => setTimeout(r, backoffTime));
-        } else {
-          throw error;
-        }
-      }
-    }
-    
-    if (!response || !response.ok) {
-      console.error('[ERROR] AutoTrader API failed after all retries');
-      return [];
-    }
-    
-    const responseText = await response.text();
-    console.log('[DEBUG] AutoTrader raw response:', responseText.substring(0, 500) + '...');
-    
-    const json = JSON.parse(responseText);
-    
-    // Check if there's an error in the response
-    if (json[0]?.errors) {
-      console.error('[FATAL] AutoTrader API error response:', JSON.stringify(json[0].errors, null, 2));
-      return [];
-    }
-    
-    const listings = json[0]?.data?.searchResults?.listings || [];
-    console.log('[DEBUG] Found results:', listings.length);
-    
-    // Log a sample listing to see the structure
-    if (listings.length > 0) {
-      console.log('[DEBUG] Sample listing structure:', JSON.stringify(listings[0], null, 2));
-    }
-    
-    // Map raw listings to our format
-    return listings
-      .filter(l => l.fpaLink && l.price)
-      .map(l => {
-        // Normalize price to ensure it's a number
-        let price = l.price;
-        if (typeof price === 'string') {
-          price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
-        }
-        if (isNaN(price)) {
-          price = 0;
-          console.log('[WARNING] Invalid price found in listing:', l);
-        }
+  const MAX_RETRIES = 3;
+  let retries = 0;
+  let response;
 
-        // Extract location details
-        const location = l.vehicleLocation || 'Unknown';
+  while (retries < MAX_RETRIES) {
+    try {
+      const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${118 + retries}.0.0.0 Safari/537.36`;
 
-        // Extract mileage from badges
-        let mileage = 0;
-        const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
-        if (mileageBadge?.displayText) {
-          // Extract number from format like "1,234 miles"
-          const mileageMatch = mileageBadge.displayText.match(/[\d,]+/);
-          if (mileageMatch) {
-            mileage = parseInt(mileageMatch[0].replace(/,/g, ''), 10);
-          }
-        }
-        
-        // Extract year and color from keySpecificationData instead of metadata
-        const year = l.keySpecificationData?.year ? parseInt(l.keySpecificationData.year) : (carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear());
-        const color = l.keySpecificationData?.colour || carDetails.color || 'Unknown';
-
-        return {
-          dealer_name: "AutoTrader",
-          url: `${baseUrl}${l.fpaLink}`,
-          title: l.title || `${carDetails.brand} ${carDetails.model}`,
-          price: price,
-          mileage: mileage || carDetails.mileage || 0,
-          year: year,
-          color: color,
-          location: location,
-          lat: 51.5 + Math.random() * 3 - 1.5,
-          lng: -0.9 + Math.random() * 3 - 1.5,
-          is_cheapest: false
-        };
+      response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': userAgent,
+          'x-sauron-app-name': 'sauron-search-results-app',
+          'x-sauron-app-version': '3157'
+        },
+        body: JSON.stringify(payload)
       });
 
-  } catch (error) {
-    console.error('[ERROR] AutoTrader API:', error);
+      if (response.ok) break;
+
+      const body = await response.text();
+      console.warn(`[RETRY] AutoTrader API failed (status ${response.status}): ${body.substring(0, 300)}`);
+      retries++;
+      await new Promise(r => setTimeout(r, retries * 1000));
+    } catch (err) {
+      console.error(`[RETRY ERROR]`, err);
+      retries++;
+      await new Promise(r => setTimeout(r, retries * 1000));
+    }
+  }
+
+  if (!response || !response.ok) {
+    console.error('[ERROR] AutoTrader API failed after all retries');
     return [];
   }
+
+  const json = await response.json();
+  const listings = json[0]?.data?.searchResults?.listings || [];
+
+  return listings
+    .filter(l => l.fpaLink && l.price)
+    .map(l => {
+      // Parse price
+      let price = typeof l.price === 'string'
+        ? parseInt(l.price.replace(/[^0-9]/g, ''), 10)
+        : l.price;
+
+      if (isNaN(price)) price = 0;
+
+      // Extract mileage from badges
+      let mileage = 0;
+      const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
+      if (mileageBadge?.displayText) {
+        const match = mileageBadge.displayText.match(/[\d,]+/);
+        if (match) mileage = parseInt(match[0].replace(/,/g, ''), 10);
+      }
+
+      return {
+        dealer_name: "AutoTrader",
+        url: `${baseUrl}${l.fpaLink}`,
+        title: l.title || `${carDetails.brand} ${carDetails.model}`,
+        price: price,
+        mileage: mileage || carDetails.mileage || 0,
+        year: carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear(),
+        color: carDetails.color || 'Unknown',
+        location: l.vehicleLocation || 'Unknown',
+        lat: 51.5 + Math.random() * 3 - 1.5,
+        lng: -0.9 + Math.random() * 3 - 1.5,
+        is_cheapest: false
+      };
+    });
 }
+
