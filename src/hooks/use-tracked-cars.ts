@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -260,32 +259,29 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw error;
       }
       
+      let newCarId = null;
       if (data && data.length > 0) {
+        newCarId = data[0].id;
+        
         // First fetch existing cars to update the UI
         await fetchTrackedCars(userId);
         
-        // Then trigger the scraper and wait for the results
-        try {
-          const listings = await triggerScraping(data[0].id);
-          
-          // If listings found, update cheapest_price based on the results
-          if (listings && listings.length > 0) {
-            const cheapestPrice = listings[0].price;
-            if (cheapestPrice) {
-              // Update the cheapest_price in the database
-              await supabase
-                .from('tracked_urls')
-                .update({ 
-                  cheapest_price: cheapestPrice < (lastPrice || Infinity) ? cheapestPrice : lastPrice
-                })
-                .eq('id', data[0].id);
+        // Then trigger the scraper for the new car
+        if (newCarId) {
+          // Use a slight delay to ensure the car is properly inserted first
+          setTimeout(async () => {
+            try {
+              console.log("Auto-triggering scraping for newly added car:", newCarId);
+              await triggerScraping(newCarId);
               
-              // Refresh the car list again to update the UI with new cheapest price
-              await fetchTrackedCars(userId);
+              // Refresh the car list again after scraping completes
+              if (userId) {
+                await fetchTrackedCars(userId);
+              }
+            } catch (e) {
+              console.error("Error auto-triggering scraping for new car:", e);
             }
-          }
-        } catch (e) {
-          console.error("Error auto-triggering scraping for new car:", e);
+          }, 1000);
         }
       } else {
         await fetchTrackedCars(userId);
