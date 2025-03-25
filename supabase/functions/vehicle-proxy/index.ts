@@ -102,7 +102,7 @@ serve(async (req) => {
     ? `${tech.Dimensions.GrossVehicleWeight} kg`
     : 'Unknown',
   trim: classif?.Smmt?.Trim?.trim() ||
-      reg.Model?.split(' ').slice(1).filter(w => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w)).join(' ')?.trim() ||
+      classif.Dvla?.split(' ').slice(1).filter(w => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w)).join(' ')?.trim() ||
       null,
 
 };
