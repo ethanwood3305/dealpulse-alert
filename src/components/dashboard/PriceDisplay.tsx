@@ -10,7 +10,11 @@ interface PriceDisplayProps {
 export function PriceDisplay({ lastPrice, cheapestPrice, cheapestUrl }: PriceDisplayProps) {
   const hasLastPrice = lastPrice !== null && lastPrice !== undefined;
   const hasCheapestPrice = cheapestPrice !== null && cheapestPrice !== undefined;
-  const isUserCheapest = hasCheapestPrice && hasLastPrice && cheapestPrice === lastPrice;
+  
+  // Only show "You have the cheapest listing" if we've actually done a search and confirmed it
+  const isUserCheapest = hasCheapestPrice && hasLastPrice && cheapestPrice >= lastPrice;
+  
+  // Only show cheaper exists if we've confirmed a cheaper price exists through scraping
   const cheaperExists = hasCheapestPrice && hasLastPrice && cheapestPrice < lastPrice;
   
   return (

@@ -20,7 +20,8 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
   
   const handleClick = async () => {
     setIsDialogOpen(true);
-    if (!listings || listings.length === 0) {
+    // Only auto-trigger scraping if no listings exist or car has never been checked
+    if (!listings || listings.length === 0 || !car.last_checked) {
       await handleRefresh();
     }
   };

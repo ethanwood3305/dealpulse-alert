@@ -242,6 +242,8 @@ export const useTrackedCars = (userId: string | undefined) => {
         }
       }
       
+      // Don't set cheapest_price to last_price initially
+      // Wait for scraping results to determine the actual cheapest price
       const { data, error } = await supabase
         .from('tracked_urls')
         .insert({
@@ -249,7 +251,8 @@ export const useTrackedCars = (userId: string | undefined) => {
           url: carUrl,
           tags: car.initialTags || [],
           last_price: lastPrice,
-          cheapest_price: lastPrice
+          // Initialize with null instead of last_price to avoid showing "You have the cheapest" prematurely
+          cheapest_price: null
         })
         .select();
         
@@ -258,10 +261,32 @@ export const useTrackedCars = (userId: string | undefined) => {
       }
       
       if (data && data.length > 0) {
+        // First fetch existing cars to update the UI
         await fetchTrackedCars(userId);
-        triggerScraping(data[0].id).catch(e => 
-          console.error("Error auto-triggering scraping for new car:", e)
-        );
+        
+        // Then trigger the scraper and wait for the results
+        try {
+          const listings = await triggerScraping(data[0].id);
+          
+          // If listings found, update cheapest_price based on the results
+          if (listings && listings.length > 0) {
+            const cheapestPrice = listings[0].price;
+            if (cheapestPrice) {
+              // Update the cheapest_price in the database
+              await supabase
+                .from('tracked_urls')
+                .update({ 
+                  cheapest_price: cheapestPrice < (lastPrice || Infinity) ? cheapestPrice : lastPrice
+                })
+                .eq('id', data[0].id);
+              
+              // Refresh the car list again to update the UI with new cheapest price
+              await fetchTrackedCars(userId);
+            }
+          }
+        } catch (e) {
+          console.error("Error auto-triggering scraping for new car:", e);
+        }
       } else {
         await fetchTrackedCars(userId);
       }

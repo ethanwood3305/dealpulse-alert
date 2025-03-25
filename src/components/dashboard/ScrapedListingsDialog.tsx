@@ -27,9 +27,12 @@ export function ScrapedListingsDialog({
   hasError = false,
   onRefresh
 }: ScrapedListingsDialogProps) {
-  const cheapestPrice = car.cheapest_price || car.last_price;
   const targetPrice = car.last_price;
   const cheapestListing = listings.length > 0 ? listings[0] : null;
+  
+  // Determine if user's price is cheapest by comparing with listing price
+  const isUserCheapest = targetPrice !== null && cheapestListing !== null && 
+    targetPrice <= cheapestListing.price;
   
   const lastCheckedText = car.last_checked ? 
     `Last checked ${formatDistanceToNow(new Date(car.last_checked), { addSuffix: true })}` :
