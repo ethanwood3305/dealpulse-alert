@@ -112,6 +112,7 @@ serve(async (req) => {
   null,
 
 
+
 };
 
     console.log(vehicle.trim);
