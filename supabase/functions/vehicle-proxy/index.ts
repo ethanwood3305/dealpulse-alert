@@ -101,9 +101,14 @@ serve(async (req) => {
   weight: tech.Dimensions?.GrossVehicleWeight
     ? `${tech.Dimensions.GrossVehicleWeight} kg`
     : 'Unknown',
-  trim: classif?.Smmt?.Trim?.trim() ||
-      classif.Dvla?.split(' ').slice(1).filter(w => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w)).join(' ')?.trim() ||
-      null,
+  trim:
+  classif?.Smmt?.Trim?.trim() ||
+  (typeof classif?.Dvla?.Model === 'string'
+    ? classif.Dvla.Model.split(' ').slice(1).filter(w =>
+        !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w)
+      ).join(' ').trim()
+    : null) ||
+  null,
 
 };
 
