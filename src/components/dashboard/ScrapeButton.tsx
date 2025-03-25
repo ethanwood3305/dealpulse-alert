@@ -49,11 +49,12 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
   return (
     <>
       <Button 
-        variant="ghost" 
+        variant="secondary" 
         size="sm" 
         onClick={handleClick}
         disabled={isScrapingCar}
         title="Find the cheapest similar vehicle online"
+        className="whitespace-nowrap"
       >
         {isScrapingCar ? (
           <Loader2 className="h-4 w-4 animate-spin mr-1" />

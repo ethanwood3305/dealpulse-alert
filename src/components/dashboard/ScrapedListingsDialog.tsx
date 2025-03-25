@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, ExternalLink, CheckCircle, AlertTriangle, RotateCw } from "lucide-react";
+import { Loader2, ExternalLink, CheckCircle, AlertTriangle } from "lucide-react";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { formatDistanceToNow } from "date-fns";
 
@@ -28,7 +28,8 @@ export function ScrapedListingsDialog({
   onRefresh
 }: ScrapedListingsDialogProps) {
   const targetPrice = car.last_price;
-  const cheapestListing = listings.length > 0 ? listings[0] : null;
+  const top3Listings = listings.length > 0 ? listings.slice(0, 3) : [];
+  const cheapestListing = top3Listings.length > 0 ? top3Listings[0] : null;
   
   // Determine if user's price is cheapest by comparing with listing price
   const isUserCheapest = targetPrice !== null && cheapestListing !== null && 
@@ -51,18 +52,9 @@ export function ScrapedListingsDialog({
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center justify-between">
-            <span>Similar Vehicles</span>
+            <span>Top 3 Similar Vehicles</span>
             <div className="flex gap-2 items-center">
               <span className="text-sm text-muted-foreground">{lastCheckedText}</span>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={onRefresh}
-                disabled={isLoading}
-              >
-                {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCw className="h-4 w-4 mr-2" />}
-                Refresh Search
-              </Button>
             </div>
           </DialogTitle>
           <DialogDescription>
@@ -76,7 +68,7 @@ export function ScrapedListingsDialog({
               {car.trim && <Badge variant="outline">Trim: {car.trim}</Badge>}
             </div>
             <div className="text-sm mt-2">
-              Showing the cheapest vehicle from dealer websites.
+              Showing the cheapest vehicles from dealer websites.
             </div>
           </DialogDescription>
         </DialogHeader>
@@ -101,7 +93,6 @@ export function ScrapedListingsDialog({
             <p className="text-muted-foreground">No similar vehicles found in our real-time search.</p>
             <p className="text-sm text-muted-foreground mt-2">
               This could be due to the specific vehicle details or limited availability.
-              Try adjusting your search criteria or click refresh to search again.
             </p>
           </div>
         ) : (
@@ -109,7 +100,7 @@ export function ScrapedListingsDialog({
             <Alert className="bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800">
               <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
               <AlertDescription className="text-green-600 dark:text-green-400">
-                Found the cheapest similar vehicle from dealer websites.
+                Found {top3Listings.length} similar {top3Listings.length === 1 ? "vehicle" : "vehicles"} from dealer websites.
                 {cheapestListing && (
                   <span className="font-semibold ml-1">
                     <a 
@@ -118,63 +109,77 @@ export function ScrapedListingsDialog({
                       rel="noopener noreferrer"
                       className="hover:underline"
                     >
-                      Price: £{cheapestListing.price.toLocaleString()}
+                      Cheapest: £{cheapestListing.price.toLocaleString()}
                     </a>
                   </span>
                 )}
               </AlertDescription>
             </Alert>
             
-            {cheapestListing && (
-              <div 
-                className="rounded-lg border p-4 transition-colors bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800"
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-medium text-base">{cheapestListing.title}</h4>
-                    <p className="text-sm text-muted-foreground">{cheapestListing.dealer_name}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg text-green-600 dark:text-green-400">
-                      £{cheapestListing.price.toLocaleString()}
-                    </p>
-                    {targetPrice && cheapestListing.price < targetPrice && (
-                      <p className="text-xs text-green-600 dark:text-green-400">
-                        <a href={cheapestListing.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                          {(((targetPrice - cheapestListing.price) / targetPrice) * 100).toFixed(1)}% cheaper - View Deal
-                        </a>
+            <div className="space-y-4">
+              {top3Listings.map((listing, index) => (
+                <div 
+                  key={listing.id}
+                  className={`rounded-lg border p-4 transition-colors ${
+                    index === 0 
+                      ? "bg-green-50 dark:bg-green-900/10 border-green-200 dark:border-green-800" 
+                      : "bg-gray-50 dark:bg-gray-900/10"
+                  }`}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-medium text-base">
+                        {index === 0 && "🏆 "}
+                        {listing.title}
+                      </h4>
+                      <p className="text-sm text-muted-foreground">{listing.dealer_name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-bold text-lg ${
+                        index === 0 
+                          ? "text-green-600 dark:text-green-400" 
+                          : ""
+                      }`}>
+                        £{listing.price.toLocaleString()}
                       </p>
-                    )}
+                      {targetPrice && listing.price < targetPrice && (
+                        <p className="text-xs text-green-600 dark:text-green-400">
+                          <a href={listing.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                            {(((targetPrice - listing.price) / targetPrice) * 100).toFixed(1)}% cheaper - View Deal
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
+                    <div className="text-xs">
+                      <span className="font-medium">Mileage:</span> {listing.mileage.toLocaleString()} miles
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-medium">Year:</span> {listing.year}
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-medium">Color:</span> {listing.color}
+                    </div>
+                    <div className="text-xs">
+                      <span className="font-medium">Location:</span> {listing.location}
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-3">
+                    <div className="text-xs text-muted-foreground">
+                      Found {formatDistanceToNow(new Date(listing.created_at), { addSuffix: true })}
+                    </div>
+                    <Button size="sm" variant="ghost" asChild>
+                      <a href={listing.url} target="_blank" rel="noopener noreferrer">
+                        View <ExternalLink className="h-3 w-3 ml-1" />
+                      </a>
+                    </Button>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-                  <div className="text-xs">
-                    <span className="font-medium">Mileage:</span> {cheapestListing.mileage.toLocaleString()} miles
-                  </div>
-                  <div className="text-xs">
-                    <span className="font-medium">Year:</span> {cheapestListing.year}
-                  </div>
-                  <div className="text-xs">
-                    <span className="font-medium">Color:</span> {cheapestListing.color}
-                  </div>
-                  <div className="text-xs">
-                    <span className="font-medium">Location:</span> {cheapestListing.location}
-                  </div>
-                </div>
-                
-                <div className="flex justify-between items-center mt-3">
-                  <div className="text-xs text-muted-foreground">
-                    Found {formatDistanceToNow(new Date(cheapestListing.created_at), { addSuffix: true })}
-                  </div>
-                  <Button size="sm" variant="ghost" asChild>
-                    <a href={cheapestListing.url} target="_blank" rel="noopener noreferrer">
-                      View <ExternalLink className="h-3 w-3 ml-1" />
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
           </div>
         )}
       </DialogContent>

@@ -8,7 +8,7 @@ import { DeleteCarDialog } from "./DeleteCarDialog";
 import { EmptyCarsList } from "./EmptyCarsList";
 import { CarRow } from "./CarRow";
 import { ScrapeButton } from "./ScrapeButton";
-import { Button } from "@/components/ui/button"; // Added the missing import
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -153,39 +153,43 @@ export function TrackedCarsTable({
                         "—"
                       )}
                     </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setEditCarId(car.id)}
-                      >
-                        Edit
-                      </Button>
-                      
-                      {onTriggerScraping && getListingsForCar && (
-                        <ScrapeButton
-                          car={car}
-                          listings={getListingsForCar(car.id)}
-                          onTriggerScraping={onTriggerScraping}
-                          isScrapingCar={!!isScrapingCar}
-                        />
-                      )}
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => navigateToMap(car.id)}
-                      >
-                        Map
-                      </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => confirmDelete(car.id)}
-                      >
-                        Delete
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {onTriggerScraping && getListingsForCar && (
+                          <ScrapeButton
+                            car={car}
+                            listings={getListingsForCar(car.id)}
+                            onTriggerScraping={onTriggerScraping}
+                            isScrapingCar={!!isScrapingCar}
+                          />
+                        )}
+                        
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setEditCarId(car.id)}
+                          >
+                            Edit
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => navigateToMap(car.id)}
+                          >
+                            Map
+                          </Button>
+                          
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => confirmDelete(car.id)}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
