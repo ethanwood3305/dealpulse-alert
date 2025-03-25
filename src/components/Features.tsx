@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react';
-import { Bell, LineChart, Settings, Zap, Clock, Shield, ChartBar, BarChart3, Megaphone, Tag, Target, Search } from 'lucide-react';
+import { Bell, LineChart, Settings, Calendar, Clock, Shield, Map, BarChart3, Cpu, Tag, Target, Search } from 'lucide-react';
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -96,13 +96,13 @@ const Features = () => {
     return () => observer.disconnect();
   }, []);
 
-  // Enhanced features with proper icons
+  // Updated features with the new descriptions
   const features = [
     {
-      icon: Tag,
-      title: "Real-Time Price Alerts",
-      description: "Get instant notifications when competitors change their prices",
-      details: "Our advanced monitoring system checks competitor prices as frequently as every hour, sending you immediate notifications via email or SMS whenever a price change is detected. You'll never miss a competitor's price adjustment again.",
+      icon: Bell,
+      title: "Daily Price Alerts",
+      description: "Get daily notifications when competitors change their prices",
+      details: "Our monitoring system checks competitor prices daily, sending you notifications via email whenever a price change is detected. Stay informed about market movements without having to constantly check prices manually.",
       delay: "delay-100"
     },
     {
@@ -114,31 +114,38 @@ const Features = () => {
     },
     {
       icon: Settings,
-      title: "Customizable Monitoring",
-      description: "Set up personalized monitoring parameters",
-      details: "Configure exactly what you want to track with customizable parameters. Set thresholds for alerts, specify monitoring frequencies, and prioritize which competitors matter most to your business strategy.",
+      title: "Simple Dashboard",
+      description: "Easy to use and accessible dashboard for all your monitoring needs",
+      details: "Our intuitive dashboard puts all the information you need at your fingertips. With a clean, user-friendly interface, you can quickly access competitor prices, view historical data, and manage your monitored vehicles without any technical expertise.",
       delay: "delay-300"
     },
     {
-      icon: Zap,
-      title: "Fast Implementation",
-      description: "Get up and running in minutes with our simple setup",
-      details: "No technical skills required. Simply input the competitor URLs you want to monitor, and our system automatically starts tracking prices. The intuitive dashboard makes it easy to manage your monitoring setup with just a few clicks.",
+      icon: Clock,
+      title: "Hassle-Free Setup",
+      description: "Get started quickly with our intuitive onboarding process",
+      details: "No technical skills required. Simply input the vehicle details you want to monitor, and our system automatically starts tracking prices. The straightforward setup process means you can be up and running in minutes, not hours.",
       delay: "delay-400"
     },
     {
-      icon: Clock,
-      title: "Historical Data",
-      description: "Access historical pricing data with visual timelines",
-      details: "Dive into comprehensive historical pricing data to understand how prices have changed over time. Our visual timelines help you spot trends, identify seasonal patterns, and make data-driven predictions about future price movements.",
+      icon: Calendar,
+      title: "30 Days of Pricing Updates",
+      description: "Minimum of 30 daily price updates for comprehensive monitoring",
+      details: "Our system guarantees at least 30 days of continuous price monitoring, providing you with a comprehensive view of how prices evolve over time. This extended period of data collection helps you identify trends and make more informed pricing decisions.",
       delay: "delay-500"
     },
     {
-      icon: Shield,
-      title: "Price Protection",
-      description: "Ensure your prices remain competitive without sacrificing profit",
-      details: "Our smart comparison tools help you maintain competitive pricing while preserving your profit margins. Get recommendations on optimal price points based on competitor activity and market trends.",
+      icon: Map,
+      title: "Radius Scope",
+      description: "View competitors within 10, 50, 100 miles or nationwide",
+      details: "Customize your competitive landscape by setting your preferred radius. Whether you want to focus on local competition within 10 miles or get a broader view of the national market, our flexible radius options give you complete control over your monitoring scope.",
       delay: "delay-600"
+    },
+    {
+      icon: Cpu,
+      title: "Latest AI Algorithms",
+      description: "Leveraging cutting-edge AI for accurate price comparison",
+      details: "Our platform uses advanced artificial intelligence algorithms to ensure the most accurate and relevant price comparisons. By continuously learning from market data, our AI can identify patterns and anomalies that would be impossible to spot manually, giving you a competitive edge.",
+      delay: "delay-700"
     }
   ];
 
