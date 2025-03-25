@@ -8,6 +8,7 @@ import { DeleteCarDialog } from "./DeleteCarDialog";
 import { EmptyCarsList } from "./EmptyCarsList";
 import { CarRow } from "./CarRow";
 import { ScrapeButton } from "./ScrapeButton";
+import { Button } from "@/components/ui/button"; // Added the missing import
 import {
   Table,
   TableBody,
