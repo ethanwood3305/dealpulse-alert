@@ -265,15 +265,15 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   }
 
   if (carDetails.mileage) {
-    const min = Math.max(0, carDetails.mileage - 8000);
-    const max = carDetails.mileage + 4000;
+    const min = Math.max(0, carDetails.mileage - 6000);
+    const max = carDetails.mileage + 2000;
     filters.push({ filter: "min_mileage", selected: [String(min)] });
     filters.push({ filter: "max_mileage", selected: [String(max)] });
   }
 
   if (carDetails.engineSize) {
-    const minEngine = (carDetails.engineSize - 0.05).toFixed(2);
-    const maxEngine = (carDetails.engineSize + 0.05).toFixed(2);
+    const minEngine = (carDetails.engineSize - 0.02).toFixed(2);
+    const maxEngine = (carDetails.engineSize + 0.02).toFixed(2);
     filters.push({ filter: "min_engine_size", selected: [minEngine] });
     filters.push({ filter: "max_engine_size", selected: [maxEngine] });
   }
