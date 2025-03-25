@@ -7,6 +7,7 @@ import { EditVehicleDialog } from "./EditVehicleDialog";
 import { DeleteCarDialog } from "./DeleteCarDialog";
 import { EmptyCarsList } from "./EmptyCarsList";
 import { CarRow } from "./CarRow";
+import { ScrapeButton } from "./ScrapeButton";
 import {
   Table,
   TableBody,
@@ -113,15 +114,79 @@ export function TrackedCarsTable({
               </TableHeader>
               <TableBody>
                 {trackedCars.map((car) => (
-                  <CarRow
-                    key={car.id}
-                    car={car}
-                    cheapestUrl={getListingUrl(car.id)}
-                    onEdit={() => setEditCarId(car.id)}
-                    onMapClick={() => navigateToMap(car.id)}
-                    onDelete={() => confirmDelete(car.id)}
-                    onRemoveTag={(tag) => onRemoveTag(car.id, tag)}
-                  />
+                  <TableRow key={car.id}>
+                    <TableCell>
+                      <div className="font-medium">{car.brand} {car.model}</div>
+                    </TableCell>
+                    <TableCell>{car.trim || "—"}</TableCell>
+                    <TableCell>{car.engineType}</TableCell>
+                    <TableCell>{car.year || "—"}</TableCell>
+                    <TableCell>{car.mileage || "—"}</TableCell>
+                    <TableCell>{car.color || "—"}</TableCell>
+                    <TableCell>
+                      {car.last_price !== null ? (
+                        <span className="font-semibold">£{Number(car.last_price).toLocaleString()}</span>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {car.tags && car.tags.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {car.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            >
+                              {tag}
+                              <button
+                                onClick={() => onRemoveTag(car.id, tag)}
+                                className="ml-1 text-blue-500 hover:text-blue-700 dark:text-blue-300 dark:hover:text-blue-100"
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right space-x-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setEditCarId(car.id)}
+                      >
+                        Edit
+                      </Button>
+                      
+                      {onTriggerScraping && getListingsForCar && (
+                        <ScrapeButton
+                          car={car}
+                          listings={getListingsForCar(car.id)}
+                          onTriggerScraping={onTriggerScraping}
+                          isScrapingCar={!!isScrapingCar}
+                        />
+                      )}
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => navigateToMap(car.id)}
+                      >
+                        Map
+                      </Button>
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => confirmDelete(car.id)}
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
                 ))}
               </TableBody>
             </Table>

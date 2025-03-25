@@ -32,6 +32,7 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
     
     try {
       await onTriggerScraping(car.id);
+      // No need to throw error here as onTriggerScraping already handles that
     } catch (error) {
       console.error("Error triggering scraping:", error);
       setHasError(true);
@@ -67,7 +68,7 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
         onClose={() => setIsDialogOpen(false)}
         car={car}
         listings={listings}
-        isLoading={isLoading}
+        isLoading={isLoading || isScrapingCar} // Show loading if either local or global loading
         hasError={hasError}
         onRefresh={handleRefresh}
       />
