@@ -148,6 +148,25 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const handleAddCar = async () => {
     if (!vehicleDetails) return;
 
+    // Validate mileage and price are provided
+    if (!mileage || mileage.trim() === '') {
+      toast({
+        title: "Missing information",
+        description: "Please enter the vehicle mileage",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!price || price.trim() === '') {
+      toast({
+        title: "Missing information",
+        description: "Please enter a target price",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       // Add registration as a tag
       const regTag = vehicleDetails.originalRegistration || vehicleDetails.registration.toUpperCase().replace(/\s+/g, '');
@@ -161,8 +180,8 @@ export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
         engineType: vehicleDetails.fuelType,
         color: vehicleDetails.color,
         year: vehicleDetails.year,
-        mileage: mileage || '0',
-        price: price || undefined,
+        mileage: mileage,
+        price: price,
         initialTags: [regTag], // Add registration as initial tag
         trim: vehicleDetails.trim, // Add trim
         engineSize: engineSize // Add engine size

@@ -21,7 +21,7 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
   
   // Check if there are any cheaper vehicles
   const hasCheaperVehicles = listings && listings.length > 0 && listings.some(listing => 
-    listing.is_cheapest && car.last_price && Number(listing.price) < Number(car.last_price)
+    car.last_price && Number(listing.price) < Number(car.last_price)
   );
   
   // Check if the current car is the cheapest (i.e., no cheaper cars found)

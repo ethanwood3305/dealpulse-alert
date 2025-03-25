@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -161,6 +160,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw new Error("Invalid car ID");
       }
       
+      // Check if the car exists in the tracked cars list
       const car = trackedCars.find(c => c.id === carId);
       if (!car) {
         throw new Error("Car not found");
@@ -173,6 +173,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         description: `Searching for the cheapest ${car.brand} ${car.model}. This may take a moment.`
       });
       
+      // Call the edge function to start the scraping
       const { data, error } = await supabase.functions.invoke('car-dealer-scraper', {
         body: { vehicle_id: carId }
       });
@@ -190,11 +191,13 @@ export const useTrackedCars = (userId: string | undefined) => {
       console.log("Fetching updated listings after scraping");
       const listings = await fetchScrapedListings(carId);
       
+      // Update the listings in state
       setScrapedListings(prev => ({
         ...prev,
         [carId]: listings
       }));
       
+      // Refresh the tracked cars to update any state that changed
       if (userId) {
         await fetchTrackedCars(userId);
       }
@@ -204,7 +207,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         const cheapestListing = listings[0];
         toast({
           title: "Search Complete",
-          description: `Found ${car.brand} ${car.model} for £${cheapestListing.price.toLocaleString()}`
+          description: `Found ${listings.length} similar ${car.brand} ${car.model} vehicles, cheapest: £${cheapestListing.price.toLocaleString()}`
         });
       } else {
         toast({
@@ -231,6 +234,25 @@ export const useTrackedCars = (userId: string | undefined) => {
   const addCar = async (car: AddCarParams) => {
     try {
       if (!userId) return false;
+      
+      // Validate required fields
+      if (!car.mileage || car.mileage.trim() === '') {
+        toast({
+          title: "Missing information",
+          description: "Please enter the vehicle mileage",
+          variant: "destructive"
+        });
+        return false;
+      }
+
+      if (!car.price || car.price.trim() === '') {
+        toast({
+          title: "Missing information",
+          description: "Please enter a target price",
+          variant: "destructive"
+        });
+        return false;
+      }
       
       const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
       const yearParam = car.year ? `year=${car.year}` : '';
@@ -492,6 +514,25 @@ export const useTrackedCars = (userId: string | undefined) => {
     addCar: useCallback(async (car: AddCarParams) => {
       try {
         if (!userId) return false;
+        
+        // Validate required fields
+        if (!car.mileage || car.mileage.trim() === '') {
+          toast({
+            title: "Missing information",
+            description: "Please enter the vehicle mileage",
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        if (!car.price || car.price.trim() === '') {
+          toast({
+            title: "Missing information",
+            description: "Please enter a target price",
+            variant: "destructive"
+          });
+          return false;
+        }
         
         const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
         const yearParam = car.year ? `year=${car.year}` : '';

@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 
 const corsHeaders = {
@@ -121,22 +122,28 @@ async function scrapeForVehicle(supabase, vehicleId) {
       // Find the cheapest listing
       const cheapestListing = scrapedListings.reduce((a, b) => a.price < b.price ? a : b);
       
-      // Only insert the cheapest listing, with is_cheapest set to true
-      const listingToInsert = {
-        ...cheapestListing,
-        tracked_car_id: vehicleId,
-        is_cheapest: true
-      };
+      // Sort listings by price (cheapest first)
+      const sortedListings = [...scrapedListings].sort((a, b) => a.price - b.price);
       
-      // Insert only the cheapest listing
+      // Take the top 3 cheapest listings (or all if less than 3)
+      const top3Listings = sortedListings.slice(0, Math.min(3, sortedListings.length));
+      
+      // Mark the absolute cheapest as is_cheapest=true
+      const listingsToInsert = top3Listings.map(listing => ({
+        ...listing,
+        tracked_car_id: vehicleId,
+        is_cheapest: listing.price === cheapestListing.price
+      }));
+      
+      // Insert the top 3 listings
       const { error: insertError } = await supabase
         .from('scraped_vehicle_listings')
-        .insert([listingToInsert]);
+        .insert(listingsToInsert);
       
       if (insertError) {
-        console.error(`Error inserting listing for vehicle ${vehicleId}:`, insertError);
+        console.error(`Error inserting listings for vehicle ${vehicleId}:`, insertError);
       } else {
-        console.log(`Successfully inserted the cheapest listing for vehicle ${vehicleId}`);
+        console.log(`Successfully inserted ${listingsToInsert.length} listings for vehicle ${vehicleId}`);
       }
       
       // Always update vehicle with the cheapest price found from scraping
@@ -321,6 +328,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             price
             vehicleLocation
             fpaLink
+            mileage
           }
         }
       }
@@ -397,12 +405,23 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         // Extract location details
         const location = l.vehicleLocation || 'Unknown';
         
+        // Process mileage from the listing
+        let mileage = l.mileage;
+        if (typeof mileage === 'string') {
+          // Extract numeric value from strings like "10,000 miles"
+          mileage = parseInt(mileage.replace(/[^0-9]/g, ''), 10);
+        }
+        
+        // Use the extracted mileage or fall back to the user's mileage
+        const finalMileage = !isNaN(mileage) && mileage > 0 ? 
+          mileage : (carDetails.mileage || 0);
+        
         return {
           dealer_name: "AutoTrader",
           url: `${baseUrl}${l.fpaLink}`,
           title: l.title || `${carDetails.brand} ${carDetails.model}`,
           price: price,
-          mileage: carDetails.mileage || 30000,
+          mileage: finalMileage,
           year: parseInt(carDetails.year) || new Date().getFullYear(),
           color: carDetails.color || 'Unknown',
           location: location,
