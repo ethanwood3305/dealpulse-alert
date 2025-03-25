@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 
 const corsHeaders = {
@@ -7,162 +6,103 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, {
-      headers: corsHeaders
-    });
+    return new Response(null, { headers: corsHeaders });
   }
-  
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    
-    // Validate environment variables
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Missing Supabase environment variables');
-    }
-    
+    if (!supabaseUrl || !supabaseKey) throw new Error('Missing Supabase environment variables');
+
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Parse request data
     const requestData = await req.json().catch(() => ({}));
     const vehicleId = requestData.vehicle_id;
-    
     console.log(`Scraper triggered for Vehicle ID: ${vehicleId || 'ALL'}`);
-    
-    // Process single vehicle if ID provided
+
     if (vehicleId) {
       await scrapeForVehicle(supabase, vehicleId);
-      return new Response(JSON.stringify({
-        success: true,
-        message: `Scraped vehicle ${vehicleId}`
-      }), {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'application/json'
-        }
+      return new Response(JSON.stringify({ success: true, message: `Scraped vehicle ${vehicleId}` }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-    
-    // Batch process vehicles if no ID provided
+
     const { data: trackedCars, error } = await supabase.from('tracked_urls').select('*');
     if (error) throw new Error(error.message);
-    
-    // Limit batch size to prevent timeouts
+
     const carsToProcess = trackedCars?.slice(0, 50) || [];
     for (const car of carsToProcess) {
       await scrapeForVehicle(supabase, car.id);
     }
-    
-    return new Response(JSON.stringify({
-      success: true,
-      message: `Processed ${carsToProcess.length} vehicles`
-    }), {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      }
+
+    return new Response(JSON.stringify({ success: true, message: `Processed ${carsToProcess.length} vehicles` }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
     console.error('Scraper error:', error);
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message || 'Unknown error occurred'
-    }), {
+    return new Response(JSON.stringify({ success: false, error: error.message || 'Unknown error occurred' }), {
       status: 500,
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'application/json'
-      }
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });
 
 async function scrapeForVehicle(supabase, vehicleId) {
   try {
-    // Validate input
     if (!vehicleId) {
       console.error('Invalid vehicle ID provided');
       return;
     }
 
-    // Fetch vehicle details
     const { data: vehicle, error } = await supabase.from('tracked_urls').select('*').eq('id', vehicleId).single();
     if (error || !vehicle) {
       console.error(`Error fetching vehicle ${vehicleId}:`, error);
       return;
     }
-    
-    // Get dealer postcode from user's subscription for location-based search
+
     const { data: subscriptionData } = await supabase
       .from('subscriptions')
       .select('dealer_postcode')
       .eq('user_id', vehicle.user_id)
       .single();
-    
-    // Default postcode if not found
+
     const dealerPostcode = subscriptionData?.dealer_postcode || 'b31 3xr';
-    
-    // Parse vehicle details from URL
     const carDetails = parseVehicleDetails(vehicle);
     console.log(`Scraping ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`);
-    
-    // Get scraped listings using user's preferred location
+
     const scrapedListings = await getVehicleListings(carDetails, dealerPostcode);
     console.log(`Found ${scrapedListings.length} listings for vehicle ${vehicleId}`);
-    
-    // Clear previous listings
+
     const { error: deleteError } = await supabase.from('scraped_vehicle_listings').delete().eq('tracked_car_id', vehicleId);
     if (deleteError) {
       console.error(`Error deleting previous listings for vehicle ${vehicleId}:`, deleteError);
     }
-    
+
     if (scrapedListings.length > 0) {
-      // Sort listings by price first, then by mileage for same price (lowest miles first)
-      const sortedListings = [...scrapedListings].sort((a, b) => {
-        // First sort by price (ascending)
-        if (a.price !== b.price) {
-          return a.price - b.price;
-        }
-        // If prices are equal, sort by mileage (ascending)
-        return a.mileage - b.mileage;
-      });
-      
-      // Find the cheapest listing (first in sorted array)
+      const sortedListings = [...scrapedListings].sort((a, b) => a.price !== b.price ? a.price - b.price : a.mileage - b.mileage);
       const cheapestListing = sortedListings[0];
-      
-      // Take the top 3 listings (or all if less than 3)
-      const top3Listings = sortedListings.slice(0, Math.min(3, sortedListings.length));
-      
-      // Mark the absolute cheapest as is_cheapest=true
+      const top3Listings = sortedListings.slice(0, 3);
       const listingsToInsert = top3Listings.map(listing => ({
         ...listing,
         tracked_car_id: vehicleId,
         is_cheapest: listing.price === cheapestListing.price && listing.mileage === cheapestListing.mileage
       }));
-      
-      // Insert the top 3 listings
-      const { error: insertError } = await supabase
-        .from('scraped_vehicle_listings')
-        .insert(listingsToInsert);
-      
+
+      const { error: insertError } = await supabase.from('scraped_vehicle_listings').insert(listingsToInsert);
       if (insertError) {
         console.error(`Error inserting listings for vehicle ${vehicleId}:`, insertError);
       } else {
         console.log(`Successfully inserted ${listingsToInsert.length} listings for vehicle ${vehicleId}`);
       }
-      
-      // Always update vehicle with the cheapest price found from scraping
-      // regardless of the user's price (this ensures the "Cheapest" tag is accurate)
+
       const { error: updateError } = await supabase
         .from('tracked_urls')
-        .update({ 
+        .update({
           cheapest_price: cheapestListing.price,
           last_checked: new Date().toISOString()
         })
         .eq('id', vehicleId);
-      
+
       if (updateError) {
         console.error(`Error updating cheapest price for vehicle ${vehicleId}:`, updateError);
       } else {
@@ -170,15 +110,22 @@ async function scrapeForVehicle(supabase, vehicleId) {
       }
     } else {
       console.log(`No listings found for vehicle ${vehicleId}`);
-      // Update last_checked timestamp even if no listings found
-      await supabase
-        .from('tracked_urls')
-        .update({ last_checked: new Date().toISOString() })
-        .eq('id', vehicleId);
+      await supabase.from('tracked_urls').update({ last_checked: new Date().toISOString() }).eq('id', vehicleId);
     }
   } catch (err) {
     console.error(`Vehicle scrape error (${vehicleId}):`, err);
   }
+}
+
+function toProperCase(text) {
+  if (!text) return '';
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+function cleanTrim(trim) {
+  if (!trim) return '';
+  const word = trim.trim().split(' ')[0];
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
 }
 
 function parseVehicleDetails(vehicle) {
@@ -202,21 +149,21 @@ function parseVehicleDetails(vehicle) {
   const model = toProperCase(urlParts[1] || '');
   const engineType = urlParts[2] || '';
   let mileage, year, color, trim, engineSize;
-  
+
   if (urlParts[3]) {
     const params = urlParts[3].split('&');
     for (const param of params) {
       if (param.includes('mil=')) mileage = parseInt(param.split('mil=')[1]);
       if (param.includes('year=')) year = param.split('year=')[1];
       if (param.includes('color=')) color = toProperCase(param.split('color=')[1]);
-      if (param.includes('trim=')) trim = toProperCase(param.split('trim=')[1]);
+      if (param.includes('trim=')) trim = cleanTrim(param.split('trim=')[1]);
       if (param.includes('engine=')) {
         const cc = parseInt(param.split('engine=')[1]);
         engineSize = cc ? (cc / 1000).toFixed(2) : null;
       }
     }
   }
-  
+
   return {
     brand,
     model,
@@ -230,10 +177,8 @@ function parseVehicleDetails(vehicle) {
   };
 }
 
-function toProperCase(text) {
-  if (!text) return '';
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
-}
+// getVehicleListings stays the same as in the last replacement you approved.
+
 
 async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const baseUrl = 'https://www.autotrader.co.uk';
