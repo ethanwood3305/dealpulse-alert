@@ -310,8 +310,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     });
   }
   
-  // Updated GraphQL query that works with the current version of AutoTrader API
-  // The previous query was requesting fields that no longer exist or have changed name
+  // Updated GraphQL query with fields that actually exist in the API schema
   const payload = [{
     operationName: "SearchResultsListingsGridQuery",
     variables: {
@@ -326,7 +325,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       searchResults(input: {facets: [], filters: $filters, channel: $channel, page: $page, sortBy: $sortBy, listingType: $listingType, searchId: $searchId}) {
         listings {
           ... on SearchListing {
-            id
+            stockItemId
             title
             price
             vehicleLocation
@@ -336,11 +335,12 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
               displayText
               __typename
             }
-            metadata {
+            keySpecificationData {
               year
               colour
               __typename
             }
+            __typename
           }
         }
       }
@@ -466,9 +466,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           }
         }
         
-        // Extract year and color from metadata
-        const year = l.metadata?.year ? parseInt(l.metadata.year) : (carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear());
-        const color = l.metadata?.colour || carDetails.color || 'Unknown';
+        // Extract year and color from keySpecificationData instead of metadata
+        const year = l.keySpecificationData?.year ? parseInt(l.keySpecificationData.year) : (carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear());
+        const color = l.keySpecificationData?.colour || carDetails.color || 'Unknown';
 
         return {
           dealer_name: "AutoTrader",
