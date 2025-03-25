@@ -309,7 +309,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     });
   }
   
-  // Build payload for AutoTrader API with FIXED GraphQL query - removed the "mileage" field which caused the error
+  // Build payload for AutoTrader API with FIXED GraphQL query - updated to include badges array for mileage
   const payload = [{
     operationName: "SearchResultsListingsGridQuery",
     variables: {
@@ -328,8 +328,11 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             price
             vehicleLocation
             fpaLink
+            badges {
+              type
+              displayText
+            }
             metadata {
-              mileage
               year
               colour
             }
@@ -439,7 +442,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           return createMockListings(carDetails);
         }
         
-        // Map raw listings to our format - UPDATED to extract mileage from metadata
+        // Map raw listings to our format - UPDATED to extract mileage from badges array
         return listings
           .filter(l => l && l.fpaLink)
           .map(l => {
@@ -458,15 +461,20 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             // Extract location details
             const location = l.vehicleLocation || 'Unknown';
             
-            // Extract mileage from metadata - NEW WAY
-            let mileage = l.metadata?.mileage || 0;
-            if (typeof mileage === 'string') {
-              // Extract numeric value from strings like "10,000 miles"
-              const mileageMatch = mileage.match(/(\d+[,\d]*)/);
-              mileage = mileageMatch ? parseInt(mileageMatch[0].replace(/,/g, ''), 10) : 0;
+            // Extract mileage from badges array - NEW WAY
+            let mileage = 0;
+            if (l.badges && Array.isArray(l.badges)) {
+              // Find the MILEAGE badge
+              const mileageBadge = l.badges.find(badge => badge.type === 'MILEAGE');
+              if (mileageBadge && mileageBadge.displayText) {
+                // Extract numeric value from strings like "2,900 miles"
+                const mileageMatch = mileageBadge.displayText.match(/(\d+[,\d]*)/);
+                mileage = mileageMatch ? parseInt(mileageMatch[0].replace(/,/g, ''), 10) : 0;
+                console.log(`[MILEAGE] Extracted ${mileage} from badge: "${mileageBadge.displayText}"`);
+              }
             }
             
-            // Use extracted mileage or fall back to the user's mileage
+            // Fallback to user's mileage if not found in badges
             const finalMileage = !isNaN(mileage) && mileage > 0 ? 
               mileage : (carDetails.mileage || 10000);
 
