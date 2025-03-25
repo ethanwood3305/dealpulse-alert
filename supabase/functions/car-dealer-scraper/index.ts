@@ -388,48 +388,43 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
     
     // Map raw listings to our format
     return listings
-      .filter(l => l.fpaLink && l.price)
-      .map(l => {
-        // Normalize price to ensure it's a number
-        let price = l.price;
-        if (typeof price === 'string') {
-          // Remove £ symbol, commas, and other non-numeric characters
-          price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
-        }
-        
-        if (isNaN(price)) {
-          price = 0;
-          console.log('[WARNING] Invalid price found in listing:', l);
-        }
-        
-        // Extract location details
-        const location = l.vehicleLocation || 'Unknown';
-        
-        // Process mileage from the listing
-        let mileage = l.mileage;
-        if (typeof mileage === 'string') {
-          // Extract numeric value from strings like "10,000 miles"
-          mileage = parseInt(mileage.replace(/[^0-9]/g, ''), 10);
-        }
-        
-        // Use the extracted mileage or fall back to the user's mileage
-        const finalMileage = !isNaN(mileage) && mileage > 0 ? 
-          mileage : (carDetails.mileage || 0);
-        
-        return {
-          dealer_name: "AutoTrader",
-          url: `${baseUrl}${l.fpaLink}`,
-          title: l.title || `${carDetails.brand} ${carDetails.model}`,
-          price: price,
-          mileage: finalMileage,
-          year: parseInt(carDetails.year) || new Date().getFullYear(),
-          color: carDetails.color || 'Unknown',
-          location: location,
-          lat: 51.5 + Math.random() * 3 - 1.5, // Generate random coordinates for map view
-          lng: -0.9 + Math.random() * 3 - 1.5, // These should ideally be based on actual location
-          is_cheapest: false // This will be set correctly before insertion
-        };
-      });
+  .filter(l => l.fpaLink && l.price)
+  .map(l => {
+    // Normalize price to ensure it's a number
+    let price = l.price;
+    if (typeof price === 'string') {
+      price = parseInt(price.replace(/[^0-9.]/g, ''), 10);
+    }
+    if (isNaN(price)) {
+      price = 0;
+      console.log('[WARNING] Invalid price found in listing:', l);
+    }
+
+    // Extract location details
+    const location = l.vehicleLocation || 'Unknown';
+
+    // ✅ Extract mileage from badges
+    let mileage = 0;
+    const mileageBadge = l.badges?.find(b => b.type === 'MILEAGE');
+    if (mileageBadge?.displayText) {
+      mileage = parseInt(mileageBadge.displayText.replace(/[^0-9]/g, ''), 10);
+    }
+
+    return {
+      dealer_name: "AutoTrader",
+      url: `${baseUrl}${l.fpaLink}`,
+      title: l.title || `${carDetails.brand} ${carDetails.model}`,
+      price: price,
+      mileage: mileage || carDetails.mileage || 0,
+      year: parseInt(carDetails.year) || new Date().getFullYear(),
+      color: carDetails.color || 'Unknown',
+      location: location,
+      lat: 51.5 + Math.random() * 3 - 1.5,
+      lng: -0.9 + Math.random() * 3 - 1.5,
+      is_cheapest: false
+    };
+  });
+
   } catch (error) {
     console.error('[ERROR] AutoTrader API:', error);
     return [];
