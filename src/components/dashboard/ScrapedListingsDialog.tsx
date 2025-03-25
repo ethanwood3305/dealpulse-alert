@@ -59,13 +59,13 @@ export function ScrapedListingsDialog({
           </DialogTitle>
           <DialogDescription>
             <div className="flex flex-wrap gap-2 mb-2">
-              <Badge variant="outline">{car.brand}</Badge>
-              <Badge variant="outline">{car.model}</Badge>
-              {car.engineType && <Badge variant="outline">{car.engineType}</Badge>}
-              {car.year && <Badge variant="outline">Year: {car.year}</Badge>}
-              {car.mileage && <Badge variant="outline">Miles: {car.mileage}</Badge>}
-              {car.color && <Badge variant="outline">{car.color}</Badge>}
-              {car.trim && <Badge variant="outline">Trim: {car.trim}</Badge>}
+              {car.brand && <Badge variant="outline" className="inline-flex">{car.brand}</Badge>}
+              {car.model && <Badge variant="outline" className="inline-flex">{car.model}</Badge>}
+              {car.engineType && <Badge variant="outline" className="inline-flex">{car.engineType}</Badge>}
+              {car.year && <Badge variant="outline" className="inline-flex">Year: {car.year}</Badge>}
+              {car.mileage && <Badge variant="outline" className="inline-flex">Miles: {car.mileage}</Badge>}
+              {car.color && <Badge variant="outline" className="inline-flex">{car.color}</Badge>}
+              {car.trim && <Badge variant="outline" className="inline-flex">Trim: {car.trim}</Badge>}
             </div>
             <div className="text-sm mt-2">
               Showing the cheapest vehicles from dealer websites.
