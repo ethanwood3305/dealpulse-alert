@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
 
 const corsHeaders = {
@@ -118,29 +119,29 @@ async function scrapeForVehicle(supabase, vehicleId) {
     }
     
     if (scrapedListings.length > 0) {
-      // Find the cheapest listing
-      const cheapestListing = scrapedListings.reduce((a, b) => a.price < b.price ? a : b);
-      
-      // Only insert the cheapest listing, with is_cheapest set to true
-      const listingToInsert = {
-        ...cheapestListing,
-        tracked_car_id: vehicleId,
-        is_cheapest: true
-      };
-      
-      // Insert only the cheapest listing
+      // Find the top 3 cheapest listings (or all if less than 3)
+      const listingsToInsert = scrapedListings
+        .sort((a, b) => a.price - b.price)
+        .slice(0, 3)
+        .map((listing, index) => ({
+          ...listing,
+          tracked_car_id: vehicleId,
+          is_cheapest: index === 0 // Only the first listing (cheapest) gets marked as is_cheapest
+        }));
+        
+      // Insert the top 3 cheapest listings
       const { error: insertError } = await supabase
         .from('scraped_vehicle_listings')
-        .insert([listingToInsert]);
+        .insert(listingsToInsert);
       
       if (insertError) {
-        console.error(`Error inserting listing for vehicle ${vehicleId}:`, insertError);
+        console.error(`Error inserting listings for vehicle ${vehicleId}:`, insertError);
       } else {
-        console.log(`Successfully inserted the cheapest listing for vehicle ${vehicleId}`);
+        console.log(`Successfully inserted ${listingsToInsert.length} listings for vehicle ${vehicleId}`);
       }
       
-      // Always update vehicle with the cheapest price found from scraping
-      // regardless of the user's price (this ensures the "Cheapest" tag is accurate)
+      // Update vehicle with the cheapest price found from scraping
+      const cheapestListing = listingsToInsert[0];
       const { error: updateError } = await supabase
         .from('tracked_urls')
         .update({ 
@@ -321,6 +322,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
             price
             vehicleLocation
             fpaLink
+            mileage
           }
         }
       }
@@ -394,6 +396,20 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           console.log('[WARNING] Invalid price found in listing:', l);
         }
         
+        // Extract mileage
+        let mileage = carDetails.mileage || 30000;
+        if (l.mileage) {
+          if (typeof l.mileage === 'string') {
+            // Extract numbers from string like "61,721 miles"
+            const match = l.mileage.match(/(\d+,?\d*)/);
+            if (match && match[1]) {
+              mileage = parseInt(match[1].replace(/,/g, ''), 10);
+            }
+          } else if (typeof l.mileage === 'number') {
+            mileage = l.mileage;
+          }
+        }
+        
         // Extract location details
         const location = l.vehicleLocation || 'Unknown';
         
@@ -402,7 +418,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
           url: `${baseUrl}${l.fpaLink}`,
           title: l.title || `${carDetails.brand} ${carDetails.model}`,
           price: price,
-          mileage: carDetails.mileage || 30000,
+          mileage: mileage,
           year: parseInt(carDetails.year) || new Date().getFullYear(),
           color: carDetails.color || 'Unknown',
           location: location,
