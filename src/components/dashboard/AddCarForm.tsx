@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -41,7 +40,8 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       year: "",
       color: "",
       price: ""
-    }
+    },
+    mode: "onSubmit"
   });
 
   const selectedBrand = form.watch("brand");
@@ -234,6 +234,26 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     fetchEngineTypes();
   }, [selectedModel, selectedBrand, models]);
 
+  const handleFormSubmit = async (values: CarFormValues) => {
+    if (!values.mileage || values.mileage.trim() === "") {
+      form.setError("mileage", {
+        type: "manual",
+        message: "Mileage is required"
+      });
+      return;
+    }
+
+    if (!values.price || values.price.trim() === "") {
+      form.setError("price", {
+        type: "manual",
+        message: "Price is required"
+      });
+      return;
+    }
+
+    await onSubmit(values);
+  };
+
   return (
     <Card className="mb-10">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -244,7 +264,7 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form id="add-car-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form id="add-car-form" onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <BrandSelector 
                 form={form}
@@ -303,3 +323,4 @@ export const AddCarForm = ({ onSubmit, isAddingCar, canAddMoreCars }: AddCarForm
     </Card>
   );
 };
+
