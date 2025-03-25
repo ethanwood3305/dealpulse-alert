@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/use-toast";
@@ -128,6 +129,7 @@ export const useTrackedCars = (userId: string | undefined) => {
 
   const fetchScrapedListings = async (carId: string): Promise<ScrapedListing[]> => {
     try {
+      console.log(`Fetching scraped listings for car ID: ${carId}`);
       const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
         car_id: carId
       });
@@ -137,6 +139,7 @@ export const useTrackedCars = (userId: string | undefined) => {
         return [];
       }
       
+      console.log(`Found ${data?.length || 0} listings for car ID: ${carId}`);
       return data || [];
     } catch (error) {
       console.error("Error fetching scraped listings:", error);
@@ -159,12 +162,14 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw new Error("Car not found");
       }
       
+      console.log(`Starting scraping for car ID: ${carId} (${car.brand} ${car.model})`);
+      
       toast({
         title: "Search Started",
         description: `Searching for the cheapest ${car.brand} ${car.model}. This may take a moment.`
       });
       
-      const { error } = await supabase.functions.invoke('car-dealer-scraper', {
+      const { data, error } = await supabase.functions.invoke('car-dealer-scraper', {
         body: { vehicle_id: carId }
       });
       
@@ -173,9 +178,12 @@ export const useTrackedCars = (userId: string | undefined) => {
         throw error;
       }
       
+      console.log("Scraper function response:", data);
+      
       // Wait for scraping to complete (throttle to prevent too many requests)
       await new Promise(resolve => setTimeout(resolve, 5000));
       
+      console.log("Fetching updated listings after scraping");
       const listings = await fetchScrapedListings(carId);
       
       setScrapedListings(prev => ({

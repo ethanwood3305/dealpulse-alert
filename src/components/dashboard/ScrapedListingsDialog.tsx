@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,14 @@ export function ScrapedListingsDialog({
   const lastCheckedText = car.last_checked ? 
     `Last checked ${formatDistanceToNow(new Date(car.last_checked), { addSuffix: true })}` :
     "Never checked before";
+  
+  // Force a refresh if the dialog is opened and there are no listings and it's not already loading
+  useEffect(() => {
+    if (isOpen && listings.length === 0 && !isLoading && !car.last_checked) {
+      console.log('Auto-refreshing search for car with no listings');
+      onRefresh();
+    }
+  }, [isOpen, listings.length, isLoading, car.last_checked, onRefresh]);
   
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
