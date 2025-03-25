@@ -119,20 +119,27 @@ async function scrapeForVehicle(supabase, vehicleId) {
     }
     
     if (scrapedListings.length > 0) {
-      // Find the cheapest listing
-      const cheapestListing = scrapedListings.reduce((a, b) => a.price < b.price ? a : b);
+      // Sort listings by price first, then by mileage for same price (lowest miles first)
+      const sortedListings = [...scrapedListings].sort((a, b) => {
+        // First sort by price (ascending)
+        if (a.price !== b.price) {
+          return a.price - b.price;
+        }
+        // If prices are equal, sort by mileage (ascending)
+        return a.mileage - b.mileage;
+      });
       
-      // Sort listings by price (cheapest first)
-      const sortedListings = [...scrapedListings].sort((a, b) => a.price - b.price);
+      // Find the cheapest listing (first in sorted array)
+      const cheapestListing = sortedListings[0];
       
-      // Take the top 3 cheapest listings (or all if less than 3)
+      // Take the top 3 listings (or all if less than 3)
       const top3Listings = sortedListings.slice(0, Math.min(3, sortedListings.length));
       
       // Mark the absolute cheapest as is_cheapest=true
       const listingsToInsert = top3Listings.map(listing => ({
         ...listing,
         tracked_car_id: vehicleId,
-        is_cheapest: listing.price === cheapestListing.price
+        is_cheapest: listing.price === cheapestListing.price && listing.mileage === cheapestListing.mileage
       }));
       
       // Insert the top 3 listings

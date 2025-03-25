@@ -22,6 +22,6 @@ BEGIN
     s.created_at
   FROM scraped_vehicle_listings s
   WHERE s.tracked_car_id = car_id
-  ORDER BY s.price ASC; -- Ensure cheapest comes first
+  ORDER BY s.price ASC, s.mileage ASC; -- Sort by price, then by mileage
 END;
 $function$;
