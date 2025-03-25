@@ -106,16 +106,16 @@ serve(async (req) => {
         : '';
 
     const vehicleTrim =
-      classif?.Smmt?.Trim?.trim() ||
-      (dvlaModel
-        ? dvlaModel
-            .split(' ')
-            .slice(1) // skip the first word
-            .filter((w) => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w))
-            .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
-            .join(' ')
-            .trim()
-        : null);
+  classif?.Smmt?.Trim?.trim() ||
+  (dvlaModel
+    ? dvlaModel
+        .split(' ')
+        .slice(1) // skip the first word
+        .filter((w) => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w))
+        .join(' ')
+        .trim()
+    : null);
+
 
     const vehicle = {
       registration: vrm,
