@@ -78,42 +78,39 @@ serve(async (req) => {
 
     const data = await res.json();
 
-    if (data.Response?.StatusCode !== 'Success') {
+    // New response structure: Check ResponseInformation.StatusCode
+    if (!data.ResponseInformation || data.ResponseInformation.StatusCode !== 0) {
       console.log(data);
-      const message = data.Response?.StatusMessage || 'Vehicle lookup failed';
+      const message =
+        data.ResponseInformation?.StatusMessage || 'Vehicle lookup failed';
       const code = message.includes('No vehicle found')
         ? 'VEHICLE_NOT_FOUND'
         : 'API_ERROR';
       return jsonResponse(
-        { error: message, success: false, code, apiResponse: data.Response },
+        { error: message, success: false, code, apiResponse: data.ResponseInformation },
         404
       );
     }
 
-    const v = data.Response.DataItems;
-    const reg = v?.VehicleRegistration || {};
-    const smmt = v?.SmmtDetails || {};
-    const classif = v?.ClassificationDetails || {};
-    const mot = v?.MotHistory || {};
-    const tax = v?.VehicleTaxDetails || {};
-    const tech = v?.TechnicalDetails || {};
+    // Extract vehicle details from the new structure
+    const results = data.Results;
+    if (!results || !results.VehicleDetails) {
+      return jsonResponse(
+        { error: 'No vehicle details found', success: false, code: 'NO_VEHICLE_DETAILS' },
+        404
+      );
+    }
+    const vehicleDetails = results.VehicleDetails;
+    const modelDetails = results.ModelDetails || {};
+    const vehIdent = vehicleDetails.VehicleIdentification || {};
 
-    const dvlaModel =
-      typeof classif?.Dvla === 'string'
-        ? classif.Dvla
-        : typeof classif?.Dvla?.Model === 'string'
-        ? classif.Dvla.Model
-        : '';
-
-    // Simplified trim logic:
-    // 1. Try the JSON property: Results > ModelDetails > ModelIdentification > ModelVariant
-    // 2. Else use classif?.Smmt?.Trim
-    // 3. Else use DVLA fallback
-    const defaultTrim = v.ModelDetails?.ModelIdentification?.ModelVariant;
+    // Use the ModelVariant from ModelDetails as the default trim,
+    // otherwise fallback to processing DvlaModel.
+    const defaultTrim = modelDetails?.ModelIdentification?.ModelVariant;
+    const dvlaModel = vehIdent.DvlaModel;
     console.log(defaultTrim);
     const vehicleTrim =
       defaultTrim?.trim() ||
-      classif?.Smmt?.Trim?.trim() ||
       (dvlaModel
         ? dvlaModel
             .split(' ')
@@ -123,25 +120,33 @@ serve(async (req) => {
             .trim()
         : null);
     console.log(vehicleTrim);
+
     const vehicle = {
-      registration: vrm,
-      make: reg.Make || 'Unknown',
-      model: smmt.Range || reg.Model?.split(' ')[0] || 'Unknown',
-      color: reg.Colour
-        ? reg.Colour.charAt(0).toUpperCase() + reg.Colour.slice(1).toLowerCase()
+      registration: vehIdent.Vrm || vrm,
+      make:
+        modelDetails?.ModelIdentification?.Make ||
+        vehIdent.DvlaMake ||
+        'Unknown',
+      model:
+        modelDetails?.ModelIdentification?.Range ||
+        'Unknown',
+      color:
+        vehicleDetails.VehicleHistory?.ColourDetails?.CurrentColour || 'Unknown',
+      fuelType: vehIdent.DvlaFuelType || 'Unknown',
+      year: vehIdent.YearOfManufacture || 'Unknown',
+      engineSize: vehicleDetails.DvlaTechnicalDetails?.EngineCapacityCc
+        ? `${vehicleDetails.DvlaTechnicalDetails.EngineCapacityCc}cc`
         : 'Unknown',
-      fuelType: reg.FuelType || 'Unknown',
-      year: reg.YearOfManufacture || 'Unknown',
-      engineSize: reg.EngineCapacity ? `${reg.EngineCapacity}cc` : 'Unknown',
-      motStatus: mot.MotTestResult || 'Unknown',
-      motExpiryDate: mot.ExpiryDate || null,
-      taxStatus: tax.TaxStatus || 'Unknown',
-      taxDueDate: tax.TaxDueDate || null,
-      doorCount: smmt.NumberOfDoors || 'Unknown',
-      bodyStyle: smmt.BodyStyle || 'Unknown',
-      transmission: reg.Transmission || 'Unknown',
-      weight: tech.Dimensions?.GrossVehicleWeight
-        ? `${tech.Dimensions.GrossVehicleWeight} kg`
+      motStatus: 'Unknown',
+      motExpiryDate: null,
+      taxStatus: 'Unknown',
+      taxDueDate: null,
+      doorCount: modelDetails?.BodyDetails?.NumberOfDoors || 'Unknown',
+      bodyStyle: modelDetails?.BodyDetails?.BodyStyle || 'Unknown',
+      transmission:
+        modelDetails?.Powertrain?.Transmission?.TransmissionType || 'Unknown',
+      weight: vehicleDetails.DvlaTechnicalDetails?.GrossWeightKg
+        ? `${vehicleDetails.DvlaTechnicalDetails.GrossWeightKg} kg`
         : 'Unknown',
       trim: vehicleTrim,
     };
