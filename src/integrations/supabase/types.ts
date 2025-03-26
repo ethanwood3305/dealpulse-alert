@@ -348,6 +348,12 @@ export type Database = {
           created_at: string
         }[]
       }
+      get_user_organizations: {
+        Args: {
+          user_uuid: string
+        }
+        Returns: string[]
+      }
       get_user_subscription: {
         Args: {
           user_uuid: string

@@ -4,13 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { VehicleLookupForm } from './vehicle-lookup/VehicleLookupForm';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import { VehicleLookupProps } from '@/types/vehicle-lookup-types';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { toast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
+import { useOrganization } from '@/hooks/use-organization';
 
 export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { addCar: defaultAddCar } = useTrackedCars(userId);
+  const { currentOrganization } = useOrganization(userId);
 
   // Use the passed in addCar function if provided, otherwise use the default
   const handleAddCar = addCar || defaultAddCar;
@@ -56,6 +58,15 @@ export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps
           variant: "default"
         });
         
+        if (!currentOrganization) {
+          console.warn("No current organization found");
+          toast({
+            title: "Warning",
+            description: "Could not determine your dealership. The vehicle will be added without a dealership association.",
+            variant: "destructive"
+          });
+        }
+        
         // Auto-add the vehicle if we have all the required information
         const success = await handleAddCar({
           brand: data.vehicle.make,
@@ -68,7 +79,7 @@ export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps
           initialTags: [registration.toUpperCase().replace(/\s+/g, '')],
           trim: data.vehicle.trim,
           engineSize: data.vehicle.engineSize?.toString(),
-          organization_id: ''
+          organization_id: currentOrganization?.id || ''
         });
         
         if (success) {
