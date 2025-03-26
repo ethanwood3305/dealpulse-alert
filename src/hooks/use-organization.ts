@@ -17,7 +17,7 @@ export const useOrganization = (userId: string | undefined) => {
     try {
       setIsLoading(true);
       
-      // Use the new database function to get organization IDs without recursion
+      // Use the database function to get organization IDs without recursion
       const { data: orgIds, error: funcError } = await supabase
         .rpc('get_user_organizations', { user_uuid: userId });
         
@@ -25,6 +25,8 @@ export const useOrganization = (userId: string | undefined) => {
         console.error('Error fetching organization IDs:', funcError);
         throw funcError;
       }
+      
+      console.log('Organization IDs returned:', orgIds);
       
       if (orgIds && orgIds.length > 0) {
         // Fetch organization details for these IDs
@@ -36,6 +38,7 @@ export const useOrganization = (userId: string | undefined) => {
           
         if (orgsError) throw orgsError;
         
+        console.log('Organizations data:', orgsData);
         setOrganizations(orgsData || []);
         
         // Set the first organization as current if not already set
@@ -65,6 +68,7 @@ export const useOrganization = (userId: string | undefined) => {
     if (!userId) return;
     
     try {
+      console.log('Fetching members for organization:', organizationId);
       const { data, error } = await supabase
         .from('organization_members')
         .select(`
@@ -79,6 +83,7 @@ export const useOrganization = (userId: string | undefined) => {
         
       if (error) throw error;
       
+      console.log('Organization members:', data);
       setOrganizationMembers(data || []);
     } catch (error: any) {
       console.error('Error fetching organization members:', error);
@@ -93,6 +98,7 @@ export const useOrganization = (userId: string | undefined) => {
       const org = organizations.find(o => o.id === organizationId);
       if (!org) return false;
       
+      console.log('Switching to organization:', org);
       setCurrentOrganization(org);
       
       // Fetch members for this organization
@@ -110,6 +116,8 @@ export const useOrganization = (userId: string | undefined) => {
     if (!userId) return false;
     
     try {
+      console.log('Creating organization:', name);
+      
       // Insert the new organization
       const { data: orgData, error: orgError } = await supabase
         .from('organizations')
@@ -120,6 +128,8 @@ export const useOrganization = (userId: string | undefined) => {
       if (orgError) throw orgError;
       
       if (!orgData) throw new Error("Failed to create organization");
+      
+      console.log('Organization created:', orgData);
       
       // Add the current user as an admin member
       const { error: memberError } = await supabase
@@ -160,6 +170,8 @@ export const useOrganization = (userId: string | undefined) => {
     if (!userId || !currentOrganization) return false;
     
     try {
+      console.log('Adding member to organization:', email, role);
+      
       // We need to find the user by email using a different approach
       // First, make an RPC call to a function that can find the user by email
       // or use a different method to find the user ID
@@ -176,6 +188,8 @@ export const useOrganization = (userId: string | undefined) => {
       if (!userData || !userData.id) {
         throw new Error(`No user found with email ${email}`);
       }
+      
+      console.log('Found user:', userData);
       
       // Add the user to the organization
       const { error: memberError } = await supabase
@@ -216,6 +230,7 @@ export const useOrganization = (userId: string | undefined) => {
   // Initial data fetch
   useEffect(() => {
     if (userId) {
+      console.log('Fetching organizations for user:', userId);
       fetchUserOrganizations();
     }
   }, [userId, fetchUserOrganizations]);

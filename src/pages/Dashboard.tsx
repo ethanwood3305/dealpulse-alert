@@ -158,6 +158,7 @@ const Dashboard = () => {
       return false;
     }
     
+    console.log('Adding car with organization:', currentOrganization.id, car);
     return await addCar({
       ...car,
       organization_id: currentOrganization.id
