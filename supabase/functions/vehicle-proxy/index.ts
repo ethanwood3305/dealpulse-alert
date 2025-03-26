@@ -105,17 +105,22 @@ serve(async (req) => {
         ? classif.Dvla.Model
         : '';
 
+    // Simplified trim logic:
+    // 1. Try the JSON property: Results > ModelDetails > ModelIdentification > ModelVariant
+    // 2. Else use classif?.Smmt?.Trim
+    // 3. Else use DVLA fallback
+    const defaultTrim = data.Results?.ModelDetails?.ModelIdentification?.ModelVariant;
     const vehicleTrim =
-  classif?.Smmt?.Trim?.trim() ||
-  (dvlaModel
-    ? dvlaModel
-        .split(' ')
-        .slice(1) // skip the first word
-        .filter((w) => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w))
-        .join(' ')
-        .trim()
-    : null);
-
+      defaultTrim?.trim() ||
+      classif?.Smmt?.Trim?.trim() ||
+      (dvlaModel
+        ? dvlaModel
+            .split(' ')
+            .slice(1)
+            .filter((w) => !/^(ISG|MHEV|PHEV|DCT|T-GDi|GDi|CRDi)$/i.test(w))
+            .join(' ')
+            .trim()
+        : null);
 
     const vehicle = {
       registration: vrm,
