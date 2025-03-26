@@ -143,9 +143,29 @@ async function scrapeForVehicle(supabase, vehicleId) {
   }
 }
 
+/* 
+  toProperCase function: Capitalizes the first letter and lowercases the rest.
+*/
 function toProperCase(text) {
   if (!text) return '';
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
+}
+
+/* 
+  cleanTrim function: Removes unwanted substrings like "TDCI", "DCI", etc.
+  It uses a blacklist (case-insensitive) to remove these terms from the trim string.
+*/
+function cleanTrim(trim) {
+  if (!trim) return '';
+  // List of terms to remove (case-insensitive)
+  const blacklist = ['tdci', 'dci', 'dct', 'isg', 'mhev', 'phev', 'tgdi', 'gdi', 'crdi'];
+  let cleaned = trim;
+  for (const term of blacklist) {
+    // Remove the term if found as a whole word
+    cleaned = cleaned.replace(new RegExp(`\\b${term}\\b`, 'gi'), '');
+  }
+  // Remove extra spaces and trim
+  return cleaned.replace(/\s+/g, ' ').trim();
 }
 
 function parseVehicleDetails(vehicle) {
@@ -176,7 +196,10 @@ function parseVehicleDetails(vehicle) {
       if (param.includes('mil=')) mileage = parseInt(param.split('mil=')[1]);
       if (param.includes('year=')) year = param.split('year=')[1];
       if (param.includes('color=')) color = toProperCase(param.split('color=')[1]);
-      if (param.includes('trim=')) trim = param.split('trim=')[1].trim();
+      if (param.includes('trim=')) {
+        // Clean the trim value by removing unwanted substrings
+        trim = cleanTrim(param.split('trim=')[1].trim());
+      }
       if (param.includes('engine=')) {
         const cc = parseInt(param.split('engine=')[1]);
         engineSize = cc ? (cc / 1000).toFixed(2) : null;
@@ -328,10 +351,11 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
 
   // If no listings found and a trim exists, retry using the proper-case version of the trim.
   if (listings.length === 0 && carDetails.trim) {
-    console.log("No listings found. Retrying with proper-case trim:", toProperCase(carDetails.trim));
+    const properCaseTrim = toProperCase(carDetails.trim);
+    console.log("No listings found. Retrying with proper-case trim:", properCaseTrim);
     const newFilters = filters.map(filter => {
       if (filter.filter === "aggregated_trim") {
-        return { ...filter, selected: [toProperCase(filter.selected[0])] };
+        return { ...filter, selected: [properCaseTrim] };
       }
       return filter;
     });
