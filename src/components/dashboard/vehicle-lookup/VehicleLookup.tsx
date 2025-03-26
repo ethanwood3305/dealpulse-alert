@@ -179,7 +179,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
         initialTags: [regTag],
         trim: vehicleDetails.trim,
         engineSize: engineSize,
-        organization_id: ''
+        organization_id: '' // This will be assigned server-side as needed
       };
 
       const success = await handleAddCarFn(carParams);
@@ -220,6 +220,8 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
           <VehicleLookupForm 
             onSubmit={handleLookup}
             isLoading={isLoading}
+            onCarAdded={onCarAdded}
+            addCar={handleAddCarFn}
           />
 
           {isLoading && <VehicleLoadingState />}
