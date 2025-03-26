@@ -22,5 +22,23 @@ export interface ScrapedListing {
   created_at: string;
 }
 
+// Define Organization type
+export interface Organization {
+  id: string;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Define OrganizationMember type
+export interface OrganizationMember {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // Export the Database type
 export type { SupabaseDatabase as Database };

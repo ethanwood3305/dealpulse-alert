@@ -10,3 +10,6 @@ enabled = true
 
 [functions.manage-dealer-postcode]
 verify_jwt = true
+
+[functions.migrate-car-organizations]
+verify_jwt = true

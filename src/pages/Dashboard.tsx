@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -10,8 +11,11 @@ import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
+import { OrganizationSelector } from '@/components/dashboard/OrganizationSelector';
+import { OrganizationMembers } from '@/components/dashboard/OrganizationMembers';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
+import { useOrganization } from '@/hooks/use-organization';
 import SEO from '@/components/SEO';
 
 const Dashboard = () => {
@@ -27,6 +31,16 @@ const Dashboard = () => {
     generateApiKey
   } = useSubscription(user?.id);
   
+  const {
+    organizations,
+    currentOrganization,
+    organizationMembers,
+    isLoading: isLoadingOrganizations,
+    switchOrganization,
+    createOrganization,
+    addOrganizationMember
+  } = useOrganization(user?.id);
+  
   const { 
     trackedCars, 
     isLoading: isLoadingCars,
@@ -37,10 +51,11 @@ const Dashboard = () => {
     refreshCars,
     triggerScraping,
     isScrapingCar,
-    getListingsForCar
-  } = useTrackedCars(user?.id);
+    getListingsForCar,
+    addCar
+  } = useTrackedCars(user?.id, currentOrganization?.id);
 
-  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars);
+  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars || isLoadingOrganizations);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -68,10 +83,10 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (!isLoadingSubscription && !isLoadingCars && !initialLoadComplete) {
+    if (!isLoadingSubscription && !isLoadingCars && !isLoadingOrganizations && !initialLoadComplete) {
       setInitialLoadComplete(true);
     }
-  }, [isLoadingSubscription, isLoadingCars, initialLoadComplete]);
+  }, [isLoadingSubscription, isLoadingCars, isLoadingOrganizations, initialLoadComplete]);
 
   const handleDeleteCar = async (id: string): Promise<boolean> => {
     if (!user) return false;
@@ -136,6 +151,22 @@ const Dashboard = () => {
     refreshSubscription();
   };
 
+  const handleAddCar = async (car: any) => {
+    if (!currentOrganization) {
+      toast({
+        title: "No dealership selected",
+        description: "Please select or create a dealership first.",
+        variant: "destructive"
+      });
+      return false;
+    }
+    
+    return await addCar({
+      ...car,
+      organization_id: currentOrganization.id
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -160,11 +191,20 @@ const Dashboard = () => {
       
       <main className="flex-grow py-16 container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          <DashboardHeader 
-            userName={user?.user_metadata?.full_name} 
-            userEmail={user?.email}
-            isPro={userSubscription?.plan !== 'free'}
-          />
+          <div className="flex justify-between items-center mb-6">
+            <DashboardHeader 
+              userName={user?.user_metadata?.full_name} 
+              userEmail={user?.email}
+              isPro={userSubscription?.plan !== 'free'}
+            />
+            
+            <OrganizationSelector
+              organizations={organizations}
+              currentOrganization={currentOrganization}
+              onSwitchOrganization={switchOrganization}
+              onCreateOrganization={createOrganization}
+            />
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <SubscriptionCard 
@@ -180,10 +220,21 @@ const Dashboard = () => {
             />
           </div>
           
+          {currentOrganization && (
+            <div className="mb-10">
+              <OrganizationMembers 
+                members={organizationMembers}
+                currentUserId={user?.id}
+                onAddMember={addOrganizationMember}
+              />
+            </div>
+          )}
+          
           <div id="vehicle-lookup" className="mb-10">
             <VehicleLookup 
               userId={user?.id}
               onCarAdded={handleCarAdded}
+              addCar={handleAddCar}
             />
           </div>
           
