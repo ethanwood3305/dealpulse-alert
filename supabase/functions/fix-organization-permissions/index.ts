@@ -28,27 +28,16 @@ serve(async (req) => {
     // Create a Supabase client with the service role key to bypass RLS
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
     
-    // Drop existing problematic policies
+    // Reset existing problematic policies
     console.log("[EXEC] Dropping existing RLS policies")
     const { error: dropError } = await supabase.rpc('reset_organization_rls_policies')
     
     if (dropError) {
       console.error("[ERROR] Failed to drop existing policies:", dropError)
-      // Continue - the function might not exist yet
+      throw dropError
     }
     
-    // Create the security definer functions
-    console.log("[EXEC] Creating security definer functions")
-    
-    // User is org member function
-    const { error: userOrgFnError } = await supabase.rpc('ensure_user_is_org_member_function')
-    
-    if (userOrgFnError) {
-      console.error("[ERROR] Failed to create user_is_org_member function:", userOrgFnError)
-      throw userOrgFnError
-    }
-    
-    // Apply RLS policies 
+    // Apply new RLS policies
     console.log("[EXEC] Applying RLS policies")
     const { error: applyError } = await supabase.rpc('apply_organization_rls_policies')
     

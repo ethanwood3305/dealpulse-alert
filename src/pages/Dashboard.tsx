@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -22,7 +23,6 @@ import { AlertCircle } from 'lucide-react';
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [fixingRLS, setFixingRLS] = useState(false);
   const [rlsError, setRlsError] = useState(false);
   const navigate = useNavigate();
   
@@ -117,12 +117,12 @@ const Dashboard = () => {
 
   useEffect(() => {
     // Check for RLS errors or if organizations couldn't be loaded
-    if (!isLoading && organizations.length === 0 && user?.id) {
+    if (initialLoadComplete && !isLoadingOrganizations && organizations.length === 0 && user?.id) {
       setRlsError(true);
-    } else {
+    } else if (organizations.length > 0) {
       setRlsError(false);
     }
-  }, [isLoading, organizations, user]);
+  }, [isLoadingOrganizations, organizations, user, initialLoadComplete]);
 
   useEffect(() => {
     const checkAuth = async () => {

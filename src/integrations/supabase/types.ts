@@ -309,6 +309,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_organization_rls_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       can_add_more_urls: {
         Args: {
           user_uuid: string
@@ -368,6 +372,10 @@ export type Database = {
           trial_end: string
           dealer_postcode: string
         }[]
+      }
+      reset_organization_rls_policies: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       user_is_org_member: {
         Args: {
