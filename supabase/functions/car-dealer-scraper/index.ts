@@ -179,7 +179,7 @@ function parseVehicleDetails(vehicle) {
       if (param.includes('mil=')) mileage = parseInt(param.split('mil=')[1]);
       if (param.includes('year=')) year = param.split('year=')[1];
       if (param.includes('color=')) color = toProperCase(param.split('color=')[1]);
-      if (param.includes('trim=')) trim = param.split('trim=')[1]);
+      if (param.includes('trim=')) trim = param.split('trim=')[1].trim();
       if (param.includes('engine=')) {
         const cc = parseInt(param.split('engine=')[1]);
         engineSize = cc ? (cc / 1000).toFixed(2) : null;
