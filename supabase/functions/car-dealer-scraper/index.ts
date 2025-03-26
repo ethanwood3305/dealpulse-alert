@@ -32,9 +32,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data: trackedCars, error } = await supabase
-      .from('tracked_urls')
-      .select('*');
+    const { data: trackedCars, error } = await supabase.from('tracked_urls').select('*');
     console.log('[DB] Tracked cars fetched');
     if (error) throw new Error(error.message);
 
@@ -328,8 +326,9 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const json = await response.json();
   let listings = json[0]?.data?.searchResults?.listings || [];
 
-  // If no listings found and a trim exists, re-run the search using the proper-case trim.
+  // If no listings found and a trim exists, retry using the proper-case version of the trim.
   if (listings.length === 0 && carDetails.trim) {
+    console.log("No listings found. Retrying with proper-case trim:", toProperCase(carDetails.trim));
     const newFilters = filters.map(filter => {
       if (filter.filter === "aggregated_trim") {
         return { ...filter, selected: [toProperCase(filter.selected[0])] };
@@ -380,7 +379,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       }`
     }];
 
-    console.log("Uppercase (Proper Case) Payload being sent:", JSON.stringify(newPayload, null, 2));
+    console.log("Proper-case Payload being sent:", JSON.stringify(newPayload, null, 2));
 
     let retriesUpper = 0;
     let responseUpper;
