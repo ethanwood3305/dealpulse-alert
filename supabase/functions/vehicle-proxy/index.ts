@@ -78,21 +78,18 @@ serve(async (req) => {
 
     const data = await res.json();
 
-    // New response structure: Check ResponseInformation.StatusCode
+    // NEW: Check the new response structure using ResponseInformation
     if (!data.ResponseInformation || data.ResponseInformation.StatusCode !== 0) {
       console.log(data);
-      const message =
-        data.ResponseInformation?.StatusMessage || 'Vehicle lookup failed';
-      const code = message.includes('No vehicle found')
-        ? 'VEHICLE_NOT_FOUND'
-        : 'API_ERROR';
+      const message = data.ResponseInformation?.StatusMessage || 'Vehicle lookup failed';
+      const code = message.includes('No vehicle found') ? 'VEHICLE_NOT_FOUND' : 'API_ERROR';
       return jsonResponse(
         { error: message, success: false, code, apiResponse: data.ResponseInformation },
         404
       );
     }
 
-    // Extract vehicle details from the new structure
+    // Extract details from the new structure.
     const results = data.Results;
     if (!results || !results.VehicleDetails) {
       return jsonResponse(
@@ -104,11 +101,10 @@ serve(async (req) => {
     const modelDetails = results.ModelDetails || {};
     const vehIdent = vehicleDetails.VehicleIdentification || {};
 
-    // Use the ModelVariant from ModelDetails as the default trim,
-    // otherwise fallback to processing DvlaModel.
+    // Use ModelVariant from ModelDetails as default trim; fallback to processing DvlaModel.
     const defaultTrim = modelDetails?.ModelIdentification?.ModelVariant;
-    const dvlaModel = vehIdent.DvlaModel;
     console.log(defaultTrim);
+    const dvlaModel = vehIdent.DvlaModel;
     const vehicleTrim =
       defaultTrim?.trim() ||
       (dvlaModel
@@ -127,11 +123,8 @@ serve(async (req) => {
         modelDetails?.ModelIdentification?.Make ||
         vehIdent.DvlaMake ||
         'Unknown',
-      model:
-        modelDetails?.ModelIdentification?.Range ||
-        'Unknown',
-      color:
-        vehicleDetails.VehicleHistory?.ColourDetails?.CurrentColour || 'Unknown',
+      model: modelDetails?.ModelIdentification?.Range || 'Unknown',
+      color: vehicleDetails.VehicleHistory?.ColourDetails?.CurrentColour || 'Unknown',
       fuelType: vehIdent.DvlaFuelType || 'Unknown',
       year: vehIdent.YearOfManufacture || 'Unknown',
       engineSize: vehicleDetails.DvlaTechnicalDetails?.EngineCapacityCc
@@ -143,8 +136,7 @@ serve(async (req) => {
       taxDueDate: null,
       doorCount: modelDetails?.BodyDetails?.NumberOfDoors || 'Unknown',
       bodyStyle: modelDetails?.BodyDetails?.BodyStyle || 'Unknown',
-      transmission:
-        modelDetails?.Powertrain?.Transmission?.TransmissionType || 'Unknown',
+      transmission: modelDetails?.Powertrain?.Transmission?.TransmissionType || 'Unknown',
       weight: vehicleDetails.DvlaTechnicalDetails?.GrossWeightKg
         ? `${vehicleDetails.DvlaTechnicalDetails.GrossWeightKg} kg`
         : 'Unknown',
