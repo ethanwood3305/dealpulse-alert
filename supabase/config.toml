@@ -13,3 +13,6 @@ verify_jwt = true
 
 [functions.migrate-car-organizations]
 verify_jwt = true
+
+[functions.get-user-by-email]
+verify_jwt = true

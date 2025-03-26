@@ -23,4 +23,5 @@ export interface VehicleDetails {
 export interface VehicleLookupProps {
   userId: string;
   onCarAdded?: () => void;
+  addCar?: (car: any) => Promise<boolean>;
 }

@@ -42,7 +42,12 @@ export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps
             <TabsTrigger value="manual">Manual Entry</TabsTrigger>
           </TabsList>
           <TabsContent value="lookup">
-            <VehicleLookupForm onCarAdded={onCarAdded} addCar={handleAddCar} />
+            <VehicleLookupForm 
+              onSubmit={async () => {}} 
+              isLoading={false}
+              onCarAdded={onCarAdded} 
+              addCar={handleAddCar} 
+            />
           </TabsContent>
           <TabsContent value="manual">
             <AddCarForm onCarAdded={onCarAdded} addCar={handleAddCar} />

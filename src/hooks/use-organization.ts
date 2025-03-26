@@ -157,21 +157,22 @@ export const useOrganization = (userId: string | undefined) => {
     if (!userId || !currentOrganization) return false;
     
     try {
-      // First, find the user by email
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', email)
-        .single();
-        
-      if (userError) {
-        if (userError.code === 'PGRST116') {
-          throw new Error(`No user found with email ${email}`);
-        }
-        throw userError;
+      // We need to find the user by email using a different approach
+      // First, make an RPC call to a function that can find the user by email
+      // or use a different method to find the user ID
+      
+      // For now, we'll use auth.user function call through edge function
+      const { data: userData, error: functionError } = await supabase.functions.invoke('get-user-by-email', {
+        body: { email }
+      });
+      
+      if (functionError) {
+        throw new Error(functionError.message || "Failed to find user");
       }
       
-      if (!userData) throw new Error(`No user found with email ${email}`);
+      if (!userData || !userData.id) {
+        throw new Error(`No user found with email ${email}`);
+      }
       
       // Add the user to the organization
       const { error: memberError } = await supabase

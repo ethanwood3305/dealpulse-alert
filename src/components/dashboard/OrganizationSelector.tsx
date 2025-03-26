@@ -25,7 +25,7 @@ interface OrganizationSelectorProps {
   organizations: Organization[];
   currentOrganization: Organization | null;
   onSwitchOrganization: (organizationId: string) => void;
-  onCreateOrganization: (name: string) => void;
+  onCreateOrganization: (name: string) => Promise<boolean> | boolean;
 }
 
 export function OrganizationSelector({
@@ -42,7 +42,7 @@ export function OrganizationSelector({
     if (!newOrgName.trim()) return;
     
     setIsCreating(true);
-    const success = await onCreateOrganization(newOrgName.trim());
+    const success = await Promise.resolve(onCreateOrganization(newOrgName.trim()));
     
     if (success) {
       setNewOrgName('');
