@@ -64,7 +64,7 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
           size="sm" 
           onClick={handleClick}
           disabled={isScrapingCar}
-          title="Find the cheapest similar vehicle online"
+          title="Find the lowest price for a similar vehicle online"
           className="whitespace-nowrap"
         >
           {isScrapingCar ? (
@@ -72,7 +72,7 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
           ) : (
             <Globe className="h-4 w-4 mr-1" />
           )}
-          Find Cheapest
+          Find lowest price
         </Button>
         
         {/* Show red notification for cheaper vehicles */}
