@@ -14,6 +14,7 @@ import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import { useOrganization } from '@/hooks/use-organization';
+import { OrganizationSelector } from '@/components/dashboard/OrganizationSelector';
 import SEO from '@/components/SEO';
 
 const Dashboard = () => {
@@ -31,7 +32,10 @@ const Dashboard = () => {
   
   const {
     currentOrganization,
+    organizations,
     isLoading: isLoadingOrganizations,
+    switchOrganization,
+    createOrganization
   } = useOrganization(user?.id);
   
   const { 
@@ -184,12 +188,23 @@ const Dashboard = () => {
       
       <main className="flex-grow py-16 container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-6">
+          <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between">
             <DashboardHeader 
               userName={user?.user_metadata?.full_name} 
               userEmail={user?.email}
               isPro={userSubscription?.plan !== 'free'}
             />
+            
+            {organizations.length > 0 && (
+              <div className="mt-4 md:mt-0">
+                <OrganizationSelector
+                  organizations={organizations}
+                  currentOrganization={currentOrganization}
+                  onSwitchOrganization={switchOrganization}
+                  onCreateOrganization={createOrganization}
+                />
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">

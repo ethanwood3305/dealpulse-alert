@@ -17,20 +17,21 @@ export const useOrganization = (userId: string | undefined) => {
     try {
       setIsLoading(true);
       
-      const { data: memberData, error: memberError } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', userId);
+      // Use the new database function to get organization IDs without recursion
+      const { data: orgIds, error: funcError } = await supabase
+        .rpc('get_user_organizations', { user_uuid: userId });
         
-      if (memberError) throw memberError;
+      if (funcError) {
+        console.error('Error fetching organization IDs:', funcError);
+        throw funcError;
+      }
       
-      if (memberData && memberData.length > 0) {
-        const organizationIds = memberData.map(m => m.organization_id);
-        
+      if (orgIds && orgIds.length > 0) {
+        // Fetch organization details for these IDs
         const { data: orgsData, error: orgsError } = await supabase
           .from('organizations')
           .select('*')
-          .in('id', organizationIds)
+          .in('id', orgIds)
           .order('created_at', { ascending: false });
           
         if (orgsError) throw orgsError;
@@ -44,6 +45,8 @@ export const useOrganization = (userId: string | undefined) => {
           // Fetch members for this organization
           fetchOrganizationMembers(orgsData[0].id);
         }
+      } else {
+        setOrganizations([]);
       }
     } catch (error: any) {
       console.error('Error fetching organizations:', error);
