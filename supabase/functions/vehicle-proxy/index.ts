@@ -109,7 +109,8 @@ serve(async (req) => {
     // 1. Try the JSON property: Results > ModelDetails > ModelIdentification > ModelVariant
     // 2. Else use classif?.Smmt?.Trim
     // 3. Else use DVLA fallback
-    const defaultTrim = data.Results?.ModelDetails?.ModelIdentification?.ModelVariant;
+    const defaultTrim = v.ModelDetails?.ModelIdentification?.ModelVariant;
+    console.log(defaultTrim);
     const vehicleTrim =
       defaultTrim?.trim() ||
       classif?.Smmt?.Trim?.trim() ||
@@ -121,7 +122,7 @@ serve(async (req) => {
             .join(' ')
             .trim()
         : null);
-
+    console.log(vehicleTrim);
     const vehicle = {
       registration: vrm,
       make: reg.Make || 'Unknown',
