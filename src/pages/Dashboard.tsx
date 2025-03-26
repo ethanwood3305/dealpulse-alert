@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -46,6 +46,7 @@ const Dashboard = () => {
     currentOrganization,
     organizations,
     isLoading: isLoadingOrganizations,
+    isFixingRLS,
     switchOrganization,
     createOrganization,
     fixRLSPolicies
@@ -83,15 +84,13 @@ const Dashboard = () => {
   const handleFixRLS = async () => {
     if (!user) return;
     
-    setFixingRLS(true);
-    
     try {
       const success = await fixRLSPolicies();
       
       if (success) {
         toast({
           title: "Success",
-          description: "Permission issues fixed. Please try refreshing the page."
+          description: "Permission issues fixed. Please wait while we reload your data."
         });
         setRlsError(false);
         
@@ -113,13 +112,11 @@ const Dashboard = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setFixingRLS(false);
     }
   };
 
   useEffect(() => {
-    // Check for RLS errors
+    // Check for RLS errors or if organizations couldn't be loaded
     if (!isLoading && organizations.length === 0 && user?.id) {
       setRlsError(true);
     } else {
@@ -243,7 +240,7 @@ const Dashboard = () => {
     if (!currentOrganization) {
       toast({
         title: "No dealership assigned",
-        description: "Your account hasn't been assigned to a dealership. Please contact support.",
+        description: "Please create or select a dealership first before adding vehicles.",
         variant: "destructive"
       });
       return false;
@@ -284,16 +281,16 @@ const Dashboard = () => {
             <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Permission Error</AlertTitle>
-              <AlertDescription>
+              <AlertDescription className="flex items-center gap-2">
                 There was an error loading your organization data. 
                 <Button 
                   variant="outline" 
                   size="sm" 
                   onClick={handleFixRLS} 
-                  disabled={fixingRLS}
+                  disabled={isFixingRLS}
                   className="ml-2"
                 >
-                  {fixingRLS ? 'Fixing...' : 'Fix Permissions'}
+                  {isFixingRLS ? 'Fixing...' : 'Fix Permissions'}
                 </Button>
               </AlertDescription>
             </Alert>
@@ -306,16 +303,14 @@ const Dashboard = () => {
               isPro={userSubscription?.plan !== 'free'}
             />
             
-            {organizations.length > 0 && (
-              <div className="mt-4 md:mt-0">
-                <OrganizationSelector
-                  organizations={organizations}
-                  currentOrganization={currentOrganization}
-                  onSwitchOrganization={switchOrganization}
-                  onCreateOrganization={createOrganization}
-                />
-              </div>
-            )}
+            <div className="mt-4 md:mt-0">
+              <OrganizationSelector
+                organizations={organizations}
+                currentOrganization={currentOrganization}
+                onSwitchOrganization={switchOrganization}
+                onCreateOrganization={createOrganization}
+              />
+            </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">

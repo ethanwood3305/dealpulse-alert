@@ -30,7 +30,7 @@ export interface Organization {
   updated_at: string;
 }
 
-// Define OrganizationMember type
+// Define OrganizationMember type with roles
 export interface OrganizationMember {
   id: string;
   user_id: string;

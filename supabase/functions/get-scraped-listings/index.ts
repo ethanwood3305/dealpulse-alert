@@ -8,71 +8,46 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  console.log("[INIT] Get Scraped Listings function started")
-  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
   
   try {
-    // Parse the request body
-    const { carId } = await req.json()
+    // Parse request body
+    const { car_id } = await req.json()
     
-    console.log(`[INPUT] Car ID received: ${carId}`)
-    
-    if (!carId) {
-      throw new Error('Missing car ID in request')
+    if (!car_id) {
+      throw new Error('Missing car_id parameter')
     }
     
-    // Get the Supabase URL and service role key from environment variables
+    // Get the Supabase URL and key from environment variables
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const supabaseApiKey = Deno.env.get('SUPABASE_ANON_KEY')
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     
-    if (!supabaseUrl || !supabaseApiKey) {
-      throw new Error('Missing environment variables. Make sure SUPABASE_URL and SUPABASE_ANON_KEY are set.')
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error('Missing environment variables')
     }
     
-    console.log("[INIT] Creating Supabase client")
-    // Create a Supabase client for authenticated requests
-    const supabase = createClient(supabaseUrl, supabaseApiKey)
+    // Create a Supabase client with the service role key
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
     
-    // Get the user's JWT token from authorization header
-    const authHeader = req.headers.get('authorization')
-    if (!authHeader) {
-      throw new Error('Missing authorization header')
-    }
-    
-    // Set the auth token for the client
-    const token = authHeader.replace('Bearer ', '')
-    supabase.auth.setSession({
-      access_token: token,
-      refresh_token: ''
-    })
-    
-    // Call the RPC function to get scraped listings for this car
-    console.log(`[EXEC] Calling RPC function get_scraped_listings_for_car for car ID: ${carId}`)
+    // Get scraped listings
     const { data, error } = await supabase.rpc('get_scraped_listings_for_car', {
-      car_id: carId
+      car_id: car_id
     })
     
     if (error) {
-      console.error("[ERROR] Error fetching scraped listings:", error)
       throw error
     }
     
-    const listingsCount = data?.length || 0
-    console.log(`[SUCCESS] Retrieved ${listingsCount} listings for car ID: ${carId}`)
-    
     return new Response(
-      JSON.stringify({ success: true, listings: data || [] }),
+      JSON.stringify({ data }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     )
   } catch (error) {
-    console.error("[FATAL] Error in get-scraped-listings function:", error)
-    
     return new Response(
       JSON.stringify({ error: error.message }),
       { 

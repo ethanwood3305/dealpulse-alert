@@ -29,12 +29,33 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
     
     // Drop existing problematic policies
-    console.log("[EXEC] Dropping existing policies")
-    await supabase.rpc('reset_organization_rls_policies')
+    console.log("[EXEC] Dropping existing RLS policies")
+    const { error: dropError } = await supabase.rpc('reset_organization_rls_policies')
     
-    // Create the security definer function to check organization membership
-    console.log("[EXEC] Creating security definer function")
-    await supabase.rpc('create_user_is_org_member_function')
+    if (dropError) {
+      console.error("[ERROR] Failed to drop existing policies:", dropError)
+      // Continue - the function might not exist yet
+    }
+    
+    // Create the security definer functions
+    console.log("[EXEC] Creating security definer functions")
+    
+    // User is org member function
+    const { error: userOrgFnError } = await supabase.rpc('ensure_user_is_org_member_function')
+    
+    if (userOrgFnError) {
+      console.error("[ERROR] Failed to create user_is_org_member function:", userOrgFnError)
+      throw userOrgFnError
+    }
+    
+    // Apply RLS policies 
+    console.log("[EXEC] Applying RLS policies")
+    const { error: applyError } = await supabase.rpc('apply_organization_rls_policies')
+    
+    if (applyError) {
+      console.error("[ERROR] Failed to apply RLS policies:", applyError)
+      throw applyError
+    }
     
     console.log("[SUCCESS] Successfully fixed organization permissions")
     
