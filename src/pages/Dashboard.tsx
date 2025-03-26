@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
@@ -13,20 +12,12 @@ import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
-import { useOrganization } from '@/hooks/use-organization';
-import { OrganizationSelector } from '@/components/dashboard/OrganizationSelector';
 import SEO from '@/components/SEO';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
 
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-  const [rlsError, setRlsError] = useState(false);
   const navigate = useNavigate();
-  
-  console.log('[Dashboard] Component rendering, user:', user?.id);
   
   const { 
     userSubscription, 
@@ -35,28 +26,6 @@ const Dashboard = () => {
     refreshSubscription,
     generateApiKey
   } = useSubscription(user?.id);
-  
-  console.log('[Dashboard] useSubscription hook returned:', { 
-    plan: userSubscription?.plan,
-    isLoadingSubscription,
-    canAddMoreCars
-  });
-  
-  const {
-    currentOrganization,
-    organizations,
-    isLoading: isLoadingOrganizations,
-    isFixingRLS,
-    switchOrganization,
-    createOrganization,
-    fixRLSPolicies
-  } = useOrganization(user?.id);
-  
-  console.log('[Dashboard] useOrganization hook returned:', { 
-    currentOrganizationId: currentOrganization?.id,
-    organizationsCount: organizations?.length,
-    isLoadingOrganizations
-  });
   
   const { 
     trackedCars, 
@@ -68,91 +37,30 @@ const Dashboard = () => {
     refreshCars,
     triggerScraping,
     isScrapingCar,
-    getListingsForCar,
-    addCar
-  } = useTrackedCars(user?.id, currentOrganization?.id);
-  
-  console.log('[Dashboard] useTrackedCars hook returned:', { 
-    trackedCarsCount: trackedCars?.length,
-    isLoadingCars,
-    currentOrgId: currentOrganization?.id
-  });
+    getListingsForCar
+  } = useTrackedCars(user?.id);
 
-  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars || isLoadingOrganizations);
-  console.log('[Dashboard] Overall loading state:', isLoading);
-
-  const handleFixRLS = async () => {
-    if (!user) return;
-    
-    try {
-      const success = await fixRLSPolicies();
-      
-      if (success) {
-        toast({
-          title: "Success",
-          description: "Permission issues fixed. Please wait while we reload your data."
-        });
-        setRlsError(false);
-        
-        // Refresh the data after fixing RLS
-        if (user?.id) {
-          refreshCars();
-        }
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to fix permission issues. Please contact support.",
-          variant: "destructive"
-        });
-      }
-    } catch (error) {
-      console.error('Error fixing RLS policies:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  useEffect(() => {
-    // Check for RLS errors or if organizations couldn't be loaded
-    if (initialLoadComplete && !isLoadingOrganizations && organizations.length === 0 && user?.id) {
-      setRlsError(true);
-    } else if (organizations.length > 0) {
-      setRlsError(false);
-    }
-  }, [isLoadingOrganizations, organizations, user, initialLoadComplete]);
+  const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars);
 
   useEffect(() => {
     const checkAuth = async () => {
-      console.log('[Dashboard] Checking authentication status');
       const { data, error } = await supabase.auth.getUser();
-      
-      console.log('[Dashboard] Auth check response:', { userData: data?.user, error });
-      
       if (error || !data?.user) {
-        console.log('[Dashboard] No authenticated user found, redirecting to login');
         navigate('/login');
         return;
       }
-      
-      console.log('[Dashboard] User authenticated:', data.user);
       setUser(data.user);
     };
     
     checkAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[Dashboard] Auth state changed:', { event, sessionExists: !!session });
       if (!session) {
-        console.log('[Dashboard] Session ended, redirecting to login');
         navigate('/login');
       }
     });
     
     return () => {
-      console.log('[Dashboard] Cleaning up auth listener');
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
       }
@@ -160,18 +68,10 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
-    console.log('[Dashboard] Checking if initial load is complete:', { 
-      isLoadingSubscription, 
-      isLoadingCars, 
-      isLoadingOrganizations, 
-      initialLoadComplete 
-    });
-    
-    if (!isLoadingSubscription && !isLoadingCars && !isLoadingOrganizations && !initialLoadComplete) {
-      console.log('[Dashboard] Initial load complete, updating state');
+    if (!isLoadingSubscription && !isLoadingCars && !initialLoadComplete) {
       setInitialLoadComplete(true);
     }
-  }, [isLoadingSubscription, isLoadingCars, isLoadingOrganizations, initialLoadComplete]);
+  }, [isLoadingSubscription, isLoadingCars, initialLoadComplete]);
 
   const handleDeleteCar = async (id: string): Promise<boolean> => {
     if (!user) return false;
@@ -236,23 +136,6 @@ const Dashboard = () => {
     refreshSubscription();
   };
 
-  const handleAddCar = async (car: any) => {
-    if (!currentOrganization) {
-      toast({
-        title: "No dealership assigned",
-        description: "Please create or select a dealership first before adding vehicles.",
-        variant: "destructive"
-      });
-      return false;
-    }
-    
-    console.log('Adding car with organization:', currentOrganization.id, car);
-    return await addCar({
-      ...car,
-      organization_id: currentOrganization.id
-    });
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -277,41 +160,11 @@ const Dashboard = () => {
       
       <main className="flex-grow py-16 container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          {rlsError && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Permission Error</AlertTitle>
-              <AlertDescription className="flex items-center gap-2">
-                There was an error loading your organization data. 
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleFixRLS} 
-                  disabled={isFixingRLS}
-                  className="ml-2"
-                >
-                  {isFixingRLS ? 'Fixing...' : 'Fix Permissions'}
-                </Button>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between">
-            <DashboardHeader 
-              userName={user?.user_metadata?.full_name} 
-              userEmail={user?.email}
-              isPro={userSubscription?.plan !== 'free'}
-            />
-            
-            <div className="mt-4 md:mt-0">
-              <OrganizationSelector
-                organizations={organizations}
-                currentOrganization={currentOrganization}
-                onSwitchOrganization={switchOrganization}
-                onCreateOrganization={createOrganization}
-              />
-            </div>
-          </div>
+          <DashboardHeader 
+            userName={user?.user_metadata?.full_name} 
+            userEmail={user?.email}
+            isPro={userSubscription?.plan !== 'free'}
+          />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
             <SubscriptionCard 
@@ -331,7 +184,6 @@ const Dashboard = () => {
             <VehicleLookup 
               userId={user?.id}
               onCarAdded={handleCarAdded}
-              addCar={handleAddCar}
             />
           </div>
           

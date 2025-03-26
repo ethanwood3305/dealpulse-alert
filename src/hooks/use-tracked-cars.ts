@@ -19,7 +19,6 @@ export interface TrackedCar {
   url: string;
   trim?: string;
   engineSize?: string;
-  organization_id?: string;
 }
 
 export interface AddCarParams {
@@ -33,43 +32,25 @@ export interface AddCarParams {
   initialTags?: string[];
   trim?: string;
   engineSize?: string;
-  organization_id: string;
 }
 
 export { type ScrapedListing };
 
-export const useTrackedCars = (userId: string | undefined, organizationId?: string) => {
+export const useTrackedCars = (userId: string | undefined) => {
   const [trackedCars, setTrackedCars] = useState<TrackedCar[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [scrapedListings, setScrapedListings] = useState<Record<string, ScrapedListing[]>>({});
   const [isScrapingCar, setIsScrapingCar] = useState(false);
   const [scrapingError, setScrapingError] = useState<string | null>(null);
 
-  const fetchTrackedCars = useCallback(async (userId: string, orgId?: string) => {
+  const fetchTrackedCars = useCallback(async (userId: string) => {
     try {
       setIsLoading(true);
-      
-      let query = supabase
+      const { data, error } = await supabase
         .from('tracked_urls')
-        .select('*');
-      
-      if (orgId) {
-        query = query.eq('organization_id', orgId);
-      } else {
-        const { data: memberships, error: membershipError } = await supabase
-          .from('organization_members')
-          .select('organization_id')
-          .eq('user_id', userId);
-          
-        if (membershipError) throw membershipError;
-        
-        if (memberships && memberships.length > 0) {
-          const orgIds = memberships.map(m => m.organization_id);
-          query = query.in('organization_id', orgIds);
-        }
-      }
-      
-      const { data, error } = await query.order('created_at', { ascending: false });
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
         
       if (error) {
         throw error;
@@ -124,6 +105,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
       
       setTrackedCars(carsWithTags);
       
+      // Fetch the scraped listings for each car
       for (const car of carsWithTags) {
         try {
           const listings = await fetchScrapedListings(car.id);
@@ -133,6 +115,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
           }));
         } catch (err) {
           console.error(`Error fetching listings for car ${car.id}:`, err);
+          // Don't let one car's listings error break the whole process
         }
       }
     } catch (error) {
@@ -172,10 +155,12 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
       setIsScrapingCar(true);
       setScrapingError(null);
       
+      // Validate car ID
       if (!carId) {
         throw new Error("Invalid car ID");
       }
       
+      // Check if the car exists in the tracked cars list
       const car = trackedCars.find(c => c.id === carId);
       if (!car) {
         throw new Error("Car not found");
@@ -188,6 +173,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
         description: `Searching for the cheapest ${car.brand} ${car.model}. This may take a moment.`
       });
       
+      // Call the edge function to start the scraping
       const { data, error } = await supabase.functions.invoke('car-dealer-scraper', {
         body: { vehicle_id: carId }
       });
@@ -199,20 +185,24 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
       
       console.log("Scraper function response:", data);
       
+      // Wait for scraping to complete (throttle to prevent too many requests)
       await new Promise(resolve => setTimeout(resolve, 5000));
       
       console.log("Fetching updated listings after scraping");
       const listings = await fetchScrapedListings(carId);
       
+      // Update the listings in state
       setScrapedListings(prev => ({
         ...prev,
         [carId]: listings
       }));
       
+      // Refresh the tracked cars to update any state that changed
       if (userId) {
-        await fetchTrackedCars(userId, organizationId);
+        await fetchTrackedCars(userId);
       }
       
+      // Show a successful toast based on results
       if (listings.length > 0) {
         const cheapestListing = listings[0];
         toast({
@@ -245,6 +235,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
     try {
       if (!userId) return false;
       
+      // Validate required fields
       if (!car.mileage || car.mileage.trim() === '') {
         toast({
           title: "Missing information",
@@ -284,18 +275,16 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
         }
       }
       
-      const orgId = car.organization_id && car.organization_id.trim() !== '' 
-        ? car.organization_id 
-        : undefined;
-      
+      // Don't set cheapest_price to last_price initially
+      // Wait for scraping results to determine the actual cheapest price
       const { data, error } = await supabase
         .from('tracked_urls')
         .insert({
           user_id: userId,
-          organization_id: orgId,
           url: carUrl,
           tags: car.initialTags || [],
           last_price: lastPrice,
+          // Initialize with null instead of last_price to avoid showing "You have the cheapest" prematurely
           cheapest_price: null
         })
         .select();
@@ -308,16 +297,20 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
       if (data && data.length > 0) {
         newCarId = data[0].id;
         
-        await fetchTrackedCars(userId, organizationId);
+        // First fetch existing cars to update the UI
+        await fetchTrackedCars(userId);
         
+        // Then trigger the scraper for the new car
         if (newCarId) {
+          // Use a slight delay to ensure the car is properly inserted first
           setTimeout(async () => {
             try {
               console.log("Auto-triggering scraping for newly added car:", newCarId);
               await triggerScraping(newCarId);
               
+              // Refresh the car list again after scraping completes
               if (userId) {
-                await fetchTrackedCars(userId, organizationId);
+                await fetchTrackedCars(userId);
               }
             } catch (e) {
               console.error("Error auto-triggering scraping for new car:", e);
@@ -325,7 +318,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
           }, 1000);
         }
       } else {
-        await fetchTrackedCars(userId, organizationId);
+        await fetchTrackedCars(userId);
       }
       
       return true;
@@ -392,7 +385,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
         throw error;
       }
       
-      await fetchTrackedCars(userId, organizationId);
+      await fetchTrackedCars(userId);
       return true;
     } catch (error: any) {
       toast({
@@ -421,7 +414,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
       
       console.log('Successfully deleted car and all associated listings');
       
-      await fetchTrackedCars(userId, organizationId);
+      await fetchTrackedCars(userId);
       
       setScrapedListings(prev => {
         const updated = { ...prev };
@@ -467,7 +460,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
         throw error;
       }
       
-      await fetchTrackedCars(userId, organizationId);
+      await fetchTrackedCars(userId);
       return true;
     } catch (error: any) {
       toast({
@@ -497,7 +490,7 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
         throw error;
       }
       
-      await fetchTrackedCars(userId, organizationId);
+      await fetchTrackedCars(userId);
       return true;
     } catch (error: any) {
       toast({
@@ -511,20 +504,280 @@ export const useTrackedCars = (userId: string | undefined, organizationId?: stri
 
   useEffect(() => {
     if (userId) {
-      fetchTrackedCars(userId, organizationId);
+      fetchTrackedCars(userId);
     }
-  }, [userId, organizationId, fetchTrackedCars]);
+  }, [userId, fetchTrackedCars]);
 
   return {
     trackedCars,
     isLoading,
-    addCar,
-    deleteCar,
-    addTag,
-    removeTag,
-    updateCarDetails,
-    refreshCars: useCallback(() => userId && fetchTrackedCars(userId, organizationId), 
-                             [userId, organizationId, fetchTrackedCars]),
+    addCar: useCallback(async (car: AddCarParams) => {
+      try {
+        if (!userId) return false;
+        
+        // Validate required fields
+        if (!car.mileage || car.mileage.trim() === '') {
+          toast({
+            title: "Missing information",
+            description: "Please enter the vehicle mileage",
+            variant: "destructive"
+          });
+          return false;
+        }
+
+        if (!car.price || car.price.trim() === '') {
+          toast({
+            title: "Missing information",
+            description: "Please enter a target price",
+            variant: "destructive"
+          });
+          return false;
+        }
+        
+        const mileageParam = car.mileage ? `mil=${car.mileage}` : '';
+        const yearParam = car.year ? `year=${car.year}` : '';
+        const colorParam = car.color ? `color=${car.color}` : '';
+        const priceParam = car.price ? `price=${car.price}` : '';
+        const trimParam = car.trim ? `trim=${car.trim}` : '';
+        const engineParam = car.engineSize ? `engine=${car.engineSize}` : '';
+        
+        const params = [mileageParam, yearParam, colorParam, priceParam, trimParam, engineParam]
+          .filter(Boolean)
+          .join('&');
+        
+        const carUrl = `${car.brand}/${car.model}/${car.engineType}${params ? `/${params}` : ''}`;
+        
+        let lastPrice = null;
+        if (car.price) {
+          lastPrice = parseInt(car.price, 10);
+          if (isNaN(lastPrice)) {
+            lastPrice = null;
+          }
+        }
+        
+        // Don't set cheapest_price to last_price initially
+        // Wait for scraping results to determine the actual cheapest price
+        const { data, error } = await supabase
+          .from('tracked_urls')
+          .insert({
+            user_id: userId,
+            url: carUrl,
+            tags: car.initialTags || [],
+            last_price: lastPrice,
+            // Initialize with null instead of last_price to avoid showing "You have the cheapest" prematurely
+            cheapest_price: null
+          })
+          .select();
+          
+        if (error) {
+          throw error;
+        }
+        
+        let newCarId = null;
+        if (data && data.length > 0) {
+          newCarId = data[0].id;
+          
+          // First fetch existing cars to update the UI
+          await fetchTrackedCars(userId);
+          
+          // Then trigger the scraper for the new car
+          if (newCarId) {
+            // Use a slight delay to ensure the car is properly inserted first
+            setTimeout(async () => {
+              try {
+                console.log("Auto-triggering scraping for newly added car:", newCarId);
+                await triggerScraping(newCarId);
+                
+                // Refresh the car list again after scraping completes
+                if (userId) {
+                  await fetchTrackedCars(userId);
+                }
+              } catch (e) {
+                console.error("Error auto-triggering scraping for new car:", e);
+              }
+            }, 1000);
+          }
+        } else {
+          await fetchTrackedCars(userId);
+        }
+        
+        return true;
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to add vehicle. Please try again later.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    }, [userId, fetchTrackedCars, triggerScraping]),
+    deleteCar: useCallback(async (id: string) => {
+      try {
+        if (!userId) return false;
+        
+        console.log(`Attempting to delete car with ID: ${id} using database function`);
+        
+        const { data, error } = await supabase.rpc('delete_car_completely', {
+          car_id: id
+        });
+        
+        if (error) {
+          console.error('Error deleting car using database function:', error);
+          throw error;
+        }
+        
+        console.log('Successfully deleted car and all associated listings');
+        
+        await fetchTrackedCars(userId);
+        
+        setScrapedListings(prev => {
+          const updated = { ...prev };
+          delete updated[id];
+          return updated;
+        });
+        
+        toast({
+          title: "Vehicle removed",
+          description: "The vehicle has been removed from your tracking list."
+        });
+        
+        return true;
+      } catch (error: any) {
+        console.error('Full error details:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to remove vehicle. Please try again later.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    }, [userId, fetchTrackedCars]),
+    addTag: useCallback(async (carId: string, tag: string) => {
+      try {
+        if (!userId) return false;
+        
+        const carToUpdate = trackedCars.find(car => car.id === carId);
+        if (!carToUpdate) return false;
+        
+        const updatedTags = [...(carToUpdate.tags || [])];
+        if (!updatedTags.includes(tag)) {
+          updatedTags.push(tag);
+        }
+        
+        const { error } = await supabase
+          .from('tracked_urls')
+          .update({ tags: updatedTags })
+          .eq('id', carId);
+          
+        if (error) {
+          throw error;
+        }
+        
+        await fetchTrackedCars(userId);
+        return true;
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to add tag. Please try again later.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    }, [userId, trackedCars, fetchTrackedCars]),
+    removeTag: useCallback(async (carId: string, tagToRemove: string) => {
+      try {
+        if (!userId) return false;
+        
+        const carToUpdate = trackedCars.find(car => car.id === carId);
+        if (!carToUpdate) return false;
+        
+        const updatedTags = (carToUpdate.tags || []).filter(tag => tag !== tagToRemove);
+        
+        const { error } = await supabase
+          .from('tracked_urls')
+          .update({ tags: updatedTags })
+          .eq('id', carId);
+          
+        if (error) {
+          throw error;
+        }
+        
+        await fetchTrackedCars(userId);
+        return true;
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to remove tag. Please try again later.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    }, [userId, trackedCars, fetchTrackedCars]),
+    updateCarDetails: useCallback(async (carId: string, mileage: string, price: string) => {
+      try {
+        if (!userId) return false;
+        
+        const carToUpdate = trackedCars.find(car => car.id === carId);
+        if (!carToUpdate) return false;
+        
+        const urlParts = carToUpdate.url.split('/');
+        const brand = urlParts[0];
+        const model = urlParts[1];
+        const engineType = urlParts[2];
+        
+        const mileageParam = mileage ? `mil=${mileage}` : '';
+        const yearParam = carToUpdate.year ? `year=${carToUpdate.year}` : '';
+        const colorParam = carToUpdate.color ? `color=${carToUpdate.color}` : '';
+        const priceParam = price ? `price=${price}` : '';
+        const trimParam = carToUpdate.trim ? `trim=${carToUpdate.trim}` : '';
+        const engineParam = carToUpdate.engineSize ? `engine=${carToUpdate.engineSize}` : '';
+        
+        const params = [mileageParam, yearParam, colorParam, priceParam, trimParam, engineParam]
+          .filter(Boolean)
+          .join('&');
+        
+        const newUrl = `${brand}/${model}/${engineType}${params ? `/${params}` : ''}`;
+        
+        let lastPrice = null;
+        if (price) {
+          lastPrice = parseFloat(price);
+          if (isNaN(lastPrice)) {
+            lastPrice = null;
+          }
+        }
+        
+        let cheapestPrice = carToUpdate.cheapest_price;
+        if (lastPrice !== null) {
+          if (cheapestPrice === null || lastPrice < cheapestPrice) {
+            cheapestPrice = lastPrice;
+          }
+        }
+        
+        const { error } = await supabase
+          .from('tracked_urls')
+          .update({
+            url: newUrl,
+            last_price: lastPrice,
+            cheapest_price: cheapestPrice
+          })
+          .eq('id', carId);
+          
+        if (error) {
+          throw error;
+        }
+        
+        await fetchTrackedCars(userId);
+        return true;
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update vehicle. Please try again later.",
+          variant: "destructive"
+        });
+        return false;
+      }
+    }, [userId, trackedCars, fetchTrackedCars]),
+    refreshCars: useCallback(() => userId && fetchTrackedCars(userId), [userId, fetchTrackedCars]),
     scrapedListings,
     triggerScraping,
     isScrapingCar,

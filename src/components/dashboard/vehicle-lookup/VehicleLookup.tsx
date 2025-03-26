@@ -13,7 +13,7 @@ import { VehicleErrorAlert } from "./VehicleErrorAlert";
 import { DiagnosticInfo } from "./DiagnosticInfo";
 import { VehicleResultCard } from "./VehicleResultCard";
 
-export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps) => {
+export const VehicleLookup = ({ userId, onCarAdded }: VehicleLookupProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [vehicleDetails, setVehicleDetails] = useState<VehicleDetails | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,9 +21,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
   const [diagnosticInfo, setDiagnosticInfo] = useState<any>(null);
   const [mileage, setMileage] = useState<string>('');
   const [price, setPrice] = useState<string>('');
-  const { addCar: defaultAddCar, trackedCars } = useTrackedCars(userId);
-
-  const handleAddCarFn = addCar || defaultAddCar;
+  const { addCar, trackedCars } = useTrackedCars(userId);
 
   const handleLookup = async (registration: string) => {
     setIsLoading(true);
@@ -32,6 +30,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
     setVehicleDetails(null);
     setDiagnosticInfo(null);
 
+    // Validate registration format
     const regPattern = /^[A-Z0-9]{2,8}$/i;
     const cleanRegistration = registration.replace(/\s+/g, '').toUpperCase();
     
@@ -42,6 +41,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
       return;
     }
 
+    // Check if the registration already exists as a tag for this user
     const regExists = trackedCars.some(car => 
       car.tags && car.tags.some(tag => tag.toUpperCase() === cleanRegistration)
     );
@@ -83,6 +83,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
       if (data.error) {
         console.error("Error from Vehicle API:", data.error);
         
+        // Handle specific error cases
         if (data.code === "API_ERROR" && data.apiResponse && 
             (data.apiResponse.StatusCode === "KeyInvalid" || 
              (data.error && data.error.includes("not recognised as a valid vehicle registration")))) {
@@ -103,6 +104,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
         console.log("Vehicle data received:", data.vehicle);
         setVehicleDetails({
           ...data.vehicle,
+          // Store the original registration for use as a tag
           originalRegistration: cleanRegistration
         });
         toast({
@@ -146,6 +148,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
   const handleAddCar = async () => {
     if (!vehicleDetails) return;
 
+    // Validate mileage and price are provided
     if (!mileage || mileage.trim() === '') {
       toast({
         title: "Missing information",
@@ -165,8 +168,10 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
     }
 
     try {
+      // Add registration as a tag
       const regTag = vehicleDetails.originalRegistration || vehicleDetails.registration.toUpperCase().replace(/\s+/g, '');
       
+      // Get engine size from the vehicle details
       const engineSize = vehicleDetails.engineSize ? vehicleDetails.engineSize.toString() : undefined;
       
       const carParams: AddCarParams = {
@@ -177,13 +182,12 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
         year: vehicleDetails.year,
         mileage: mileage,
         price: price,
-        initialTags: [regTag],
-        trim: vehicleDetails.trim,
-        engineSize: engineSize,
-        organization_id: '' // This will be assigned server-side as needed
+        initialTags: [regTag], // Add registration as initial tag
+        trim: vehicleDetails.trim, // Add trim
+        engineSize: engineSize // Add engine size
       };
 
-      const success = await handleAddCarFn(carParams);
+      const success = await addCar(carParams);
       
       if (success) {
         toast({
@@ -191,6 +195,7 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
           description: `${vehicleDetails.make} ${vehicleDetails.model} ${vehicleDetails.trim || ''} has been added to your tracked vehicles.`.trim()
         });
         
+        // Reset form
         setVehicleDetails(null);
         setMileage('');
         setPrice('');
@@ -221,8 +226,6 @@ export const VehicleLookup = ({ userId, onCarAdded, addCar }: VehicleLookupProps
           <VehicleLookupForm 
             onSubmit={handleLookup}
             isLoading={isLoading}
-            onCarAdded={onCarAdded}
-            addCar={handleAddCarFn}
           />
 
           {isLoading && <VehicleLoadingState />}

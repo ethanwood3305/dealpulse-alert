@@ -1,6 +1,4 @@
 
-import { AddCarParams } from '@/hooks/use-tracked-cars';
-
 export interface VehicleDetails {
   registration: string;
   originalRegistration?: string;
@@ -23,7 +21,6 @@ export interface VehicleDetails {
 }
 
 export interface VehicleLookupProps {
-  userId: string | undefined;
+  userId: string;
   onCarAdded?: () => void;
-  addCar?: (car: AddCarParams) => Promise<boolean>;
 }

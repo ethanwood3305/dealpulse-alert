@@ -10,15 +10,3 @@ enabled = true
 
 [functions.manage-dealer-postcode]
 verify_jwt = true
-
-[functions.migrate-car-organizations]
-verify_jwt = true
-
-[functions.get-user-by-email]
-verify_jwt = true
-
-[functions.get-scraped-listings]
-verify_jwt = true
-
-[functions.fix-organization-permissions]
-verify_jwt = false

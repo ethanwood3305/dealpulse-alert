@@ -1,7 +1,6 @@
 
 import { Button } from "@/components/ui/button";
 import { VehicleDetails } from "@/types/vehicle-lookup-types";
-import { CalendarIcon, CarFront, CheckCircle, Fuel, Gauge, Info, Palette } from "lucide-react";
 
 interface VehicleResultCardProps {
   vehicleDetails: VehicleDetails;
@@ -9,80 +8,77 @@ interface VehicleResultCardProps {
 }
 
 export const VehicleResultCard = ({ vehicleDetails, onAddCar }: VehicleResultCardProps) => {
-  const {
-    make,
-    model,
-    year,
-    color,
-    fuelType,
-    registration,
-    engineSize,
-    trim,
-  } = vehicleDetails;
-
-  const formattedEngineSize = engineSize ? `${Number(engineSize) / 1000}L` : "N/A";
-  const displayTrim = trim || "Standard";
-
   return (
-    <div className="rounded-lg border bg-card shadow-sm overflow-hidden animate-fade-in">
-      <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4 border-b">
-        <h3 className="text-xl font-bold flex items-center gap-2">
-          <CheckCircle className="h-5 w-5 text-green-500" />
-          <span>Vehicle Found</span>
+    <div className="border rounded-md p-4 space-y-4">
+      <div className="flex justify-between items-center">
+        <h3 className="font-semibold text-lg">
+          {vehicleDetails.make} {vehicleDetails.model}
+          {vehicleDetails.trim && ` ${vehicleDetails.trim}`}
         </h3>
-        <p className="text-muted-foreground text-sm mt-1">
-          Registration: <span className="font-medium">{registration}</span>
-        </p>
+        <span className="bg-primary/10 text-primary font-mono px-2 py-1 rounded text-sm">
+          {vehicleDetails.registration}
+        </span>
       </div>
       
-      <div className="p-5 space-y-5">
-        <div className="flex items-center justify-between pb-3 border-b">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+        <div>
+          <p className="text-muted-foreground">Year</p>
+          <p className="font-medium">{vehicleDetails.year}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground">Color</p>
+          <p className="font-medium">{vehicleDetails.color}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground">Fuel Type</p>
+          <p className="font-medium">{vehicleDetails.fuelType}</p>
+        </div>
+        <div>
+          <p className="text-muted-foreground">Engine Size</p>
+          <p className="font-medium">{vehicleDetails.engineSize}</p>
+        </div>
+        
+        {vehicleDetails.doorCount && (
           <div>
-            <h2 className="text-2xl font-bold">{make} {model}</h2>
-            <p className="text-muted-foreground">{displayTrim}</p>
+            <p className="text-muted-foreground">Doors</p>
+            <p className="font-medium">{vehicleDetails.doorCount}</p>
           </div>
-          <CarFront className="h-8 w-8 text-primary" />
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex flex-col space-y-1">
-            <span className="text-xs uppercase text-muted-foreground font-medium flex items-center">
-              <CalendarIcon className="h-3 w-3 mr-1" /> Year
-            </span>
-            <span className="font-medium">{year}</span>
+        )}
+        {vehicleDetails.bodyStyle && (
+          <div>
+            <p className="text-muted-foreground">Body Style</p>
+            <p className="font-medium">{vehicleDetails.bodyStyle}</p>
           </div>
-          
-          <div className="flex flex-col space-y-1">
-            <span className="text-xs uppercase text-muted-foreground font-medium flex items-center">
-              <Palette className="h-3 w-3 mr-1" /> Color
-            </span>
-            <span className="font-medium">{color}</span>
+        )}
+        {vehicleDetails.transmission && (
+          <div>
+            <p className="text-muted-foreground">Transmission</p>
+            <p className="font-medium">{vehicleDetails.transmission}</p>
           </div>
-          
-          <div className="flex flex-col space-y-1">
-            <span className="text-xs uppercase text-muted-foreground font-medium flex items-center">
-              <Fuel className="h-3 w-3 mr-1" /> Fuel
-            </span>
-            <span className="font-medium">{fuelType}</span>
+        )}
+        {vehicleDetails.weight && (
+          <div>
+            <p className="text-muted-foreground">Weight (kg)</p>
+            <p className="font-medium">{vehicleDetails.weight}</p>
           </div>
-          
-          <div className="flex flex-col space-y-1">
-            <span className="text-xs uppercase text-muted-foreground font-medium flex items-center">
-              <Gauge className="h-3 w-3 mr-1" /> Engine
-            </span>
-            <span className="font-medium">{formattedEngineSize}</span>
+        )}
+        {vehicleDetails.price && (
+          <div>
+            <p className="text-muted-foreground">Listed Price (£)</p>
+            <p className="font-medium">{vehicleDetails.price}</p>
           </div>
-        </div>
-        
-        <div className="pt-2 border-t mt-4">
-          <Button 
-            className="w-full font-medium"
-            onClick={onAddCar}
-          >
-            Add Vehicle to Tracking
-          </Button>
-        </div>
+        )}
+        {vehicleDetails.trim && (
+          <div>
+            <p className="text-muted-foreground">Trim</p>
+            <p className="font-medium">{vehicleDetails.trim}</p>
+          </div>
+        )}
       </div>
+      
+      <Button onClick={onAddCar} className="w-full">
+        Add to Tracked Vehicles
+      </Button>
     </div>
   );
 };
