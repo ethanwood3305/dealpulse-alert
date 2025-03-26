@@ -22,6 +22,8 @@ const Dashboard = () => {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const navigate = useNavigate();
   
+  console.log('[Dashboard] Component rendering, user:', user?.id);
+  
   const { 
     userSubscription, 
     canAddMoreUrls: canAddMoreCars, 
@@ -30,6 +32,12 @@ const Dashboard = () => {
     generateApiKey
   } = useSubscription(user?.id);
   
+  console.log('[Dashboard] useSubscription hook returned:', { 
+    plan: userSubscription?.plan,
+    isLoadingSubscription,
+    canAddMoreCars
+  });
+  
   const {
     currentOrganization,
     organizations,
@@ -37,6 +45,12 @@ const Dashboard = () => {
     switchOrganization,
     createOrganization
   } = useOrganization(user?.id);
+  
+  console.log('[Dashboard] useOrganization hook returned:', { 
+    currentOrganizationId: currentOrganization?.id,
+    organizationsCount: organizations?.length,
+    isLoadingOrganizations
+  });
   
   const { 
     trackedCars, 
@@ -51,28 +65,45 @@ const Dashboard = () => {
     getListingsForCar,
     addCar
   } = useTrackedCars(user?.id, currentOrganization?.id);
+  
+  console.log('[Dashboard] useTrackedCars hook returned:', { 
+    trackedCarsCount: trackedCars?.length,
+    isLoadingCars,
+    currentOrgId: currentOrganization?.id
+  });
 
   const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars || isLoadingOrganizations);
+  console.log('[Dashboard] Overall loading state:', isLoading);
 
   useEffect(() => {
     const checkAuth = async () => {
+      console.log('[Dashboard] Checking authentication status');
       const { data, error } = await supabase.auth.getUser();
+      
+      console.log('[Dashboard] Auth check response:', { userData: data?.user, error });
+      
       if (error || !data?.user) {
+        console.log('[Dashboard] No authenticated user found, redirecting to login');
         navigate('/login');
         return;
       }
+      
+      console.log('[Dashboard] User authenticated:', data.user);
       setUser(data.user);
     };
     
     checkAuth();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[Dashboard] Auth state changed:', { event, sessionExists: !!session });
       if (!session) {
+        console.log('[Dashboard] Session ended, redirecting to login');
         navigate('/login');
       }
     });
     
     return () => {
+      console.log('[Dashboard] Cleaning up auth listener');
       if (authListener && authListener.subscription) {
         authListener.subscription.unsubscribe();
       }
@@ -80,7 +111,15 @@ const Dashboard = () => {
   }, [navigate]);
 
   useEffect(() => {
+    console.log('[Dashboard] Checking if initial load is complete:', { 
+      isLoadingSubscription, 
+      isLoadingCars, 
+      isLoadingOrganizations, 
+      initialLoadComplete 
+    });
+    
     if (!isLoadingSubscription && !isLoadingCars && !isLoadingOrganizations && !initialLoadComplete) {
+      console.log('[Dashboard] Initial load complete, updating state');
       setInitialLoadComplete(true);
     }
   }, [isLoadingSubscription, isLoadingCars, isLoadingOrganizations, initialLoadComplete]);

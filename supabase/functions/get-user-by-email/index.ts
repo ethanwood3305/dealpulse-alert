@@ -8,16 +8,24 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  console.log("============= GET USER BY EMAIL FUNCTION STARTED =============")
+  console.log(`Request method: ${req.method}`)
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
+    console.log("Handling CORS preflight request")
     return new Response(null, { headers: corsHeaders })
   }
   
   try {
     // Get the request body
-    const { email } = await req.json()
+    const requestBody = await req.text()
+    console.log(`Request body (raw): ${requestBody}`)
+    
+    const { email } = JSON.parse(requestBody)
     
     if (!email) {
+      console.log("Error: Email is required but not provided")
       return new Response(
         JSON.stringify({ error: 'Email is required' }),
         { 
@@ -29,13 +37,27 @@ serve(async (req) => {
     
     console.log(`Searching for user with email: ${email}`)
     
+    // Check environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+    
+    console.log(`SUPABASE_URL available: ${!!supabaseUrl}`)
+    console.log(`SUPABASE_SERVICE_ROLE_KEY available: ${!!serviceRoleKey}`)
+    
+    if (!supabaseUrl || !serviceRoleKey) {
+      console.error("Missing environment variables. Make sure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.")
+      throw new Error("Server configuration error: Missing environment variables")
+    }
+    
     // Create a Supabase client with the Admin key to bypass RLS
+    console.log("Creating Supabase admin client")
     const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      supabaseUrl,
+      serviceRoleKey
     )
     
     // Search for the user by email using admin privileges
+    console.log("Calling auth.admin.getUserByEmail")
     const { data: user, error } = await supabaseAdmin.auth.admin.getUserByEmail(email)
     
     if (error) {
@@ -57,11 +79,16 @@ serve(async (req) => {
     console.log(`Found user with id: ${user.id}`)
     
     // Return only the necessary user information
+    const responseData = { 
+      id: user.id,
+      email: user.email
+    }
+    
+    console.log(`Returning response: ${JSON.stringify(responseData)}`)
+    console.log("============= GET USER BY EMAIL FUNCTION COMPLETED =============")
+    
     return new Response(
-      JSON.stringify({ 
-        id: user.id,
-        email: user.email
-      }),
+      JSON.stringify(responseData),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }

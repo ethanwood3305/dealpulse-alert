@@ -12,64 +12,63 @@ export const useOrganization = (userId: string | undefined) => {
 
   // Fetch all organizations the user is a member of
   const fetchUserOrganizations = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('[useOrganization] No userId provided, skipping fetchUserOrganizations');
+      return;
+    }
     
     try {
+      console.log('[useOrganization] Starting fetchUserOrganizations for user:', userId);
       setIsLoading(true);
       
-      console.log('Fetching organizations for user:', userId);
-      
-      // First, directly get the user's organization IDs using the service role
-      // This avoids the RLS recursion
-      const { data: orgIds, error: funcError } = await supabase
+      console.log('[useOrganization] First approach: Get user orgs through RPC function');
+      // First try with the RPC function to get org IDs
+      console.log('[useOrganization] Calling RPC function get_user_organizations with user_uuid:', userId);
+      const { data: orgIds, error: funcError, count } = await supabase
         .rpc('get_user_organizations', { user_uuid: userId }, {
-          // Use count to avoid returning the full result set which might trigger RLS
           count: 'exact'
         });
         
+      console.log('[useOrganization] RPC response - count:', count);
+      console.log('[useOrganization] RPC response - data:', orgIds);
+      console.log('[useOrganization] RPC response - error:', funcError);
+        
       if (funcError) {
-        console.error('Error fetching organization IDs:', funcError);
-        throw funcError;
-      }
-      
-      console.log('Organization IDs returned:', orgIds);
-      
-      if (orgIds && orgIds.length > 0) {
-        // Fetch organization details for these IDs
-        // Use the service role to bypass RLS
-        const { data: orgsData, error: orgsError } = await supabase
-          .from('organizations')
-          .select('*')
-          .in('id', orgIds)
-          .order('created_at', { ascending: false });
+        console.error('[useOrganization] Error fetching organization IDs from RPC:', funcError);
+        
+        // If the RPC fails, try a direct query as a fallback
+        console.log('[useOrganization] Fallback approach: Direct query to organization_members');
+        const { data: memberData, error: memberError } = await supabase
+          .from('organization_members')
+          .select('organization_id')
+          .eq('user_id', userId);
           
-        if (orgsError) {
-          console.error('Error fetching organizations data:', orgsError);
-          throw orgsError;
+        console.log('[useOrganization] Direct query response - data:', memberData);
+        console.log('[useOrganization] Direct query response - error:', memberError);
+        
+        if (memberError) {
+          console.error('[useOrganization] Both approaches failed to fetch organization IDs:', memberError);
+          throw memberError;
         }
         
-        console.log('Organizations data:', orgsData);
-        
-        if (orgsData) {
-          setOrganizations(orgsData);
+        if (memberData && memberData.length > 0) {
+          const extractedOrgIds = memberData.map(item => item.organization_id);
+          console.log('[useOrganization] Extracted org IDs from direct query:', extractedOrgIds);
           
-          // Set the first organization as current if not already set
-          if (orgsData.length > 0 && !currentOrganization) {
-            setCurrentOrganization(orgsData[0]);
-            
-            // Fetch members for this organization
-            fetchOrganizationMembers(orgsData[0].id);
-          }
+          await fetchOrganizationsData(extractedOrgIds);
         } else {
+          console.log('[useOrganization] No organizations found in direct query');
           setOrganizations([]);
         }
+      } else if (orgIds && orgIds.length > 0) {
+        console.log('[useOrganization] Successfully got org IDs from RPC:', orgIds);
+        await fetchOrganizationsData(orgIds);
       } else {
-        // No organizations found
-        console.log('No organizations found for user:', userId);
+        console.log('[useOrganization] No organizations found for user from RPC');
         setOrganizations([]);
       }
     } catch (error: any) {
-      console.error('Error fetching organizations:', error);
+      console.error('[useOrganization] Error in fetchUserOrganizations:', error);
       toast({
         title: "Error",
         description: "Failed to load your organizations. Please try again later.",
@@ -78,16 +77,61 @@ export const useOrganization = (userId: string | undefined) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, currentOrganization]);
+  }, [userId]);
+
+  // Helper function to fetch organization data by IDs
+  const fetchOrganizationsData = async (orgIds: string[]) => {
+    try {
+      console.log('[useOrganization] Fetching organizations data for IDs:', orgIds);
+      
+      // Try with direct client first
+      const { data: orgsData, error: orgsError } = await supabase
+        .from('organizations')
+        .select('*')
+        .in('id', orgIds)
+        .order('created_at', { ascending: false });
+        
+      console.log('[useOrganization] Organizations query response - data:', orgsData);
+      console.log('[useOrganization] Organizations query response - error:', orgsError);
+        
+      if (orgsError) {
+        console.error('[useOrganization] Error fetching organizations data:', orgsError);
+        throw orgsError;
+      }
+      
+      if (orgsData && orgsData.length > 0) {
+        console.log('[useOrganization] Setting organizations state with data:', orgsData);
+        setOrganizations(orgsData);
+        
+        // Set the first organization as current if not already set
+        if (!currentOrganization) {
+          console.log('[useOrganization] Setting current organization to:', orgsData[0]);
+          setCurrentOrganization(orgsData[0]);
+          
+          // Fetch members for this organization
+          await fetchOrganizationMembers(orgsData[0].id);
+        }
+      } else {
+        console.log('[useOrganization] No organizations data found despite having IDs');
+        setOrganizations([]);
+      }
+    } catch (error) {
+      console.error('[useOrganization] Error in fetchOrganizationsData:', error);
+      throw error;
+    }
+  };
 
   // Fetch members of a specific organization
   const fetchOrganizationMembers = async (organizationId: string) => {
-    if (!userId) return;
+    if (!userId) {
+      console.log('[useOrganization] No userId provided, skipping fetchOrganizationMembers');
+      return;
+    }
     
     try {
-      console.log('Fetching members for organization:', organizationId);
+      console.log('[useOrganization] Fetching members for organization:', organizationId);
       
-      // Use a direct query with service role to bypass RLS
+      // Use a direct query to bypass RLS
       const { data, error } = await supabase
         .from('organization_members')
         .select(`
@@ -100,27 +144,38 @@ export const useOrganization = (userId: string | undefined) => {
         `)
         .eq('organization_id', organizationId);
         
+      console.log('[useOrganization] Organization members query response - data:', data);
+      console.log('[useOrganization] Organization members query response - error:', error);
+        
       if (error) {
-        console.error('Error fetching organization members:', error);
+        console.error('[useOrganization] Error fetching organization members:', error);
         throw error;
       }
       
-      console.log('Organization members:', data);
+      console.log('[useOrganization] Setting organization members state with data:', data || []);
       setOrganizationMembers(data || []);
     } catch (error: any) {
-      console.error('Error fetching organization members:', error);
+      console.error('[useOrganization] Error in fetchOrganizationMembers:', error);
     }
   };
 
   // Switch the current organization
   const switchOrganization = useCallback(async (organizationId: string) => {
-    if (!userId) return false;
+    if (!userId) {
+      console.log('[useOrganization] No userId provided, skipping switchOrganization');
+      return false;
+    }
     
     try {
+      console.log('[useOrganization] Switching to organization:', organizationId);
       const org = organizations.find(o => o.id === organizationId);
-      if (!org) return false;
       
-      console.log('Switching to organization:', org);
+      if (!org) {
+        console.log('[useOrganization] Organization not found in state:', organizationId);
+        return false;
+      }
+      
+      console.log('[useOrganization] Found organization in state:', org);
       setCurrentOrganization(org);
       
       // Fetch members for this organization
@@ -128,17 +183,20 @@ export const useOrganization = (userId: string | undefined) => {
       
       return true;
     } catch (error: any) {
-      console.error('Error switching organization:', error);
+      console.error('[useOrganization] Error in switchOrganization:', error);
       return false;
     }
   }, [userId, organizations]);
 
   // Create a new organization
   const createOrganization = useCallback(async (name: string) => {
-    if (!userId) return false;
+    if (!userId) {
+      console.log('[useOrganization] No userId provided, skipping createOrganization');
+      return false;
+    }
     
     try {
-      console.log('Creating organization:', name);
+      console.log('[useOrganization] Creating organization with name:', name);
       
       // Insert the new organization
       const { data: orgData, error: orgError } = await supabase
@@ -147,13 +205,21 @@ export const useOrganization = (userId: string | undefined) => {
         .select()
         .single();
         
-      if (orgError) throw orgError;
+      console.log('[useOrganization] Organization creation response - data:', orgData);
+      console.log('[useOrganization] Organization creation response - error:', orgError);
       
-      if (!orgData) throw new Error("Failed to create organization");
+      if (orgError) {
+        console.error('[useOrganization] Error creating organization:', orgError);
+        throw orgError;
+      }
       
-      console.log('Organization created:', orgData);
+      if (!orgData) {
+        console.error('[useOrganization] No data returned when creating organization');
+        throw new Error("Failed to create organization");
+      }
       
       // Add the current user as an admin member
+      console.log('[useOrganization] Adding user as admin to new organization');
       const { error: memberError } = await supabase
         .from('organization_members')
         .insert({
@@ -162,12 +228,19 @@ export const useOrganization = (userId: string | undefined) => {
           role: 'admin'
         });
         
-      if (memberError) throw memberError;
+      console.log('[useOrganization] Member addition response - error:', memberError);
+        
+      if (memberError) {
+        console.error('[useOrganization] Error adding user as admin to organization:', memberError);
+        throw memberError;
+      }
       
       // Refresh the organizations list
+      console.log('[useOrganization] Refreshing organizations list after creation');
       await fetchUserOrganizations();
       
       // Switch to the newly created organization
+      console.log('[useOrganization] Switching to newly created organization');
       await switchOrganization(orgData.id);
       
       toast({
@@ -177,7 +250,7 @@ export const useOrganization = (userId: string | undefined) => {
       
       return true;
     } catch (error: any) {
-      console.error('Error creating organization:', error);
+      console.error('[useOrganization] Error in createOrganization:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create organization. Please try again.",
@@ -189,30 +262,38 @@ export const useOrganization = (userId: string | undefined) => {
 
   // Add a member to the current organization
   const addOrganizationMember = useCallback(async (email: string, role: string = 'member') => {
-    if (!userId || !currentOrganization) return false;
+    if (!userId || !currentOrganization) {
+      console.log('[useOrganization] No userId or currentOrganization provided, skipping addOrganizationMember');
+      return false;
+    }
     
     try {
-      console.log('Adding member to organization:', email, role);
+      console.log('[useOrganization] Adding member to organization:', { email, role, organizationId: currentOrganization.id });
       
       // Use the edge function to find the user by email
+      console.log('[useOrganization] Invoking get-user-by-email edge function');
       const response = await supabase.functions.invoke('get-user-by-email', {
         body: { email }
       });
       
+      console.log('[useOrganization] Edge function response:', response);
+      
       if (response.error) {
-        console.error('Error from get-user-by-email function:', response.error);
+        console.error('[useOrganization] Error from get-user-by-email function:', response.error);
         throw new Error(response.error.message || "Failed to find user");
       }
       
       const userData = response.data;
       
       if (!userData || !userData.id) {
+        console.error('[useOrganization] No user data returned from edge function');
         throw new Error(`No user found with email ${email}`);
       }
       
-      console.log('Found user:', userData);
+      console.log('[useOrganization] Found user:', userData);
       
       // Add the user to the organization
+      console.log('[useOrganization] Adding user to organization');
       const { error: memberError } = await supabase
         .from('organization_members')
         .insert({
@@ -221,14 +302,19 @@ export const useOrganization = (userId: string | undefined) => {
           role
         });
         
+      console.log('[useOrganization] Member insertion response - error:', memberError);
+        
       if (memberError) {
         if (memberError.code === '23505') { // Unique violation
+          console.error('[useOrganization] User is already a member of this organization');
           throw new Error(`User is already a member of this organization`);
         }
+        console.error('[useOrganization] Error adding user to organization:', memberError);
         throw memberError;
       }
       
       // Refresh the members list
+      console.log('[useOrganization] Refreshing organization members after adding new member');
       await fetchOrganizationMembers(currentOrganization.id);
       
       toast({
@@ -238,7 +324,7 @@ export const useOrganization = (userId: string | undefined) => {
       
       return true;
     } catch (error: any) {
-      console.error('Error adding organization member:', error);
+      console.error('[useOrganization] Error in addOrganizationMember:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to add member. Please try again.",
@@ -250,8 +336,9 @@ export const useOrganization = (userId: string | undefined) => {
 
   // Initial data fetch
   useEffect(() => {
+    console.log('[useOrganization] useEffect triggered with userId:', userId);
     if (userId) {
-      console.log('Fetching organizations for user:', userId);
+      console.log('[useOrganization] Fetching organizations for user:', userId);
       fetchUserOrganizations();
     }
   }, [userId, fetchUserOrganizations]);
