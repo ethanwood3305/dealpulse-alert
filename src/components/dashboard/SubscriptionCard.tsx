@@ -78,7 +78,7 @@ export const SubscriptionCard = ({
         <div className="mt-4 p-3 bg-muted rounded-md">
           <div className="flex items-center justify-between text-sm">
             <span>Current amount of vehicles</span>
-            <span className="font-medium">{trackedUrlsCount} / {urls_limit}</span>
+            <span className="font-medium">{trackedUrlsCount}</span>
           </div>
           <div className="mt-2 h-2 bg-muted-foreground/20 rounded-full overflow-hidden">
             <div 
