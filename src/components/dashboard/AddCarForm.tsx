@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { toast } from "@/components/ui/use-toast";
 import { Form } from "@/components/ui/form";
@@ -19,6 +20,13 @@ export const AddCarForm = ({ onCarAdded, addCar }: AddCarFormProps) => {
   const [selectedBrand, setSelectedBrand] = useState('');
   const [selectedModel, setSelectedModel] = useState('');
   const [selectedEngineType, setSelectedEngineType] = useState('');
+  const [isAddingCar, setIsAddingCar] = useState(false);
+  const [brands, setBrands] = useState<{id: string, name: string}[]>([]);
+  const [models, setModels] = useState<{id: string, name: string}[]>([]);
+  const [engineTypes, setEngineTypes] = useState<{id: string, name: string, fuel_type: string, capacity?: string, power?: string}[]>([]);
+  const [isLoadingBrands, setIsLoadingBrands] = useState(false);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+  const [isLoadingEngineTypes, setIsLoadingEngineTypes] = useState(false);
 
   const form = useForm<CarFormValues>({
     resolver: zodResolver(carSchema),
@@ -47,6 +55,7 @@ export const AddCarForm = ({ onCarAdded, addCar }: AddCarFormProps) => {
       return;
     }
 
+    setIsAddingCar(true);
     try {
       const success = await addCar?.({
         ...data,
@@ -79,6 +88,8 @@ export const AddCarForm = ({ onCarAdded, addCar }: AddCarFormProps) => {
         description: error.message || "Failed to add car. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsAddingCar(false);
     }
   };
 
@@ -86,35 +97,39 @@ export const AddCarForm = ({ onCarAdded, addCar }: AddCarFormProps) => {
     <Form {...form}>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <BrandSelector
-          selectedBrand={selectedBrand}
-          onBrandSelect={(brand) => {
-            setSelectedBrand(brand);
-            setSelectedModel('');
-            setSelectedEngineType('');
-            form.setValue("model", "");
-            form.setValue("engineType", "");
-          }}
+          form={form}
+          isAddingCar={isAddingCar}
+          canAddMoreCars={true}
+          isLoadingBrands={isLoadingBrands}
+          brands={brands}
         />
         <ModelSelector
-          brandId={selectedBrand}
-          selectedModel={selectedModel}
-          onModelSelect={(model) => {
-            setSelectedModel(model);
-            setSelectedEngineType('');
-            form.setValue("engineType", "");
-          }}
+          form={form}
+          isAddingCar={isAddingCar}
+          canAddMoreCars={true}
+          isLoadingModels={isLoadingModels}
+          models={models}
+          selectedBrand={selectedBrand}
         />
         <EngineTypeSelector
-          modelId={selectedModel}
-          selectedEngineType={selectedEngineType}
-          onEngineTypeSelect={(engineType) => {
-            setSelectedEngineType(engineType);
-            form.setValue("engineType", engineType);
-          }}
+          form={form}
+          isAddingCar={isAddingCar}
+          canAddMoreCars={true}
+          isLoadingEngineTypes={isLoadingEngineTypes}
+          engineTypes={engineTypes}
+          selectedModel={selectedModel}
         />
-        <CarDetailsFields form={form} />
-        <button type="submit" className="bg-primary text-primary-foreground rounded-md p-2 w-full">
-          Add Car
+        <CarDetailsFields 
+          form={form} 
+          isAddingCar={isAddingCar} 
+          canAddMoreCars={true} 
+        />
+        <button 
+          type="submit" 
+          className="bg-primary text-primary-foreground rounded-md p-2 w-full"
+          disabled={isAddingCar}
+        >
+          {isAddingCar ? "Adding Car..." : "Add Car"}
         </button>
       </form>
     </Form>

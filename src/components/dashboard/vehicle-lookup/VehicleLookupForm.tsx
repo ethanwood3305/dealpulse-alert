@@ -4,18 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
+import { AddCarParams } from '@/hooks/use-tracked-cars';
 
 export interface VehicleLookupFormProps {
   onSubmit: (registration: string) => Promise<void>;
   isLoading: boolean;
-  onCarAdded?: () => void; // Added this prop
-  addCar?: (car: any) => Promise<boolean>; // Added this prop
+  onCarAdded?: () => void;
+  addCar?: (car: AddCarParams) => Promise<boolean>;
 }
 
 export const VehicleLookupForm = ({ 
   onSubmit, 
   isLoading,
-  // We don't use these props but need to accept them to avoid type errors
   onCarAdded,
   addCar
 }: VehicleLookupFormProps) => {

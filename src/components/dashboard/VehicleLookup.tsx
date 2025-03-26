@@ -6,12 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AddCarForm } from './AddCarForm';
 import { VehicleLookupForm } from './vehicle-lookup/VehicleLookupForm';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
-
-interface VehicleLookupProps {
-  userId: string | undefined;
-  onCarAdded: () => void;
-  addCar?: (car: any) => Promise<boolean>;
-}
+import { VehicleLookupProps } from '@/types/vehicle-lookup-types';
 
 export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps) {
   const [activeTab, setActiveTab] = useState<string>('lookup');
