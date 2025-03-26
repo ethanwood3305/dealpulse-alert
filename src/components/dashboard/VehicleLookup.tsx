@@ -28,7 +28,10 @@ export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps
       </CardHeader>
       <CardContent className="p-6">
         <VehicleLookupForm 
-          onSubmit={async (registration) => {}} 
+          onSubmit={async (registration) => {
+            // This function needs to be properly implemented to handle registration lookup
+            console.log('Registration lookup for:', registration);
+          }} 
           isLoading={false}
           onCarAdded={onCarAdded} 
           addCar={handleAddCar} 
