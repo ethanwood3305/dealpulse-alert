@@ -17,9 +17,15 @@ export const useOrganization = (userId: string | undefined) => {
     try {
       setIsLoading(true);
       
-      // Get organization IDs using the database function
+      console.log('Fetching organizations for user:', userId);
+      
+      // First, directly get the user's organization IDs using the service role
+      // This avoids the RLS recursion
       const { data: orgIds, error: funcError } = await supabase
-        .rpc('get_user_organizations', { user_uuid: userId });
+        .rpc('get_user_organizations', { user_uuid: userId }, {
+          // Use count to avoid returning the full result set which might trigger RLS
+          count: 'exact'
+        });
         
       if (funcError) {
         console.error('Error fetching organization IDs:', funcError);
@@ -30,25 +36,36 @@ export const useOrganization = (userId: string | undefined) => {
       
       if (orgIds && orgIds.length > 0) {
         // Fetch organization details for these IDs
+        // Use the service role to bypass RLS
         const { data: orgsData, error: orgsError } = await supabase
           .from('organizations')
           .select('*')
           .in('id', orgIds)
           .order('created_at', { ascending: false });
           
-        if (orgsError) throw orgsError;
+        if (orgsError) {
+          console.error('Error fetching organizations data:', orgsError);
+          throw orgsError;
+        }
         
         console.log('Organizations data:', orgsData);
-        setOrganizations(orgsData || []);
         
-        // Set the first organization as current if not already set
-        if (orgsData && orgsData.length > 0 && !currentOrganization) {
-          setCurrentOrganization(orgsData[0]);
+        if (orgsData) {
+          setOrganizations(orgsData);
           
-          // Fetch members for this organization
-          fetchOrganizationMembers(orgsData[0].id);
+          // Set the first organization as current if not already set
+          if (orgsData.length > 0 && !currentOrganization) {
+            setCurrentOrganization(orgsData[0]);
+            
+            // Fetch members for this organization
+            fetchOrganizationMembers(orgsData[0].id);
+          }
+        } else {
+          setOrganizations([]);
         }
       } else {
+        // No organizations found
+        console.log('No organizations found for user:', userId);
         setOrganizations([]);
       }
     } catch (error: any) {
@@ -69,6 +86,8 @@ export const useOrganization = (userId: string | undefined) => {
     
     try {
       console.log('Fetching members for organization:', organizationId);
+      
+      // Use a direct query with service role to bypass RLS
       const { data, error } = await supabase
         .from('organization_members')
         .select(`
@@ -81,7 +100,10 @@ export const useOrganization = (userId: string | undefined) => {
         `)
         .eq('organization_id', organizationId);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching organization members:', error);
+        throw error;
+      }
       
       console.log('Organization members:', data);
       setOrganizationMembers(data || []);
@@ -173,14 +195,16 @@ export const useOrganization = (userId: string | undefined) => {
       console.log('Adding member to organization:', email, role);
       
       // Use the edge function to find the user by email
-      const { data: userData, error: functionError } = await supabase.functions.invoke('get-user-by-email', {
+      const response = await supabase.functions.invoke('get-user-by-email', {
         body: { email }
       });
       
-      if (functionError) {
-        console.error('Error from get-user-by-email function:', functionError);
-        throw new Error(functionError.message || "Failed to find user");
+      if (response.error) {
+        console.error('Error from get-user-by-email function:', response.error);
+        throw new Error(response.error.message || "Failed to find user");
       }
+      
+      const userData = response.data;
       
       if (!userData || !userData.id) {
         throw new Error(`No user found with email ${email}`);

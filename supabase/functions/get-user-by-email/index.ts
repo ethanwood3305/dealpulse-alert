@@ -29,18 +29,13 @@ serve(async (req) => {
     
     console.log(`Searching for user with email: ${email}`)
     
-    // Create a Supabase client with the Admin key
+    // Create a Supabase client with the Admin key to bypass RLS
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      { 
-        global: { 
-          headers: { Authorization: req.headers.get('Authorization')! } 
-        } 
-      }
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
     
-    // Search for the user by email
+    // Search for the user by email using admin privileges
     const { data: user, error } = await supabaseAdmin.auth.admin.getUserByEmail(email)
     
     if (error) {
