@@ -150,28 +150,6 @@ function toProperCase(text) {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
-function cleanTrim(trim) {
-  if (!trim) return '';
-
-  const blacklist = [
-    'cdti', 'tdci', 'tdi', 'dci', 'e4', 'e5', 'e6', 'bhp', 'vvt', 'turbo',
-    'eco', 's/s', 'ss', 'fwd', 'awd', 'rwd', 'auto', 'manual', 'mt', 'at',
-    'dct', 'cv', 'engine', '1.0', '1.2', '1.4', '1.6', '1.8', '2.0', '2.2', '2.5', '3.0'
-  ];
-
-  const words = trim
-    .toLowerCase()
-    .replace(/[^a-z0-9. ]+/gi, '') // Remove special chars
-    .split(' ')
-    .filter(word => word && !blacklist.includes(word));
-
-  // Keep first 1–2 meaningful words
-  const mainTrim = words
-    .slice(0, 2)
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
-  return mainTrim;
-}
 
 function parseVehicleDetails(vehicle) {
   if (!vehicle || !vehicle.url) {
@@ -201,7 +179,7 @@ function parseVehicleDetails(vehicle) {
       if (param.includes('mil=')) mileage = parseInt(param.split('mil=')[1]);
       if (param.includes('year=')) year = param.split('year=')[1];
       if (param.includes('color=')) color = toProperCase(param.split('color=')[1]);
-      if (param.includes('trim=')) trim = cleanTrim(param.split('trim=')[1]);
+      if (param.includes('trim=')) trim = param.split('trim=')[1]);
       if (param.includes('engine=')) {
         const cc = parseInt(param.split('engine=')[1]);
         engineSize = cc ? (cc / 1000).toFixed(2) : null;
