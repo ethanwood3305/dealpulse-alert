@@ -27,7 +27,7 @@ BEGIN
 END;
 $function$;
 
--- Create RPC functions needed for organization permissions
+-- Create function to create the user_is_org_member security definer function
 CREATE OR REPLACE FUNCTION public.create_user_is_org_member_function()
 RETURNS void AS $$
 BEGIN

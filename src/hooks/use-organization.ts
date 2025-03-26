@@ -9,6 +9,28 @@ export const useOrganization = (userId: string | undefined) => {
   const [currentOrganization, setCurrentOrganization] = useState<Organization | null>(null);
   const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasFixedRLS, setHasFixedRLS] = useState(false);
+
+  // Function to fix RLS policies using the edge function
+  const fixRLSPolicies = useCallback(async () => {
+    try {
+      console.log('[useOrganization] Attempting to fix RLS policies using edge function');
+      
+      const { data, error } = await supabase.functions.invoke('fix-organization-permissions');
+      
+      if (error) {
+        console.error('[useOrganization] Error invoking fix-organization-permissions:', error);
+        return false;
+      }
+      
+      console.log('[useOrganization] RLS fix response:', data);
+      setHasFixedRLS(true);
+      return true;
+    } catch (error) {
+      console.error('[useOrganization] Error in fixRLSPolicies:', error);
+      return false;
+    }
+  }, []);
 
   // Fetch all organizations the user is a member of
   const fetchUserOrganizations = useCallback(async () => {
@@ -46,6 +68,18 @@ export const useOrganization = (userId: string | undefined) => {
         console.log('[useOrganization] Direct query response - data:', memberData);
         console.log('[useOrganization] Direct query response - error:', memberError);
         
+        if (memberError && memberError.code === '42P17' && !hasFixedRLS) {
+          // If we hit the infinite recursion error, try to fix RLS policies
+          console.log('[useOrganization] Detected RLS recursion error, attempting to fix');
+          const fixed = await fixRLSPolicies();
+          
+          if (fixed) {
+            // If we fixed the RLS, retry the fetch
+            console.log('[useOrganization] RLS fixed, retrying fetch');
+            return fetchUserOrganizations();
+          }
+        }
+        
         if (memberError) {
           console.error('[useOrganization] Both approaches failed to fetch organization IDs:', memberError);
           throw memberError;
@@ -69,6 +103,22 @@ export const useOrganization = (userId: string | undefined) => {
       }
     } catch (error: any) {
       console.error('[useOrganization] Error in fetchUserOrganizations:', error);
+      
+      // Check if the error is related to RLS infinite recursion
+      if (error.code === '42P17' && !hasFixedRLS) {
+        console.log('[useOrganization] Detected infinite recursion error, attempting to fix RLS');
+        const fixed = await fixRLSPolicies();
+        
+        if (fixed) {
+          // If we fixed the RLS, retry the fetch after a small delay
+          console.log('[useOrganization] RLS fixed, retrying fetch');
+          setTimeout(() => {
+            fetchUserOrganizations();
+          }, 1000);
+          return;
+        }
+      }
+      
       toast({
         title: "Error",
         description: "Failed to load your organizations. Please try again later.",
@@ -77,7 +127,7 @@ export const useOrganization = (userId: string | undefined) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId]);
+  }, [userId, hasFixedRLS, fixRLSPolicies]);
 
   // Helper function to fetch organization data by IDs
   const fetchOrganizationsData = async (orgIds: string[]) => {
@@ -94,6 +144,21 @@ export const useOrganization = (userId: string | undefined) => {
       console.log('[useOrganization] Organizations query response - data:', orgsData);
       console.log('[useOrganization] Organizations query response - error:', orgsError);
         
+      if (orgsError && orgsError.code === '42P17' && !hasFixedRLS) {
+        // If we hit the infinite recursion error, try to fix RLS policies
+        console.log('[useOrganization] Detected RLS recursion error in orgs fetch, attempting to fix');
+        const fixed = await fixRLSPolicies();
+        
+        if (fixed) {
+          // If we fixed the RLS, retry the fetch after a small delay
+          console.log('[useOrganization] RLS fixed, retrying orgs fetch');
+          setTimeout(async () => {
+            await fetchOrganizationsData(orgIds);
+          }, 1000);
+          return;
+        }
+      }
+      
       if (orgsError) {
         console.error('[useOrganization] Error fetching organizations data:', orgsError);
         throw orgsError;
@@ -147,6 +212,21 @@ export const useOrganization = (userId: string | undefined) => {
       console.log('[useOrganization] Organization members query response - data:', data);
       console.log('[useOrganization] Organization members query response - error:', error);
         
+      if (error && error.code === '42P17' && !hasFixedRLS) {
+        // If we hit the infinite recursion error, try to fix RLS policies
+        console.log('[useOrganization] Detected RLS recursion error in members fetch, attempting to fix');
+        const fixed = await fixRLSPolicies();
+        
+        if (fixed) {
+          // If we fixed the RLS, retry the fetch after a small delay
+          console.log('[useOrganization] RLS fixed, retrying members fetch');
+          setTimeout(async () => {
+            await fetchOrganizationMembers(organizationId);
+          }, 1000);
+          return;
+        }
+      }
+      
       if (error) {
         console.error('[useOrganization] Error fetching organization members:', error);
         throw error;
@@ -351,6 +431,7 @@ export const useOrganization = (userId: string | undefined) => {
     switchOrganization,
     createOrganization,
     addOrganizationMember,
-    fetchUserOrganizations
+    fetchUserOrganizations,
+    fixRLSPolicies
   };
 };

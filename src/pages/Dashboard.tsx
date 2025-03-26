@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -16,10 +15,15 @@ import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import { useOrganization } from '@/hooks/use-organization';
 import { OrganizationSelector } from '@/components/dashboard/OrganizationSelector';
 import SEO from '@/components/SEO';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 const Dashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [fixingRLS, setFixingRLS] = useState(false);
+  const [rlsError, setRlsError] = useState(false);
   const navigate = useNavigate();
   
   console.log('[Dashboard] Component rendering, user:', user?.id);
@@ -43,7 +47,8 @@ const Dashboard = () => {
     organizations,
     isLoading: isLoadingOrganizations,
     switchOrganization,
-    createOrganization
+    createOrganization,
+    fixRLSPolicies
   } = useOrganization(user?.id);
   
   console.log('[Dashboard] useOrganization hook returned:', { 
@@ -74,6 +79,53 @@ const Dashboard = () => {
 
   const isLoading = !initialLoadComplete && (isLoadingSubscription || isLoadingCars || isLoadingOrganizations);
   console.log('[Dashboard] Overall loading state:', isLoading);
+
+  const handleFixRLS = async () => {
+    if (!user) return;
+    
+    setFixingRLS(true);
+    
+    try {
+      const success = await fixRLSPolicies();
+      
+      if (success) {
+        toast({
+          title: "Success",
+          description: "Permission issues fixed. Please try refreshing the page."
+        });
+        setRlsError(false);
+        
+        // Refresh the data after fixing RLS
+        if (user?.id) {
+          refreshCars();
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to fix permission issues. Please contact support.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error fixing RLS policies:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setFixingRLS(false);
+    }
+  };
+
+  useEffect(() => {
+    // Check for RLS errors
+    if (!isLoading && organizations.length === 0 && user?.id) {
+      setRlsError(true);
+    } else {
+      setRlsError(false);
+    }
+  }, [isLoading, organizations, user]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -228,6 +280,25 @@ const Dashboard = () => {
       
       <main className="flex-grow py-16 container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
+          {rlsError && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Permission Error</AlertTitle>
+              <AlertDescription>
+                There was an error loading your organization data. 
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleFixRLS} 
+                  disabled={fixingRLS}
+                  className="ml-2"
+                >
+                  {fixingRLS ? 'Fixing...' : 'Fix Permissions'}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <div className="mb-6 flex flex-col md:flex-row md:items-start md:justify-between">
             <DashboardHeader 
               userName={user?.user_metadata?.full_name} 

@@ -19,3 +19,6 @@ verify_jwt = true
 
 [functions.get-scraped-listings]
 verify_jwt = true
+
+[functions.fix-organization-permissions]
+verify_jwt = false
