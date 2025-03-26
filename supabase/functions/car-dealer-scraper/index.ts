@@ -150,7 +150,6 @@ function toProperCase(text) {
   return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase();
 }
 
-
 function parseVehicleDetails(vehicle) {
   if (!vehicle || !vehicle.url) {
     console.error('Invalid vehicle data:', vehicle);
@@ -329,11 +328,11 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const json = await response.json();
   let listings = json[0]?.data?.searchResults?.listings || [];
 
-  // If no listings found and a trim exists, re-run the search using the uppercase trim
+  // If no listings found and a trim exists, re-run the search using the proper-case trim.
   if (listings.length === 0 && carDetails.trim) {
     const newFilters = filters.map(filter => {
       if (filter.filter === "aggregated_trim") {
-        return { ...filter, selected: [filter.selected[0].toUpperCase()] };
+        return { ...filter, selected: [toProperCase(filter.selected[0])] };
       }
       return filter;
     });
@@ -381,7 +380,7 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
       }`
     }];
 
-    console.log("Uppercase Payload being sent:", JSON.stringify(newPayload, null, 2));
+    console.log("Uppercase (Proper Case) Payload being sent:", JSON.stringify(newPayload, null, 2));
 
     let retriesUpper = 0;
     let responseUpper;
@@ -403,12 +402,12 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
 
         const body = await responseUpper.text();
         console.warn(
-          `[RETRY] Uppercase trim API failed (status ${responseUpper.status}): ${body.substring(0, 300)}`
+          `[RETRY] Proper-case trim API failed (status ${responseUpper.status}): ${body.substring(0, 300)}`
         );
         retriesUpper++;
         await new Promise(r => setTimeout(r, retriesUpper * 1000));
       } catch (err) {
-        console.error(`[RETRY ERROR] Uppercase trim`, err);
+        console.error(`[RETRY ERROR] Proper-case trim`, err);
         retriesUpper++;
         await new Promise(r => setTimeout(r, retriesUpper * 1000));
       }
