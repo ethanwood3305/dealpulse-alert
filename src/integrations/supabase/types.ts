@@ -369,6 +369,12 @@ export type Database = {
           dealer_postcode: string
         }[]
       }
+      user_is_org_member: {
+        Args: {
+          org_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

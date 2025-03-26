@@ -80,3 +80,13 @@ export const getMapboxToken = async (): Promise<string> => {
     return '';
   }
 };
+
+// Create an admin client for server-like operations
+// This should only be used in edge functions or server-side code
+export const createAdminClient = (supabaseKey: string) => {
+  return createClient<Database>(SUPABASE_URL, supabaseKey, {
+    auth: {
+      persistSession: false,
+    }
+  });
+};

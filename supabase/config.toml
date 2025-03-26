@@ -16,3 +16,6 @@ verify_jwt = true
 
 [functions.get-user-by-email]
 verify_jwt = true
+
+[functions.get-scraped-listings]
+verify_jwt = true
