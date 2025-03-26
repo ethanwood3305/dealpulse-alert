@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Loader2 } from "lucide-react";
@@ -9,7 +8,6 @@ import Footer from '@/components/Footer';
 import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
 import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
-import { ApiDocsCard } from '@/components/dashboard/ApiDocsCard';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
 import { useSubscription } from '@/hooks/use-subscription';
@@ -179,15 +177,6 @@ const Dashboard = () => {
             <QuickActionsCard 
               canAddMoreCars={canAddMoreCars}
               onAddCarClick={scrollToVehicleLookup}
-            />
-          </div>
-          
-          <div className="mb-10">
-            <ApiDocsCard 
-              apiKey={userSubscription?.api_key}
-              userId={user?.id}
-              hasApiAccess={userSubscription?.has_api_access || false}
-              onGenerateKey={handleGenerateApiKey}
             />
           </div>
           

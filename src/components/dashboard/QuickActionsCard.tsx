@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, Car } from "lucide-react";
+import { PlusCircle, Car, MessageSquare } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,6 +29,10 @@ export const QuickActionsCard = ({
     } else {
       navigate('/radius-map');
     }
+  };
+
+  const handleContactForApi = () => {
+    navigate('/contact?subject=API Integration');
   };
 
   return (
@@ -64,6 +68,15 @@ export const QuickActionsCard = ({
             Coming Soon
           </Badge>
         </div>
+        
+        <Button 
+          variant="outline" 
+          className="w-full justify-start text-primary"
+          onClick={handleContactForApi}
+        >
+          <MessageSquare className="mr-2 h-4 w-4" />
+          Contact Us for API Integration
+        </Button>
         
         {selectedCar && (
           <div className="mt-2 p-3 bg-muted/50 rounded-md">
