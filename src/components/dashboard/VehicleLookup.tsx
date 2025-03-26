@@ -1,5 +1,5 @@
 
-import { Car } from 'lucide-react';
+import { Car, SearchIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VehicleLookupForm } from './vehicle-lookup/VehicleLookupForm';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
@@ -12,12 +12,12 @@ export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps
   const handleAddCar = addCar || defaultAddCar;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="overflow-hidden border-none shadow-lg">
+      <CardHeader className="pb-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Add a Vehicle</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-2xl font-bold">Add a Vehicle</CardTitle>
+            <CardDescription className="text-muted-foreground mt-1">
               Track a vehicle by searching for UK registration details
             </CardDescription>
           </div>
@@ -26,7 +26,7 @@ export function VehicleLookup({ userId, onCarAdded, addCar }: VehicleLookupProps
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         <VehicleLookupForm 
           onSubmit={async () => {}} 
           isLoading={false}

@@ -1,6 +1,5 @@
 
-import { AlertCircle, AlertTriangle, Clock } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 interface VehicleErrorAlertProps {
   error: string;
@@ -8,59 +7,26 @@ interface VehicleErrorAlertProps {
 }
 
 export const VehicleErrorAlert = ({ error, errorCode }: VehicleErrorAlertProps) => {
-  // Determine the display message based on the error code
-  const getErrorTitle = () => {
-    switch (errorCode) {
-      case "VEHICLE_NOT_FOUND":
-        return "Vehicle not found";
-      case "SERVICE_UNAVAILABLE":
-        return "Service unavailable";
-      case "TIMEOUT":
-        return "Service timed out";
-      case "INVALID_REGISTRATION":
-      case "API_ERROR":
-        return "Invalid registration";
-      default:
-        return "Registration lookup failed";
-    }
-  };
-
   return (
-    <Alert variant={
-      errorCode === "VEHICLE_NOT_FOUND" ? "default" : 
-      errorCode === "TIMEOUT" ? "default" : "destructive"
-    }>
-      {errorCode === "VEHICLE_NOT_FOUND" ? (
-        <AlertTriangle className="h-4 w-4" />
-      ) : errorCode === "TIMEOUT" ? (
-        <Clock className="h-4 w-4" />
-      ) : (
-        <AlertCircle className="h-4 w-4" />
-      )}
-      <AlertTitle>{getErrorTitle()}</AlertTitle>
-      <AlertDescription>
-        {error}
-        {errorCode === "VEHICLE_NOT_FOUND" && (
-          <p className="mt-2 text-sm">
-            Please check the registration number and try again. Make sure it's a valid UK registration.
+    <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-900/50 p-4 animate-fade-in">
+      <div className="flex items-start space-x-3">
+        <div className="bg-red-100 dark:bg-red-900/40 rounded-full p-2">
+          <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+        </div>
+        <div>
+          <h3 className="text-md font-medium text-red-800 dark:text-red-400">
+            Vehicle lookup failed
+          </h3>
+          <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+            {error}
           </p>
-        )}
-        {(errorCode === "INVALID_REGISTRATION" || errorCode === "API_ERROR") && (
-          <p className="mt-2 text-sm">
-            The registration number format is invalid. Please enter a valid UK vehicle registration.
-          </p>
-        )}
-        {errorCode === "SERVICE_UNAVAILABLE" && (
-          <p className="mt-2 text-sm">
-            The vehicle lookup service is currently unavailable. Please try again later.
-          </p>
-        )}
-        {errorCode === "TIMEOUT" && (
-          <p className="mt-2 text-sm">
-            The vehicle lookup service is taking too long to respond. Please try again in a few minutes.
-          </p>
-        )}
-      </AlertDescription>
-    </Alert>
+          {errorCode && (
+            <p className="text-xs text-red-600 dark:text-red-400/70 mt-2">
+              Error code: {errorCode}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
