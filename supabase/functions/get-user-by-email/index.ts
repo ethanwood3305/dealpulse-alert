@@ -1,6 +1,6 @@
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,84 +12,74 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
-
+  
   try {
-    // Create a Supabase client with the service role key
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    )
-
-    // Get the JWT token from the request
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'No authorization header provided' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Verify the JWT
-    const token = authHeader.replace('Bearer ', '')
-    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token)
-    
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
-    }
-
-    // Parse the request body
+    // Get the request body
     const { email } = await req.json()
     
     if (!email) {
       return new Response(
         JSON.stringify({ error: 'Email is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+          status: 400 
+        }
       )
     }
-
-    // Find the user by email
-    const { data: users, error } = await supabaseAdmin.auth.admin.listUsers({
-      filter: {
-        email: email
+    
+    console.log(`Searching for user with email: ${email}`)
+    
+    // Create a Supabase client with the Admin key
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      { 
+        global: { 
+          headers: { Authorization: req.headers.get('Authorization')! } 
+        } 
       }
-    })
+    )
+    
+    // Search for the user by email
+    const { data: user, error } = await supabaseAdmin.auth.admin.getUserByEmail(email)
     
     if (error) {
-      console.error('Error fetching user:', error)
+      console.error('Error finding user:', error)
       throw error
     }
     
-    const foundUser = users.users.length > 0 ? users.users[0] : null
-    
-    if (!foundUser) {
+    if (!user) {
+      console.log('No user found with that email')
       return new Response(
-        JSON.stringify({ error: `No user found with email ${email}` }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'User not found' }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+          status: 404 
+        }
       )
     }
-
+    
+    console.log(`Found user with id: ${user.id}`)
+    
+    // Return only the necessary user information
     return new Response(
       JSON.stringify({ 
-        id: foundUser.id,
-        email: foundUser.email 
+        id: user.id,
+        email: user.email
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     )
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error in get-user-by-email function:', error)
     
     return new Response(
-      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: error.message }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: 500 
+      }
     )
   }
 })

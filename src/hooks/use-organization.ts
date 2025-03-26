@@ -17,7 +17,7 @@ export const useOrganization = (userId: string | undefined) => {
     try {
       setIsLoading(true);
       
-      // Use the database function to get organization IDs without recursion
+      // Get organization IDs using the database function
       const { data: orgIds, error: funcError } = await supabase
         .rpc('get_user_organizations', { user_uuid: userId });
         
@@ -172,16 +172,13 @@ export const useOrganization = (userId: string | undefined) => {
     try {
       console.log('Adding member to organization:', email, role);
       
-      // We need to find the user by email using a different approach
-      // First, make an RPC call to a function that can find the user by email
-      // or use a different method to find the user ID
-      
-      // For now, we'll use auth.user function call through edge function
+      // Use the edge function to find the user by email
       const { data: userData, error: functionError } = await supabase.functions.invoke('get-user-by-email', {
         body: { email }
       });
       
       if (functionError) {
+        console.error('Error from get-user-by-email function:', functionError);
         throw new Error(functionError.message || "Failed to find user");
       }
       
