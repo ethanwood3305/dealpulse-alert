@@ -11,8 +11,6 @@ import { SubscriptionCard } from '@/components/dashboard/SubscriptionCard';
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard';
 import { TrackedCarsTable } from '@/components/dashboard/TrackedCarsTable';
 import { VehicleLookup } from '@/components/dashboard/VehicleLookup';
-import { OrganizationSelector } from '@/components/dashboard/OrganizationSelector';
-import { OrganizationMembers } from '@/components/dashboard/OrganizationMembers';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useTrackedCars } from '@/hooks/use-tracked-cars';
 import { useOrganization } from '@/hooks/use-organization';
@@ -32,13 +30,8 @@ const Dashboard = () => {
   } = useSubscription(user?.id);
   
   const {
-    organizations,
     currentOrganization,
-    organizationMembers,
     isLoading: isLoadingOrganizations,
-    switchOrganization,
-    createOrganization,
-    addOrganizationMember
   } = useOrganization(user?.id);
   
   const { 
@@ -154,8 +147,8 @@ const Dashboard = () => {
   const handleAddCar = async (car: any) => {
     if (!currentOrganization) {
       toast({
-        title: "No dealership selected",
-        description: "Please select or create a dealership first.",
+        title: "No dealership assigned",
+        description: "Your account hasn't been assigned to a dealership. Please contact support.",
         variant: "destructive"
       });
       return false;
@@ -191,18 +184,11 @@ const Dashboard = () => {
       
       <main className="flex-grow py-16 container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6">
             <DashboardHeader 
               userName={user?.user_metadata?.full_name} 
               userEmail={user?.email}
               isPro={userSubscription?.plan !== 'free'}
-            />
-            
-            <OrganizationSelector
-              organizations={organizations}
-              currentOrganization={currentOrganization}
-              onSwitchOrganization={switchOrganization}
-              onCreateOrganization={createOrganization}
             />
           </div>
           
@@ -219,16 +205,6 @@ const Dashboard = () => {
               onAddCarClick={scrollToVehicleLookup}
             />
           </div>
-          
-          {currentOrganization && (
-            <div className="mb-10">
-              <OrganizationMembers 
-                members={organizationMembers}
-                currentUserId={user?.id}
-                onAddMember={addOrganizationMember}
-              />
-            </div>
-          )}
           
           <div id="vehicle-lookup" className="mb-10">
             <VehicleLookup 

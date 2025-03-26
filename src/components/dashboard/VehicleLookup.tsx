@@ -1,5 +1,4 @@
 
-import { useState } from 'react';
 import { Car } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { VehicleLookupForm } from './vehicle-lookup/VehicleLookupForm';
