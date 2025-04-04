@@ -1,11 +1,14 @@
+/// <reference lib="deno.ns" />
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
+import { DOMParser } from 'https://deno.land/x/deno_dom/deno-dom-wasm.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -84,8 +87,11 @@ async function scrapeForVehicle(supabase, vehicleId) {
       `Scraping ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`
     );
 
-    const scrapedListings = await getVehicleListings(carDetails, dealerPostcode);
-    console.log(`Found ${scrapedListings.length} listings for vehicle ${vehicleId}`);
+    // Get listings from both sources
+    const autoTraderListings = await getVehicleListings(carDetails, dealerPostcode);
+    const motorsListings = await getMotorsListings(carDetails, dealerPostcode);
+    const scrapedListings = [...autoTraderListings, ...motorsListings];
+    console.log(`Found ${scrapedListings.length} total listings for vehicle ${vehicleId}`);
 
     // Delete previous listings
     const { error: deleteError } = await supabase
@@ -153,18 +159,14 @@ function toProperCase(text) {
 
 /* 
   cleanTrim function: Removes unwanted substrings like "TDCI", "DCI", etc.
-  It uses a blacklist (case-insensitive) to remove these terms from the trim string.
 */
 function cleanTrim(trim) {
   if (!trim) return '';
-  // List of terms to remove (case-insensitive)
   const blacklist = ['tdci', 'dci', 'dct', 'isg', 'mhev', 'phev', 'tgdi', 'gdi', 'crdi'];
   let cleaned = trim;
   for (const term of blacklist) {
-    // Remove the term if found as a whole word
     cleaned = cleaned.replace(new RegExp(`\\b${term}\\b`, 'gi'), '');
   }
-  // Remove extra spaces and trim
   return cleaned.replace(/\s+/g, ' ').trim();
 }
 
@@ -197,7 +199,6 @@ function parseVehicleDetails(vehicle) {
       if (param.includes('year=')) year = param.split('year=')[1];
       if (param.includes('color=')) color = toProperCase(param.split('color=')[1]);
       if (param.includes('trim=')) {
-        // Clean the trim value by removing unwanted substrings
         trim = cleanTrim(param.split('trim=')[1].trim());
       }
       if (param.includes('engine=')) {
@@ -349,7 +350,6 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
   const json = await response.json();
   let listings = json[0]?.data?.searchResults?.listings || [];
 
-  // If no listings found and a trim exists, retry using the proper-case version of the trim.
   if (listings.length === 0 && carDetails.trim) {
     const properCaseTrim = toProperCase(carDetails.trim);
     console.log("No listings found. Retrying with proper-case trim:", properCaseTrim);
@@ -471,4 +471,189 @@ async function getVehicleListings(carDetails, postcode = 'b31 3xr') {
         is_cheapest: false
       };
     });
+}
+
+// New function for scraping Motors.co.uk listings using a POST request with URL-encoded form data.
+// This function sends the request to https://www.motors.co.uk/search/car/ using the "searchPanelParameters" key,
+// then parses the returned HTML to extract listing details.
+async function getMotorsListings(carDetails, postcode = 'b31 3xr') {
+  const url = 'https://www.motors.co.uk/search/car/';
+
+  // Build payload based on the observed Postman request.
+  const payload = {
+    "Doors": [],
+    "Seats": [],
+    "SafetyRatings": [],
+    "DealerRating": [],
+    "SelectedTopSpeed": null,
+    "SelectedPower": null,
+    "SelectedAcceleration": null,
+    "MinPower": -1,
+    "MaxPower": -1,
+    "MinEngineSize": -1,
+    "MaxEngineSize": -1,
+    "IsULEZCompliant": false,
+    "BodyStyles": [],
+    "DriveTrains": [],
+    "MakeModels": [
+      {
+        "Value": carDetails.brand,
+        "Models": [carDetails.model],
+        "Trims": carDetails.trim ? [carDetails.trim] : []
+      }
+    ],
+    "FuelTypes": [],
+    "Transmissions": [],
+    "Colours": carDetails.color ? [carDetails.color] : [],
+    "IsPaymentSearch": false,
+    "IsReduced": false,
+    "IsHot": false,
+    "IsRecentlyAdded": false,
+    "IsGroupStock": false,
+    "PartExAvailable": false,
+    "IsPriceAndGo": false,
+    "IsPriceExcludeVATSearch": false,
+    "IncludeOnlineOnlySearch": false,
+    "IsAgeSearch": true,
+    "IsPreReg": false,
+    "IsExDemo": false,
+    "ExcludeExFleet": false,
+    "ExcludeExHire": false,
+    "Keywords": [],
+    "SelectedInsuranceGroup": null,
+    "SelectedFuelEfficiency": null,
+    "SelectedCostAnnualTax": null,
+    "SelectedCO2Emission": null,
+    "SelectedTowingBrakedMax": null,
+    "SelectedTowingUnbrakedMax": null,
+    "SelectedTankRange": null,
+    "DealerId": 0,
+    "Age": -1,
+    "MinAge": -1,
+    "MaxAge": carDetails.year ? String(carDetails.year) : "1",
+    "MinYear": carDetails.year ? carDetails.year : -1,
+    "MaxYear": carDetails.year ? carDetails.year : -1,
+    "Mileage": -1,
+    "MinMileage": -1,
+    "MaxMileage": carDetails.mileage ? String(carDetails.mileage + 2000) : "10000",
+    "MinPrice": -1,
+    "MaxPrice": -1,
+    "MinPaymentMonthlyCost": -1,
+    "MaxPaymentMonthlyCost": -1,
+    "PaymentTerm": 60,
+    "PaymentMileage": carDetails.mileage ? carDetails.mileage + 2000 : 10000,
+    "PaymentDeposit": 1000,
+    "SelectedSoldStatusV2": "notsold",
+    "SelectedBatteryRangeMiles": null,
+    "SelectedBatteryFastChargeMinutes": null,
+    "BatteryIsLeased": false,
+    "BatteryIsWarrantyWhenNew": false,
+    "ExcludeImports": false,
+    "ExcludeHistoryCatNCatD": false,
+    "ExcludeHistoryCatSCatC": false,
+    "Type": 10,
+    "PostCode": postcode,
+    "Distance": 1000,
+    "SortOrder": 0,
+    "DealerGroupId": 0,
+    "MinImageCountActive": false,
+    "PaginationCurrentPage": 1
+  };
+
+  const formBody = new URLSearchParams();
+  formBody.set("searchPanelParameters", JSON.stringify(payload));
+
+  console.log("Fetching Motors.co.uk URL:", url);
+  console.log("Payload:", JSON.stringify(payload));
+
+  const MAX_RETRIES = 3;
+  let retries = 0;
+  let response;
+
+  while (retries < MAX_RETRIES) {
+    try {
+      const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36`;
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'User-Agent': userAgent,
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Upgrade-Insecure-Requests': '1'
+        },
+        body: formBody.toString()
+      });
+      if (response.ok) break;
+      const bodyText = await response.text();
+      console.warn(
+        `[RETRY] Motors.co.uk request failed (status ${response.status}): ${bodyText.substring(0, 300)}`
+      );
+      retries++;
+      await new Promise(r => setTimeout(r, retries * 1000));
+    } catch (err) {
+      console.error(`[RETRY ERROR] Motors.co.uk`, err);
+      retries++;
+      await new Promise(r => setTimeout(r, retries * 1000));
+    }
+  }
+
+  if (!response || !response.ok) {
+    console.error('[ERROR] Motors.co.uk request failed after all retries');
+    return [];
+  }
+
+  let html;
+  try {
+    html = await response.text();
+  } catch (err) {
+    console.error('Error reading HTML from Motors.co.uk:', err);
+    return [];
+  }
+
+  // Parse the returned HTML
+  const dom = new DOMParser().parseFromString(html, "text/html");
+  if (!dom) {
+    console.error("Failed to parse Motors.co.uk HTML");
+    return [];
+  }
+
+  // Adjust the selector based on the actual HTML structure.
+  // For this example, assume each listing is within an element with the class "search-result-item".
+  const listingElements = dom.querySelectorAll(".search-result-item");
+  if (!listingElements || listingElements.length === 0) {
+    console.warn("No listings found on Motors.co.uk page");
+    return [];
+  }
+
+  const listings = [];
+  listingElements.forEach(el => {
+    // Extract details; adjust selectors to match the page structure.
+    const titleEl = el.querySelector(".result-title");
+    const priceEl = el.querySelector(".result-price");
+    const mileageEl = el.querySelector(".result-mileage");
+    const locationEl = el.querySelector(".result-location");
+    const linkEl = el.querySelector("a");
+
+    let price = priceEl ? parseInt(priceEl.textContent.replace(/[^0-9]/g, ''), 10) : 0;
+    if (isNaN(price)) price = 0;
+    let mileage = mileageEl ? parseInt(mileageEl.textContent.replace(/[^0-9]/g, ''), 10) : (carDetails.mileage || 0);
+    const title = titleEl ? titleEl.textContent.trim() : `${carDetails.brand} ${carDetails.model}`;
+    const listingUrl = linkEl ? linkEl.getAttribute("href") : url;
+
+    listings.push({
+      dealer_name: "Motors",
+      url: listingUrl.startsWith('http') ? listingUrl : `https://www.motors.co.uk${listingUrl}`,
+      title,
+      price,
+      mileage,
+      year: carDetails.year ? parseInt(carDetails.year) : new Date().getFullYear(),
+      color: carDetails.color || 'Unknown',
+      location: locationEl ? locationEl.textContent.trim() : 'Unknown',
+      lat: 51.5 + Math.random() * 3 - 1.5,
+      lng: -0.9 + Math.random() * 3 - 1.5,
+      is_cheapest: false
+    });
+  });
+
+  return listings;
 }
