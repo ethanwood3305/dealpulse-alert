@@ -1,3 +1,4 @@
+
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
  
  const corsHeaders = {
@@ -87,7 +88,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
      // Call both scrapers in parallel
      const [autoTraderListings, motorsListings] = await Promise.all([
        getVehicleListings(carDetails, dealerPostcode),
-       getMotorsListings(carDetails, dealerPostcode)
+       getMotorsListings(carDetails, dealerPostcode, vehicleId) // Pass the vehicleId to the motors scraper
      ]);
  
      console.log(`Found ${autoTraderListings.length} AutoTrader and ${motorsListings.length} Motors listings for vehicle ${vehicleId}`);
@@ -440,7 +441,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
      });
  }
  
- async function getMotorsListings(carDetails, dealerPostcode) {
+ async function getMotorsListings(carDetails, dealerPostcode, vehicleId) {
    try {
      const baseUrl = 'https://wskiwwfgelypkrufsimz.supabase.co/functions/v1/motors-scraper';
      
@@ -452,7 +453,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
        mileage: carDetails.mileage,
        postcode: dealerPostcode,
        trim: carDetails.trim,
-       engineSize: carDetails.engineSize
+       engineSize: carDetails.engineSize,
+       vehicle_id: vehicleId  // Add the vehicle_id to the payload
      };
  
      console.log('[Motors] Fetching listings with payload:', payload);
