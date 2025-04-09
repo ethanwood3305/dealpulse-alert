@@ -41,6 +41,8 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
     setHasError(false);
     
     try {
+      console.log(`Invoking car-dealer-scraper with vehicle_id: ${car.id}`);
+      
       // Call car-dealer-scraper edge function directly with vehicle_id
       const { data: carDealerData, error: carDealerError } = await supabase.functions.invoke('car-dealer-scraper', {
         body: { vehicle_id: car.id }
