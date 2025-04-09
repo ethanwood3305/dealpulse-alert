@@ -5,7 +5,7 @@ import { Globe, Loader2 } from "lucide-react";
 import { ScrapedListingsDialog } from "./ScrapedListingsDialog";
 import { TrackedCar, ScrapedListing } from "@/hooks/use-tracked-cars";
 import { toast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { Badge } from "@/components/ui/badge";
 
 interface ScrapeButtonProps {
   car: TrackedCar;
@@ -41,22 +41,8 @@ export function ScrapeButton({ car, listings, onTriggerScraping, isScrapingCar }
     setHasError(false);
     
     try {
-      console.log(`Invoking car-dealer-scraper with vehicle_id: ${car.id}`);
-      
-      // Call car-dealer-scraper edge function directly with vehicle_id
-      const { data: carDealerData, error: carDealerError } = await supabase.functions.invoke('car-dealer-scraper', {
-        body: { vehicle_id: car.id }
-      });
-
-      if (carDealerError) {
-        console.error("Error invoking car-dealer-scraper:", carDealerError);
-        throw carDealerError;
-      }
-      
-      console.log("Car dealer scraper response:", carDealerData);
-      
-      // After scraping completes, fetch the latest listings via onTriggerScraping
       await onTriggerScraping(car.id);
+      // No need to throw error here as onTriggerScraping already handles that
     } catch (error) {
       console.error("Error triggering scraping:", error);
       setHasError(true);

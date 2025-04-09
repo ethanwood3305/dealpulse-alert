@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
  
  const corsHeaders = {
@@ -85,17 +84,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
        `Scraping ${carDetails.brand} ${carDetails.model} ${carDetails.trim || ''} ${carDetails.year || ''}`
      );
  
-     // Call both scrapers in parallel
-     const [autoTraderListings, motorsListings] = await Promise.all([
-       getVehicleListings(carDetails, dealerPostcode),
-       getMotorsListings(carDetails, dealerPostcode, vehicleId) // Pass the vehicleId to the motors scraper
-     ]);
- 
-     console.log(`Found ${autoTraderListings.length} AutoTrader and ${motorsListings.length} Motors listings for vehicle ${vehicleId}`);
- 
-     // Combine and deduplicate listings
-     const allListings = [...autoTraderListings, ...motorsListings];
-     console.log(`Total combined listings: ${allListings.length}`);
+     const scrapedListings = await getVehicleListings(carDetails, dealerPostcode);
+     console.log(`Found ${scrapedListings.length} listings for vehicle ${vehicleId}`);
  
      // Delete previous listings
      const { error: deleteError } = await supabase
@@ -106,8 +96,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
        console.error(`Error deleting previous listings for vehicle ${vehicleId}:`, deleteError);
      }
  
-     if (allListings.length > 0) {
-       const sortedListings = [...allListings].sort((a, b) =>
+     if (scrapedListings.length > 0) {
+       const sortedListings = [...scrapedListings].sort((a, b) =>
          a.price !== b.price ? a.price - b.price : a.mileage - b.mileage
        );
        const cheapestListing = sortedListings[0];
@@ -181,22 +171,11 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
  function parseVehicleDetails(vehicle) {
    if (!vehicle || !vehicle.url) {
      console.error('Invalid vehicle data:', vehicle);
-     return null;
-   }
- 
-   const urlParts = vehicle.url.split('/');
-   const brand = urlParts[0];
-   const model = urlParts[1];
-   const engineType = urlParts[2];
- 
-   let mileage, year, color, trim, engineSize;
- 
-   if (urlParts[3]) {
-     const params = urlParts[3].split('&');
-     params.forEach(param => {
+ @@ -176,7 +196,10 @@
        if (param.includes('mil=')) mileage = parseInt(param.split('mil=')[1]);
        if (param.includes('year=')) year = param.split('year=')[1];
        if (param.includes('color=')) color = toProperCase(param.split('color=')[1]);
+       if (param.includes('trim=')) trim = param.split('trim=')[1].trim();
        if (param.includes('trim=')) {
          // Clean the trim value by removing unwanted substrings
          trim = cleanTrim(param.split('trim=')[1].trim());
@@ -204,116 +183,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
        if (param.includes('engine=')) {
          const cc = parseInt(param.split('engine=')[1]);
          engineSize = cc ? (cc / 1000).toFixed(2) : null;
-       }
-     });
-   }
- 
-   return {
-     brand,
-     model,
-     engineType,
-     mileage,
-     year,
-     color,
-     trim,
-     engineSize
-   };
- }
- 
- async function getVehicleListings(carDetails, dealerPostcode) {
-   const baseUrl = 'https://www.autotrader.co.uk';
-   const filters = [
-     { filter: "make", selected: [carDetails.brand] },
-     { filter: "model", selected: [carDetails.model] },
-     { filter: "radius", selected: ["1500"] },
-     { filter: "postcode", selected: [dealerPostcode] }
-   ];
- 
-   if (carDetails.trim) {
-     filters.push({ filter: "aggregated_trim", selected: [carDetails.trim] });
-   }
- 
-   const payload = [{
-     operationName: "SearchResultsListingsGridQuery",
-     variables: {
-       filters: filters,
-       channel: "cars",
-       page: 1,
-       sortBy: "price_asc",
-       listingType: null,
-       searchId: crypto.randomUUID()
-     },
-     query: `query SearchResultsListingsGridQuery(
-       $filters: [FilterInput!]!,
-       $channel: Channel!,
-       $page: Int,
-       $sortBy: SearchResultsSort,
-       $listingType: [ListingType!],
-       $searchId: String!
-     ) {
-       searchResults(input: {
-         facets: [],
-         filters: $filters,
-         channel: $channel,
-         page: $page,
-         sortBy: $sortBy,
-         listingType: $listingType,
-         searchId: $searchId
-       }) {
-         listings {
-           ... on SearchListing {
-             title
-             price
-             vehicleLocation
-             fpaLink
-             badges {
-               type
-               displayText
-             }
-           }
-         }
-       }
-     }`
-   }];
- 
-   console.log("Payload being sent:", JSON.stringify(payload, null, 2));
- 
-   let retries = 0;
-   let listings = [];
-   let response;
-   const MAX_RETRIES = 3;
- 
-   while (retries < MAX_RETRIES) {
-     try {
-       const userAgent = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${118 + retries}.0.0.0 Safari/537.36`;
-       response = await fetch(`${baseUrl}/at-gateway?opname=SearchResultsListingsGridQuery`, {
-         method: 'POST',
-         headers: {
-           'Content-Type': 'application/json',
-           'User-Agent': userAgent,
-           'x-sauron-app-name': 'sauron-search-results-app',
-           'x-sauron-app-version': '3157'
-         },
-         body: JSON.stringify(payload)
-       });
- 
-       if (response.ok) break;
- 
-       const body = await response.text();
-       console.warn(`[RETRY] API failed (status ${response.status}): ${body.substring(0, 300)}`);
-       retries++;
-       await new Promise(r => setTimeout(r, retries * 1000));
-     } catch (err) {
-       console.error(`[RETRY ERROR]`, err);
-       retries++;
-       await new Promise(r => setTimeout(r, retries * 1000));
-     }
-   }
- 
-   if (response && response.ok) {
-     const json = await response.json();
-     listings = json[0]?.data?.searchResults?.listings || [];
-   }
+ @@ -328,123 +351,124 @@
  
    // If no listings found and a trim exists, retry using the proper-case version of the trim.
    if (listings.length === 0 && carDetails.trim) {
@@ -439,48 +309,4 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.36.0';
          is_cheapest: false
        };
      });
- }
- 
- async function getMotorsListings(carDetails, dealerPostcode, vehicleId) {
-   try {
-     const baseUrl = 'https://wskiwwfgelypkrufsimz.supabase.co/functions/v1/motors-scraper';
-     
-     const payload = {
-       brand: carDetails.brand,
-       model: carDetails.model,
-       engineType: carDetails.engineType,
-       year: carDetails.year,
-       mileage: carDetails.mileage,
-       postcode: dealerPostcode,
-       trim: carDetails.trim,
-       engineSize: carDetails.engineSize,
-       vehicle_id: vehicleId  // Add the vehicle_id to the payload
-     };
- 
-     console.log('[Motors] Fetching listings with payload:', payload);
- 
-     const response = await fetch(baseUrl, {
-       method: 'POST',
-       headers: {
-         'Content-Type': 'application/json',
-         'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
-       },
-       body: JSON.stringify(payload)
-     });
- 
-     if (!response.ok) {
-       console.error('[Motors] Error response:', response.status, response.statusText);
-       const text = await response.text();
-       console.error('[Motors] Error body:', text);
-       return [];
-     }
- 
-     const data = await response.json();
-     console.log(`[Motors] Found ${data.listings?.length || 0} listings`);
-     
-     return data.listings || [];
-   } catch (error) {
-     console.error('[Motors] Error fetching listings:', error);
-     return [];
-   }
  }
