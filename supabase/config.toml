@@ -3,10 +3,26 @@ project_id = "wskiwwfgelypkrufsimz"
 
 [api]
 enabled = true
-[auth]
+port = 8080
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 5432
+
+[studio]
 enabled = true
+port = 3000
+
+[inbucket]
+enabled = true
+port = 4000
+
+[functions]
+[functions.car-dealer-scraper]
+verify_jwt = false
+
+[functions.cazoo]
+verify_jwt = false
+
 [realtime]
 enabled = true
-
-[functions.manage-dealer-postcode]
-verify_jwt = true
